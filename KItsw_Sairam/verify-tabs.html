@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tab Structure Verification</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding: 20px; }
+        .tab-content { 
+            border: 2px solid #007bff; 
+            padding: 15px; 
+            margin-top: 10px;
+            background: #f8f9fa;
+        }
+        .tab-pane {
+            border: 2px dashed #28a745;
+            padding: 10px;
+            margin: 5px 0;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Tab Structure Test</h1>
+    <p>This test verifies that tab structure is correct and tabs switch properly.</p>
+    
+    <ul class="nav nav-tabs" id="testTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="create-tab" data-bs-toggle="tab" data-bs-target="#create" type="button" role="tab">
+                Create
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="view-tab" data-bs-toggle="tab" data-bs-target="#view" type="button" role="tab">
+                View
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="edit-tab" data-bs-toggle="tab" data-bs-target="#edit" type="button" role="tab">
+                Edit
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="timetable-tab" data-bs-toggle="tab" data-bs-target="#timetable" type="button" role="tab">
+                Generate
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="testTabContent">
+        <div class="tab-pane fade show active" id="create" role="tabpanel">
+            <h4>Create Content</h4>
+            <p>This should only show when Create tab is active.</p>
+        </div>
+        
+        <div class="tab-pane fade" id="view" role="tabpanel">
+            <h4>View Content</h4>
+            <p>This should only show when View tab is active.</p>
+            <table class="table table-bordered">
+                <tr><td>Sample data</td></tr>
+            </table>
+        </div>
+        
+        <div class="tab-pane fade" id="edit" role="tabpanel">
+            <h4>Edit Content</h4>
+            <p>This should only show when Edit tab is active.</p>
+        </div>
+        
+        <div class="tab-pane fade" id="timetable" role="tabpanel">
+            <h4>Generate Content</h4>
+            <p>This should only show when Generate tab is active.</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Add click listeners to verify tab switching
+        document.querySelectorAll('[data-bs-toggle="tab"]').forEach(button => {
+            button.addEventListener('click', function() {
+                console.log('Tab clicked:', this.textContent);
+                setTimeout(() => {
+                    const activePanes = document.querySelectorAll('.tab-pane.active, .tab-pane.show');
+                    console.log('Active panes:', activePanes.length);
+                    activePanes.forEach(pane => {
+                        console.log('Active pane:', pane.id, pane.textContent.trim().substring(0, 50));
+                    });
+                }, 100);
+            });
+        });
+    </script>
+</body>
+</html>

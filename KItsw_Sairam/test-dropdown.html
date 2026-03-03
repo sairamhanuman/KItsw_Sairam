@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Dropdown</title>
+</head>
+<body>
+    <h1>Test Dropdown Functionality</h1>
+    
+    <div>
+        <label for="semester">Semester:</label>
+        <select id="semester">
+            <option value="">Loading...</option>
+        </select>
+    </div>
+    
+    <div>
+        <label for="programme">Programme:</label>
+        <select id="programme">
+            <option value="">Loading...</option>
+        </select>
+    </div>
+    
+    <div>
+        <label for="branch">Branch:</label>
+        <select id="branch">
+            <option value="">Loading...</option>
+        </select>
+    </div>
+    
+    <div>
+        <label for="regulation">Regulation:</label>
+        <select id="regulation">
+            <option value="">Loading...</option>
+        </select>
+    </div>
+    
+    <div id="results"></div>
+    
+    <script>
+        // Test API calls
+        async function testAPIs() {
+            const results = document.getElementById('results');
+            
+            try {
+                // Test semesters
+                const semesterResponse = await fetch('http://localhost:3000/api/semesters');
+                const semesters = await semesterResponse.json();
+                console.log('Semesters:', semesters);
+                
+                const semesterSelect = document.getElementById('semester');
+                semesterSelect.innerHTML = '<option value="">Select Semester</option>';
+                semesters.data.forEach(semester => {
+                    const option = new Option(`Semester ${semester.semester_number}`, semester.semester_id);
+                    semesterSelect.add(option);
+                });
+                
+                // Test programmes
+                const programmeResponse = await fetch('http://localhost:3000/api/programmes');
+                const programmes = await programmeResponse.json();
+                console.log('Programmes:', programmes);
+                
+                const programmeSelect = document.getElementById('programme');
+                programmeSelect.innerHTML = '<option value="">Select Programme</option>';
+                programmes.data.forEach(programme => {
+                    const option = new Option(programme.programme_name, programme.programme_id);
+                    programmeSelect.add(option);
+                });
+                
+                // Test branches
+                const branchResponse = await fetch('http://localhost:3000/api/branches');
+                const branches = await branchResponse.json();
+                console.log('Branches:', branches);
+                
+                const branchSelect = document.getElementById('branch');
+                branchSelect.innerHTML = '<option value="">Select Branch</option>';
+                branches.data.forEach(branch => {
+                    const option = new Option(branch.branch_name, branch.branch_id);
+                    branchSelect.add(option);
+                });
+                
+                // Test regulations
+                const regulationResponse = await fetch('http://localhost:3000/api/regulations');
+                const regulations = await regulationResponse.json();
+                console.log('Regulations:', regulations);
+                
+                const regulationSelect = document.getElementById('regulation');
+                regulationSelect.innerHTML = '<option value="">Select Regulation</option>';
+                regulations.data.forEach(regulation => {
+                    const option = new Option(regulation.regulation_name, regulation.regulation_id);
+                    regulationSelect.add(option);
+                });
+                
+                results.innerHTML = '<h3 style="color: green;">✅ All APIs working correctly!</h3>';
+                
+            } catch (error) {
+                console.error('Error:', error);
+                results.innerHTML = `<h3 style="color: red;">❌ Error: ${error.message}</h3>`;
+            }
+        }
+        
+        // Run test on page load
+        window.onload = testAPIs;
+    </script>
+</body>
+</html>

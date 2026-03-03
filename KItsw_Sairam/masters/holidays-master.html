@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Holidays Master - Engineering College</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .holiday-form {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        .form-section {
+            margin-bottom: 25px;
+        }
+        .form-section h5 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 10px 25px;
+            font-weight: 500;
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border: none;
+        }
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-top: 30px;
+        }
+        .holiday-table {
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .holiday-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .holiday-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .holiday-actions button {
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+        }
+        .header-title {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="header-title">
+            <h2><i class="fas fa-calendar-alt"></i> Holidays Master</h2>
+            <p class="mb-0">Manage holidays for the academic year</p>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="holiday-form">
+                    <h4 class="mb-4"><i class="fas fa-plus-circle"></i> Add Holiday</h4>
+                    
+                    <form id="holidayForm">
+                        <div class="form-section">
+                            <h5>Holiday Details</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="holidayDate" class="form-label">
+                                        <i class="fas fa-calendar"></i> Holiday Date
+                                    </label>
+                                    <input type="date" class="form-control" id="holidayDate" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="holidayName" class="form-label">
+                                        <i class="fas fa-tag"></i> Holiday Name
+                                    </label>
+                                    <input type="text" class="form-control" id="holidayName" 
+                                           placeholder="e.g., Republic Day" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h5>Holiday Type</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="holidayType" class="form-label">
+                                        <i class="fas fa-list"></i> Holiday Type
+                                    </label>
+                                    <select class="form-select" id="holidayType" required>
+                                        <option value="">Select Type</option>
+                                        <option value="national">National Holiday</option>
+                                        <option value="religious">Religious Holiday</option>
+                                        <option value="college">College Holiday</option>
+                                        <option value="optional">Optional Holiday</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="academicYear" class="form-label">
+                                        <i class="fas fa-graduation-cap"></i> Academic Year
+                                    </label>
+                                    <select class="form-select" id="academicYear" required>
+                                        <option value="">Select Year</option>
+                                        <option value="2025-2026">2025-2026</option>
+                                        <option value="2026-2027">2026-2027</option>
+                                        <option value="2027-2028">2027-2028</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h5>Additional Information</h5>
+                            <div class="mb-3">
+                                <label for="description" class="form-label">
+                                    <i class="fas fa-info-circle"></i> Description
+                                </label>
+                                <textarea class="form-control" id="description" rows="3" 
+                                          placeholder="Enter holiday description (optional)"></textarea>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="isRecurring">
+                                <label class="form-check-label" for="isRecurring">
+                                    <i class="fas fa-redo"></i> Recurring Holiday (same date every year)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Save Holiday
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="resetForm()">
+                                <i class="fas fa-undo"></i> Reset
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="holiday-form">
+                    <h4 class="mb-4"><i class="fas fa-info-circle"></i> Quick Info</h4>
+                    
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-lightbulb"></i> Holiday Types:</h6>
+                        <ul class="mb-0">
+                            <li><strong>National:</strong> Republic Day, Independence Day, etc.</li>
+                            <li><strong>Religious:</strong> Diwali, Eid, Christmas, etc.</li>
+                            <li><strong>College:</strong> College Day, Founder's Day, etc.</li>
+                            <li><strong>Optional:</strong> Staff development days, etc.</li>
+                        </ul>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <h6><i class="fas fa-exclamation-triangle"></i> Important:</h6>
+                        <ul class="mb-0">
+                            <li>Holidays will be automatically excluded from exam scheduling</li>
+                            <li>Recurring holidays are automatically added each year</li>
+                            <li>Academic year helps organize holidays by period</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <h4 class="mb-4"><i class="fas fa-list"></i> Holidays List</h4>
+            
+            <div class="table-responsive">
+                <table class="table table-striped holiday-table" id="holidaysTable">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-calendar"></i> Date</th>
+                            <th><i class="fas fa-tag"></i> Holiday Name</th>
+                            <th><i class="fas fa-list"></i> Type</th>
+                            <th><i class="fas fa-graduation-cap"></i> Academic Year</th>
+                            <th><i class="fas fa-redo"></i> Recurring</th>
+                            <th><i class="fas fa-info-circle"></i> Description</th>
+                            <th><i class="fas fa-cogs"></i> Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="holidaysTableBody">
+                        <!-- Holidays will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        $(document).ready(function() {
+            loadHolidays();
+            
+            $('#holidayForm').on('submit', function(e) {
+                e.preventDefault();
+                saveHoliday();
+            });
+        });
+
+        function loadHolidays() {
+            $.ajax({
+                url: '/api/holidays',
+                method: 'GET',
+                success: function(response) {
+                    if (response.status === 'success') {
+                        displayHolidays(response.data);
+                    } else {
+                        Swal.fire('Error', 'Failed to load holidays', 'error');
+                    }
+                },
+                error: function() {
+                    Swal.fire('Error', 'Failed to connect to server', 'error');
+                }
+            });
+        }
+
+        function displayHolidays(holidays) {
+            const tbody = $('#holidaysTableBody');
+            tbody.empty();
+            
+            holidays.forEach(function(holiday) {
+                const row = `
+                    <tr>
+                        <td>${formatDate(holiday.holiday_date)}</td>
+                        <td><strong>${holiday.holiday_name}</strong></td>
+                        <td><span class="badge bg-info">${holiday.holiday_type}</span></td>
+                        <td>${holiday.academic_year}</td>
+                        <td>
+                            ${holiday.is_recurring ? 
+                                '<span class="badge bg-success">Yes</span>' : 
+                                '<span class="badge bg-secondary">No</span>'}
+                        </td>
+                        <td>${holiday.description || '-'}</td>
+                        <td>
+                            <div class="holiday-actions">
+                                <button class="btn btn-sm btn-primary" onclick="editHoliday(${holiday.id})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteHoliday(${holiday.id})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                tbody.append(row);
+            });
+        }
+
+        function saveHoliday() {
+            const holidayData = {
+                holiday_date: $('#holidayDate').val(),
+                holiday_name: $('#holidayName').val(),
+                holiday_type: $('#holidayType').val(),
+                academic_year: $('#academicYear').val(),
+                description: $('#description').val(),
+                is_recurring: $('#isRecurring').is(':checked')
+            };
+
+            $.ajax({
+                url: '/api/holidays',
+                method: 'POST',
+                data: JSON.stringify(holidayData),
+                contentType: 'application/json',
+                success: function(response) {
+                    if (response.status === 'success') {
+                        Swal.fire('Success', 'Holiday saved successfully!', 'success');
+                        resetForm();
+                        loadHolidays();
+                    } else {
+                        Swal.fire('Error', response.message || 'Failed to save holiday', 'error');
+                    }
+                },
+                error: function() {
+                    Swal.fire('Error', 'Failed to connect to server', 'error');
+                }
+            });
+        }
+
+        function editHoliday(id) {
+            // Load holiday data and populate form
+            $.ajax({
+                url: `/api/holidays/${id}`,
+                method: 'GET',
+                success: function(response) {
+                    if (response.status === 'success') {
+                        const holiday = response.data;
+                        $('#holidayDate').val(holiday.holiday_date);
+                        $('#holidayName').val(holiday.holiday_name);
+                        $('#holidayType').val(holiday.holiday_type);
+                        $('#academicYear').val(holiday.academic_year);
+                        $('#description').val(holiday.description);
+                        $('#isRecurring').prop('checked', holiday.is_recurring);
+                        
+                        // Change form to update mode
+                        $('#holidayForm').attr('data-id', id);
+                        $('button[type="submit"]').html('<i class="fas fa-edit"></i> Update Holiday');
+                    }
+                }
+            });
+        }
+
+        function deleteHoliday(id) {
+            Swal.fire({
+                title: 'Delete Holiday',
+                text: 'Are you sure you want to delete this holiday?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Delete',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#dc3545'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: `/api/holidays/${id}`,
+                        method: 'DELETE',
+                        success: function(response) {
+                            if (response.status === 'success') {
+                                Swal.fire('Success', 'Holiday deleted successfully!', 'success');
+                                loadHolidays();
+                            } else {
+                                Swal.fire('Error', 'Failed to delete holiday', 'error');
+                            }
+                        },
+                        error: function() {
+                            Swal.fire('Error', 'Failed to connect to server', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        function resetForm() {
+            $('#holidayForm')[0].reset();
+            $('#holidayForm').removeAttr('data-id');
+            $('button[type="submit"]').html('<i class="fas fa-save"></i> Save Holiday');
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        }
+    </script>
+</body>
+</html>

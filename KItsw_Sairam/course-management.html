@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course/Subject Management - Engineering College</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f7fa;
+        }
+
+        .course-container {
+            max-width: 1600px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        
+        .course-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .course-header h1 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+        }
+
+        .course-header p {
+            margin: 0;
+            opacity: 0.9;
+        }
+
+        /* Filter Section */
+        .filter-section {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .filter-section h3 {
+            margin: 0 0 20px 0;
+            color: #333;
+            font-size: 18px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-group label {
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .filter-group select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 18px;
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            font-size: 22px;
+        }
+
+        /* Form Section */
+        .form-section {
+            background: rgb(255, 255, 255);
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(54, 48, 48, 0.1);
+            margin-top: 20px;
+        }
+
+        .form-section h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Hide Add/Edit Subject section initially */
+        #subjectEntrySection {
+            display: none;
+        }
+
+        #subjectEntrySection.show {
+            display: block;
+        }
+
+        /* Edit Mode Toggle Button */
+        #editModeToggle {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+
+        #editModeToggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(10, 141, 41, 0.3);
+        }
+
+        #editModeToggle.active {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 15px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #667eea;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 5px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .checkbox-group label {
+            margin: 0 0 0 5px;
+            font-weight: normal;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        /* Button Styles */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #138496;
+        }
+
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        /* Table Section */
+        .table-section {
+            background: rgb(243, 235, 235)1);
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        .table-section h3 {
+            margin: 0 0 20px 0;
+            color: #333;
+            font-size: 18px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .subjects-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .subjects-table thead {
+            background: #667eea;
+            color: white;
+        }
+
+        .subjects-table th,
+        .subjects-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            font-size: 18px;
+                line-height: 0.1;
+                
+        }
+
+        .subjects-table th {
+            font-weight: 600;
+            white-space: nowrap;
+            font-size: 18px;
+              line-height: 1.1;
+}
+
+
+        .subjects-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 18px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        /* Alert Messages */
+        .alert {
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(174, 65, 65, 0.5);
+        }
+
+        .modal.show {
+            display: block;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: #333;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        /* Loading Spinner */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Statistics Bar */
+        .stats-bar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stats-bar .stat-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .stats-bar .stat-label {
+            font-weight: 600;
+        }
+
+        .stats-bar .stat-value {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .empty-message {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="course-container">
+        <!-- Header -->
+        <div class="course-header">
+            <h1>📚 Course/Subject Management</h1>
+            <p>Manage curriculum subjects by programme, branch, semester, and regulation</p>
+        </div>
+
+        <!-- Alert Messages -->
+        <div id="alertMessage" class="alert"></div>
+
+        <!-- Statistics Bar -->
+        <div class="stats-bar">
+            <div class="stat-item">
+                <span class="stat-label">Total Subjects:</span>
+                <span class="stat-value" id="totalSubjects">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Locked:</span>
+                <span class="stat-value" id="lockedSubjects">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Running:</span>
+                <span class="stat-value" id="runningSubjects">0</span>
+            </div>
+        </div>
+
+        <!-- Filter Section -->
+        <div class="filter-section">
+            <h3>🔍 Filter Subjects</h3>
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="filterProgramme">Programme</label>
+                    <select id="filterProgramme">
+                        <option value="">Select Programme</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterBranch">Branch</label>
+                    <select id="filterBranch">
+                        <option value="">Select Branch</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterSemester">Semester</label>
+                    <select id="filterSemester">
+                        <option value="">Select Semester</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterRegulation">Regulation</label>
+                    <select id="filterRegulation">
+                        <option value="">Select Regulation</option>
+                    </select>
+                </div>
+            </div>
+            <div class="filter-actions">
+                <button class="btn btn-primary" onclick="applyFilters()">Apply Filters</button>
+                <button class="btn btn-secondary" onclick="clearFilters()">Clear Filters</button>
+                <button class="btn btn-success" onclick="exportToExcel()">📥 Export to Excel</button>
+                <button class="btn btn-info" onclick="generateSampleExcel()">📄 Download Sample Excel</button>
+                <button class="btn btn-warning" onclick="showImportModal()">📤 Import from Excel</button>
+                <button type="submit" class="btn btn-primary">Save Subject</button>
+                <button type="button" class="btn btn-secondary" onclick="resetForm()">Clear Form</button>
+            </div>
+        </div>
+
+        <!-- Edit Mode Toggle -->
+        <button id="editModeToggle" onclick="toggleEditMode()">
+            📝 Enable Edit Mode
+        </button>
+        
+        <!-- Keyboard Shortcut Hint -->
+        <div style="margin: 10px 0; color: #666; font-size: 14px;">
+            💡 <kbd>Ctrl+E</kbd> to toggle edit mode
+        </div>
+
+        <!-- Subject Entry Form -->
+        <div id="subjectEntrySection" class="form-section">
+            <h3>➕ Add/Edit Subject</h3>
+            <form id="subjectForm">
+                <input type="hidden" id="subjectId">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="subjectOrder">Subject Order *</label>
+                        <input type="number" id="subjectOrder" required min="1" value="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="syllabusCode">Syllabus Code *</label>
+                        <input type="text" id="syllabusCode" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="refCode">Ref Code</label>
+                        <input type="text" id="refCode">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="internalExamCode">Internal Exam Code</label>
+                        <input type="text" id="internalExamCode">
+                    </div>
+                    <div class="form-group">
+                        <label for="externalExamCode">External Exam Code</label>
+                        <input type="text" id="externalExamCode">
+                    </div>
+                    <div class="form-group">
+                        <label for="subjectType">Subject Type *</label>
+                        <select id="subjectType" required>
+                            <option value="Theory">Theory</option>
+                            <option value="Practical">Practical</option>
+                            <option value="Drawing">Drawing</option>
+                            <option value="Project">Project</option>
+                            <option value="Others">Others</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="subjectName">Subject Name *</label>
+                        <input type="text" id="subjectName" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="internalMaxMarks">Internal Max Marks</label>
+                        <input type="number" id="internalMaxMarks" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="externalMaxMarks">External Max Marks</label>
+                        <input type="number" id="externalMaxMarks" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="taMaxMarks">TA Max Marks</label>
+                        <input type="number" id="taMaxMarks" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="credits">Credits</label>
+                        <input type="number" id="credits" step="0.1" min="0" value="0">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="replacementGroupOrder">Replacement Group Order</label>
+                        <input type="number" id="replacementGroupOrder" min="1">
+                    </div>
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="isElective">
+                            <label for="isElective">Is Elective</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="isUnderGroup">
+                            <label for="isUnderGroup">Is Under Group</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="electiveName">Elective Name</label>
+                        <select id="electiveName" class="form-control">
+                            <option value="">Select Elective Type</option>
+                            <option value="Open Elective">Open Elective</option>
+                            <option value="Professional Elective">Professional Elective</option>
+                            <option value="Open Elective-1">Open Elective-1</option>
+                            <option value="Professional Elective-1">Professional Elective-1</option>
+                            <option value="Open Elective-2">Open Elective-2</option>
+                            <option value="Professional Elective-2">Professional Elective-2</option>
+                            <option value="Open Elective-3">Open Elective-3</option>
+                            <option value="Professional Elective-3">Professional Elective-3</option>
+                            <option value="Open Elective-4">Open Elective-4</option>
+                            <option value="Professional Elective-4">Professional Elective-4</option>
+                        </select>
+                    </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="isExemptExamFee">
+                            <label for="isExemptExamFee">Exempt Exam Fee</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="isRunningCurriculum" checked>
+                            <label for="isRunningCurriculum">Running Curriculum</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                   
+                </div>
+            </form>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Loading subjects...</p>
+        </div>
+
+        <!-- Subjects Table -->
+        <div class="table-section">
+            <h3>📋 Subjects List</h3>
+            <div id="subjectsTableContainer">
+                <p class="empty-message">Select filters and click "Apply Filters" to load subjects</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div id="importModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Import Subjects from Excel</h2>
+                <span class="close" onclick="closeImportModal()">&times;</span>
+            </div>
+            <div>
+                <p>Upload an Excel file with subject data. Download the sample template to see the required format.</p>
+                <input type="file" id="excelFile" accept=".xlsx,.xls" style="margin-bottom: 20px;">
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="importFromExcel()">Import</button>
+                    <button class="btn btn-secondary" onclick="closeImportModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" 
+        integrity="sha512-r22gChDnGvBylk90+2e/ycr3RVrDi8DIOkIGNhJlKfuyQM4tIRAI062MaV8sfjQKYVGjOBaZBOA87z+IhZE9DA==" 
+        crossorigin="anonymous"></script>
+    <script>
+        // State
+        let subjects = [];
+        let currentFilters = {
+            programme_id: '',
+            branch_id: '',
+            semester_id: '',
+            regulation_id: ''
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadDropdowns();
+            setupFormSubmit();
+        });
+
+        // Load dropdowns
+        async function loadDropdowns() {
+            try {
+                // Load programmes
+                const progRes = await fetch('/api/programmes');
+                const progData = await progRes.json();
+                const progSelect = document.getElementById('filterProgramme');
+                progData.data.forEach(prog => {
+                    const option = document.createElement('option');
+                    option.value = prog.programme_id;
+                    option.textContent = prog.programme_code;
+                    progSelect.appendChild(option);
+                });
+
+                // Load branches
+                const branchRes = await fetch('/api/branches');
+                const branchData = await branchRes.json();
+                const branchSelect = document.getElementById('filterBranch');
+                branchData.data.forEach(branch => {
+                    const option = document.createElement('option');
+                    option.value = branch.branch_id;
+                    option.textContent = branch.branch_code;
+                    branchSelect.appendChild(option);
+                });
+
+                // Load semesters
+                const semRes = await fetch('/api/semesters');
+                const semData = await semRes.json();
+                const semSelect = document.getElementById('filterSemester');
+                semData.data.forEach(sem => {
+                    const option = document.createElement('option');
+                    option.value = sem.semester_id;
+                    option.textContent = sem.semester_name;
+                    semSelect.appendChild(option);
+                });
+
+                // Load regulations
+                const regRes = await fetch('/api/regulations');
+                const regData = await regRes.json();
+                const regSelect = document.getElementById('filterRegulation');
+                regData.data.forEach(reg => {
+                    const option = document.createElement('option');
+                    option.value = reg.regulation_id;
+                    option.textContent = reg.regulation_name;
+                    regSelect.appendChild(option);
+                });
+
+            } catch (error) {
+                console.error('Error loading dropdowns:', error);
+                showAlert('Failed to load dropdown data', 'error');
+            }
+        }
+
+        // Apply filters
+        async function applyFilters() {
+            const programmeSelect = document.getElementById('filterProgramme');
+            const branchSelect = document.getElementById('filterBranch');
+            const semesterSelect = document.getElementById('filterSemester');
+            const regulationSelect = document.getElementById('filterRegulation');
+            const electiveSelect = document.getElementById('filterElective');
+            const searchSelect = document.getElementById('searchSubject');
+            
+            const currentFilters = {
+                programme_id: programmeSelect ? programmeSelect.value : '',
+                branch_id: branchSelect ? branchSelect.value : '',
+                semester_id: semesterSelect ? semesterSelect.value : '',
+                regulation_id: regulationSelect ? regulationSelect.value : '',
+                is_elective: electiveSelect ? electiveSelect.value : '',
+                search: searchSelect ? searchSelect.value : ''
+            };
+
+            // Store current filters
+            window.currentFilters = currentFilters;
+
+            // Remove empty filters
+            Object.keys(currentFilters).forEach(key => {
+                if (!currentFilters[key]) delete currentFilters[key];
+            });
+
+            console.log('🔄 Applying filters:', currentFilters);
+
+            // Require at least one filter to be selected
+            if (Object.keys(currentFilters).length === 0) {
+                showAlert('Please select at least one filter or enter search term', 'warning');
+                return;
+            }
+
+            showLoading(true);
+            
+            try {
+                const response = await fetch(`/api/subjects?${new URLSearchParams(currentFilters)}`);
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    subjects = result.data;
+                    updateStats();
+                    displaySubjects(subjects);
+                } else {
+                    showAlert(result.message || 'Error loading subjects', 'error');
+                    subjects = [];
+                    updateStats();
+                    document.getElementById('subjectsTableContainer').innerHTML = 
+                        '<p class="empty-message">No subjects found for the selected filters</p>';
+                }
+            } catch (error) {
+                console.error('Error loading subjects:', error);
+                showAlert('Error loading subjects', 'error');
+                subjects = [];
+                updateStats();
+            }
+            
+            showLoading(false);
+        }
+
+        // Clear filters
+        function clearFilters() {
+            document.getElementById('filterProgramme').value = '';
+            document.getElementById('filterBranch').value = '';
+            document.getElementById('filterSemester').value = '';
+            document.getElementById('filterRegulation').value = '';
+            currentFilters = {
+                programme_id: '',
+                branch_id: '',
+                semester_id: '',
+                regulation_id: ''
+            };
+            subjects = [];
+            updateStats();
+            document.getElementById('subjectsTableContainer').innerHTML = 
+                '<p class="empty-message">Select filters and click "Apply Filters" to load subjects</p>';
+        }
+
+        // Load subjects
+        async function loadSubjects() {
+            try {
+                showLoading(true);
+                
+                const params = new URLSearchParams(window.currentFilters);
+                const response = await fetch(`/api/subjects?${params}`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    subjects = data.data;
+                    displaySubjects(subjects);
+                    updateStats();
+                    showAlert('Subjects loaded successfully', 'success');
+                } else {
+                    showAlert('Failed to load subjects', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading subjects:', error);
+                showAlert('Failed to load subjects', 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Show loading spinner
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            if (show) {
+                loading.classList.add('show');
+            } else {
+                loading.classList.remove('show');
+            }
+        }
+
+        // Display subjects
+        // Display subjects
+        function displaySubjects(subjects) {
+            const container = document.getElementById('subjectsTableContainer');
+            
+            if (subjects.length === 0) {
+                container.innerHTML = '<p class="empty-message">No subjects found for the selected filters</p>';
+                return;
+            }
+
+            let html = `
+                <table class="subjects-table">
+                    <thead>
+                        <tr>
+                            <th>Order</th>
+                            <th>Syllabus Code</th>
+                            <th>Subject Name</th>
+                            <th>Type</th>
+                            <th>Credits</th>
+                            <th>Marks (Int/Ext/TA)</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            subjects.forEach(subject => {
+                const locked = subject.is_locked ? '🔒' : '🔓';
+                const running = subject.is_running_curriculum ? 
+                    '<span class="badge badge-success">Running</span>' : 
+                    '<span class="badge badge-danger">Not Running</span>';
+                const elective = subject.is_elective ? '<span class="badge badge-info">Elective</span>' : '';
+
+                html += `
+                    <tr>
+                        <td>${subject.subject_order}</td>
+                        <td>${subject.syllabus_code}</td>
+                        <td>${subject.subject_name}</td>
+                        <td>${subject.subject_type}</td>
+                        <td>${subject.credits}</td>
+                        <td>${subject.internal_max_marks}/${subject.external_max_marks}/${subject.ta_max_marks}</td>
+                        <td>${locked} ${running} ${elective}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="editSubject(${subject.subject_id})">Edit</button>
+                            <button class="btn btn-sm btn-warning" onclick="toggleLock(${subject.subject_id})">${subject.is_locked ? 'Unlock' : 'Lock'}</button>
+                            <button class="btn btn-sm btn-info" onclick="toggleRunning(${subject.subject_id})">${subject.is_running_curriculum ? 'Stop' : 'Run'}</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteSubject(${subject.subject_id})" ${subject.is_locked ? 'disabled' : ''}>Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        // Update statistics
+        function updateStats() {
+            document.getElementById('totalSubjects').textContent = subjects.length;
+            document.getElementById('lockedSubjects').textContent = subjects.filter(s => s.is_locked).length;
+            document.getElementById('runningSubjects').textContent = subjects.filter(s => s.is_running_curriculum).length;
+        }
+
+        // Setup form submit
+        function setupFormSubmit() {
+            document.getElementById('subjectForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                // Check if edit mode is enabled
+                if (!isEditMode) {
+                    showAlert('Please enable edit mode first (Press Ctrl+E or click Enable Edit Mode)', 'warning');
+                    return;
+                }
+                
+                // Require at least one filter to be selected for context
+                if (!window.currentFilters || Object.keys(window.currentFilters).length === 0) {
+                    showAlert('Please select at least one filter (Programme, Branch, Semester, or Regulation) before adding subjects', 'error');
+                    return;
+                }
+
+                const subjectId = document.getElementById('subjectId').value;
+                const formData = {
+                    programme_id: parseInt(window.currentFilters.programme_id) || null,
+                    branch_id: parseInt(window.currentFilters.branch_id) || null,
+                    semester_id: parseInt(window.currentFilters.semester_id) || null,
+                    regulation_id: parseInt(window.currentFilters.regulation_id) || null,
+                    subject_order: parseInt(document.getElementById('subjectOrder').value),
+                    syllabus_code: document.getElementById('syllabusCode').value,
+                    ref_code: document.getElementById('refCode').value,
+                    internal_exam_code: document.getElementById('internalExamCode').value,
+                    external_exam_code: document.getElementById('externalExamCode').value,
+                    subject_name: document.getElementById('subjectName').value,
+                    subject_type: document.getElementById('subjectType').value,
+                    internal_max_marks: parseInt(document.getElementById('internalMaxMarks').value),
+                    external_max_marks: parseInt(document.getElementById('externalMaxMarks').value),
+                    ta_max_marks: parseInt(document.getElementById('taMaxMarks').value),
+                    credits: parseFloat(document.getElementById('credits').value),
+                    is_elective: document.getElementById('isElective').checked ? 1 : 0,
+                    is_under_group: document.getElementById('isUnderGroup').checked ? 1 : 0,
+                    elective_name: document.getElementById('electiveName').value,
+                    is_exempt_exam_fee: document.getElementById('isExemptExamFee').checked ? 1 : 0,
+                    replacement_group_order: document.getElementById('replacementGroupOrder').value || null,
+                    is_running_curriculum: document.getElementById('isRunningCurriculum').checked ? 1 : 0,
+                    is_locked: 0
+                };
+
+                try {
+                    let response;
+                    if (subjectId) {
+                        response = await fetch(`/api/subjects/${subjectId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(formData)
+                        });
+                    } else {
+                        response = await fetch('/api/subjects', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(formData)
+                        });
+                    }
+
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        showAlert(data.message, 'success');
+                        resetForm();
+                        await loadSubjects();
+                    } else {
+                        showAlert(data.message, 'error');
+                    }
+                } catch (error) {
+                    console.error('Error saving subject:', error);
+                    showAlert('Failed to save subject', 'error');
+                }
+            });
+        }
+
+        // Edit subject
+        async function editSubject(id) {
+            if (!isEditMode) {
+                showAlert('Please enable edit mode first (Press Ctrl+E or click Enable Edit Mode)', 'warning');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/subjects/${id}`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const subject = data.data;
+                    document.getElementById('subjectId').value = subject.subject_id;
+                    document.getElementById('subjectOrder').value = subject.subject_order;
+                    document.getElementById('syllabusCode').value = subject.syllabus_code;
+                    document.getElementById('refCode').value = subject.ref_code || '';
+                    document.getElementById('internalExamCode').value = subject.internal_exam_code || '';
+                    document.getElementById('externalExamCode').value = subject.external_exam_code || '';
+                    document.getElementById('subjectName').value = subject.subject_name;
+                    document.getElementById('subjectType').value = subject.subject_type;
+                    document.getElementById('internalMaxMarks').value = subject.internal_max_marks;
+                    document.getElementById('externalMaxMarks').value = subject.external_max_marks;
+                    document.getElementById('taMaxMarks').value = subject.ta_max_marks;
+                    document.getElementById('credits').value = subject.credits;
+                    document.getElementById('isElective').checked = subject.is_elective;
+                    document.getElementById('isUnderGroup').checked = subject.is_under_group;
+                    document.getElementById('electiveName').value = subject.elective_name || '';
+                    document.getElementById('isExemptExamFee').checked = subject.is_exempt_exam_fee;
+                    document.getElementById('replacementGroupOrder').value = subject.replacement_group_order || '';
+                    document.getElementById('isRunningCurriculum').checked = subject.is_running_curriculum;
+
+                    // Scroll to form
+                    document.getElementById('subjectEntrySection').scrollIntoView({ behavior: 'smooth' });
+                }
+            } catch (error) {
+                console.error('Error loading subject:', error);
+                showAlert('Failed to load subject', 'error');
+            }
+        }
+
+        // Delete subject
+        async function deleteSubject(id) {
+            if (!confirm('Are you sure you want to delete this subject?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/subjects/${id}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showAlert(data.message, 'success');
+                    await loadSubjects();
+                } else {
+                    showAlert(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting subject:', error);
+                showAlert('Failed to delete subject', 'error');
+            }
+        }
+
+        // Toggle lock
+        async function toggleLock(id) {
+            try {
+                const response = await fetch(`/api/subjects/${id}/toggle-lock`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showAlert(data.message, 'success');
+                    await loadSubjects();
+                } else {
+                    showAlert(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error toggling lock:', error);
+                showAlert('Failed to toggle lock', 'error');
+            }
+        }
+
+        // Toggle running curriculum
+        async function toggleRunning(id) {
+            try {
+                const response = await fetch(`/api/subjects/${id}/toggle-running`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showAlert(data.message, 'success');
+                    await loadSubjects();
+                } else {
+                    showAlert(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error toggling running curriculum:', error);
+                showAlert('Failed to toggle running curriculum', 'error');
+            }
+        }
+
+        // Reset form
+        function resetForm() {
+            document.getElementById('subjectForm').reset();
+            document.getElementById('subjectId').value = '';
+            document.getElementById('subjectOrder').value = '1';
+            document.getElementById('internalMaxMarks').value = '0';
+            document.getElementById('externalMaxMarks').value = '0';
+            document.getElementById('taMaxMarks').value = '0';
+        }
+
+        // ========================================
+        // EDIT MODE MANAGEMENT
+        // ========================================
+
+        let isEditMode = false;
+
+        // Toggle edit mode
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            const toggleBtn = document.getElementById('editModeToggle');
+            const subjectSection = document.getElementById('subjectEntrySection');
+            
+            if (isEditMode) {
+                // Enable edit mode
+                toggleBtn.textContent = '🚫 Disable Edit Mode';
+                toggleBtn.classList.add('active');
+                subjectSection.classList.add('show');
+                showAlert('Edit Mode Enabled - You can now add/edit subjects', 'success');
+            } else {
+                // Disable edit mode
+                toggleBtn.textContent = '📝 Enable Edit Mode';
+                toggleBtn.classList.remove('active');
+                subjectSection.classList.remove('show');
+                showAlert('Edit Mode Disabled - Subject form hidden', 'info');
+            }
+        }
+
+        // Keyboard shortcut for edit mode (Ctrl+E)
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'e') {
+                e.preventDefault();
+                toggleEditMode();
+            }
+        });
+
+        // Context-aware form handling
+        function openSubjectModal(mode = 'add', subjectId = null) {
+            if (!isEditMode) {
+                showAlert('Please enable edit mode first (Press Ctrl+E or click Enable Edit Mode)', 'warning');
+                return;
+            }
+
+            if (mode === 'edit' && subjectId) {
+                // Load subject data for editing
+                loadSubjectForEdit(subjectId);
+            } else {
+                // Reset form for adding new subject
+                resetForm();
+            }
+        }
+
+        // Load subject data for editing
+        async function loadSubjectForEdit(subjectId) {
+            try {
+                const response = await fetch(`/api/subjects/${subjectId}`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const subject = data.data;
+                    document.getElementById('subjectId').value = subject.subject_id;
+                    document.getElementById('subjectOrder').value = subject.subject_order;
+                    document.getElementById('syllabusCode').value = subject.syllabus_code;
+                    document.getElementById('subjectName').value = subject.subject_name;
+                    document.getElementById('refCode').value = subject.ref_code || '';
+                    document.getElementById('subjectType').value = subject.subject_type;
+                    document.getElementById('credits').value = subject.credits;
+                    document.getElementById('internalMaxMarks').value = subject.internal_max_marks;
+                    document.getElementById('externalMaxMarks').value = subject.external_max_marks;
+                    document.getElementById('taMaxMarks').value = subject.ta_max_marks;
+                    document.getElementById('isElective').checked = subject.is_elective;
+                    document.getElementById('electiveName').value = subject.elective_name || '';
+                    document.getElementById('isActive').checked = subject.is_active;
+                    document.getElementById('isLocked').checked = subject.is_locked;
+                    document.getElementById('isRunningCurriculum').checked = subject.is_running_curriculum;
+                }
+            } catch (error) {
+                console.error('Error loading subject:', error);
+                showAlert('Failed to load subject data', 'error');
+            }
+        }
+
+        // Export to Excel
+        async function exportToExcel() {
+            // Check if we have any filters set
+            const hasFilters = window.currentFilters && Object.keys(window.currentFilters).length > 0;
+            
+            if (!hasFilters) {
+                showAlert('Please select at least one filter before exporting', 'error');
+                return;
+            }
+
+            try {
+                const params = new URLSearchParams(currentFilters);
+                window.location.href = `/api/subjects/export/excel?${params}`;
+                showAlert('Exporting to Excel...', 'success');
+            } catch (error) {
+                console.error('Error exporting:', error);
+                showAlert('Failed to export to Excel', 'error');
+            }
+        }
+
+        // Generate sample Excel with context
+        async function generateSampleExcel() {
+            try {
+                console.log('=== GENERATE SAMPLE EXCEL ===');
+                
+                // Get filter values safely
+                const programmeSelect = document.getElementById('filterProgramme');
+                const branchSelect = document.getElementById('filterBranch');
+                const semesterSelect = document.getElementById('filterSemester');
+                const regulationSelect = document.getElementById('filterRegulation');
+                
+                const programmeId = programmeSelect ? programmeSelect.value : null;
+                const branchId = branchSelect ? branchSelect.value : null;
+                const semesterId = semesterSelect ? semesterSelect.value : null;
+                const regulationId = regulationSelect ? regulationSelect.value : null;
+                
+                // Require at least one filter for context
+                if (!programmeId && !branchId && !semesterId && !regulationId) {
+                    alert('⚠️ Please select at least one filter (Programme, Branch, Semester, or Regulation) to generate sample Excel.\n\nThis information will be pre-filled in the Excel template.');
+                    return;
+                }
+                
+                // Build query string with filter context
+                const params = new URLSearchParams({
+                    programme_id: programmeId,
+                    branch_id: branchId,
+                    semester_id: semesterId,
+                    regulation_id: regulationId
+                });
+                
+                console.log('Requesting sample Excel with context:', params.toString());
+                
+                // Download sample Excel
+                window.location.href = `/api/subjects/sample-excel?${params.toString()}`;
+                
+                console.log('✅ Sample Excel download initiated');
+                
+            } catch (error) {
+                console.error('Error generating sample Excel:', error);
+                alert('Failed to generate sample Excel: ' + error.message);
+            }
+        }
+
+        // Show import modal
+        function showImportModal() {
+            // Check if we have any filters set
+            const hasFilters = window.currentFilters && Object.keys(window.currentFilters).length > 0;
+            
+            if (!hasFilters) {
+                showAlert('Please select at least one filter before importing', 'error');
+                return;
+            }
+            document.getElementById('importModal').classList.add('show');
+        }
+
+        // Close import modal
+        function closeImportModal() {
+            document.getElementById('importModal').classList.remove('show');
+            document.getElementById('excelFile').value = '';
+        }
+
+        // Import from Excel with context
+        async function importFromExcel() {
+            const fileInput = document.getElementById('excelFile');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                showAlert('Please select an Excel file', 'error');
+                return;
+            }
+
+            try {
+                // Create FormData for file upload
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+
+                // Send to server
+                const response = await fetch('/api/subjects/import/excel', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    showAlert(result.message, 'success');
+                    closeImportModal();
+                    await loadSubjects();
+                } else {
+                    showAlert(result.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error importing:', error);
+                showAlert('Failed to import Excel file: ' + error.message, 'error');
+            }
+        }
+
+        // Show alert
+        function showAlert(message, type) {
+            const alert = document.getElementById('alertMessage');
+            alert.className = `alert alert-${type} show`;
+            alert.textContent = message;
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Internal Exam Notification</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin: 30px auto;
+            max-width: 1200px;
+            overflow: hidden;
+        }
+        
+        .header-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header-section h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .header-section p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .form-section {
+            padding: 40px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .form-label .badge {
+            margin-left: 8px;
+            font-size: 0.7em;
+        }
+        
+        .form-control, .select2-container {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus, .select2-container--focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 30px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 30px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+        
+        .preview-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 30px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .preview-section h5 {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .preview-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .preview-item:last-child {
+            border-bottom: none;
+        }
+        
+        .preview-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .preview-value {
+            color: #212529;
+            text-align: right;
+        }
+        
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+        
+        .select2-selection--multiple {
+            border-radius: 10px !important;
+            border: 2px solid #e9ecef !important;
+            min-height: 38px !important;
+        }
+        
+        .select2-selection--multiple:focus {
+            border-color: #667eea !important;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            border: none;
+            font-weight: 600;
+        }
+        
+        .required-field::after {
+            content: " *";
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="main-container">
+            <!-- Header Section -->
+            <div class="header-section">
+                <h1>📋 Create Internal Exam Notification</h1>
+                <p>Configure exam parameters and generate notification</p>
+            </div>
+            
+            <!-- Form Section -->
+            <div class="form-section">
+                <form id="notificationForm">
+                    <div class="row">
+                        <!-- Left Column -->
+                        <div class="col-lg-6">
+                            <!-- Programme Selection -->
+                            <div class="card">
+                                <div class="card-header">
+                                    📚 Programme Details
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group">
+                                        <label class="form-label required-field">Programme</label>
+                                        <select class="form-control" id="programme_id" name="programme_id" required>
+                                            <option value="">Select Programme</option>
+                                        </select>
+                                    </div>
+         <!-- Batch -->
+                                    <div class="form-group">
+                                        <label class="form-label required-field">Batch</label>
+                                        <select class="form-control" id="batch_id" name="batch_id" required>
+                                            <option value="">Select Batch</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label required-field">Semesters</label>
+                                        <select class="form-control" id="semester_ids" name="semester_ids" multiple="multiple" required>
+                                            <option value="">Select Semesters</option>
+                                        </select>
+                                        <small class="text-muted">Hold Ctrl/Cmd to select multiple semesters</small>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label class="form-label required-field">Regulations</label>
+                                        <select class="form-control" id="regulation_ids" name="regulation_ids" multiple="multiple" required>
+                                            <option value="">Select Regulations</option>
+                                        </select>
+                                        <small class="text-muted">Hold Ctrl/Cmd to select multiple regulations</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Right Column -->
+                        <div class="col-lg-6">
+                            <!-- Exam Details -->
+                            <div class="card">
+                                <div class="card-header">
+                                    📝 Exam Details
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group">
+                                        <label class="form-label required-field">Exam Type</label>
+                                        <select class="form-control" id="exam_type" name="exam_type" required>
+                                            <option value="">Select Exam Type</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label class="form-label required-field">Exam Name</label>
+                                        <select class="form-control" id="exam_name" name="exam_name" required>
+                                            <option value="">Select Exam Name</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <!-- Schedule Details -->
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    📅 Schedule Details
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group">
+                                        <label class="form-label required-field">Session</label>
+                                        <select class="form-control" id="session_id" name="session_id" required>
+                                            <option value="">Select Session</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label class="form-label required-field">Month & Year</label>
+                                        <select class="form-control" id="month_year_id" name="month_year_id" required>
+                                            <option value="">Select Month & Year</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Date Range -->
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    📆 Exam Date Range
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group">
+                                        <label class="form-label required-field">Start Date</label>
+                                        <input type="date" class="form-control" id="start_date" name="start_date" required>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label class="form-label required-field">End Date</label>
+                                        <input type="date" class="form-control" id="end_date" name="end_date" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Preview Section -->
+                    <div class="preview-section" id="previewSection" style="display: none;">
+                        <h5>📋 Notification Preview</h5>
+                        <div id="previewContent"></div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="text-center mt-4">
+                        <button type="button" class="btn btn-secondary me-3" onclick="previewNotification()">
+                            👁️ Preview Notification
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            💾 Save Notification
+                        </button>
+                        <button type="button" class="btn btn-info ms-3" onclick="viewNotifications()">
+                            📋 View All Notifications
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Loading Spinner -->
+                <div class="loading-spinner" id="loadingSpinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Processing...</p>
+                </div>
+                
+                <!-- Alert Section -->
+                <div id="alertSection"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="js/create-exam-notification.js"></script>
+</body>
+</html>

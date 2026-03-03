@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drag & Drop Test</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .test-container {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        
+        .subject-cell {
+            width: 150px;
+            height: 80px;
+            border: 2px solid #ddd;
+            padding: 10px;
+            text-align: center;
+            cursor: move;
+            background: white;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .subject-cell.swapped {
+            background-color: #fff3cd !important;
+            border: 3px solid #28a745 !important;
+            transform: scale(1.08);
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+        
+        .subject-cell.dragging {
+            opacity: 0.6;
+            transform: scale(0.95);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .subject-cell.drag-over {
+            background-color: #d4edda !important;
+            border: 3px dashed #28a745;
+            transform: scale(1.02);
+        }
+        
+        .column {
+            flex: 1;
+        }
+        
+        .column h3 {
+            margin-bottom: 10px;
+        }
+        
+        .log {
+            background: #f5f5f5;
+            padding: 10px;
+            margin-top: 20px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Drag & Drop Test</h1>
+    
+    <div class="test-container">
+        <div class="column">
+            <h3>Scheduled Subjects</h3>
+            <div class="subject-cell" draggable="true" data-subject-code="CS101" data-branch="CSE" data-date="2026-02-23">
+                <div class="subject-code">CS101</div>
+                <div class="subject-name">Computer Programming</div>
+                <div class="branch-label">CSE</div>
+            </div>
+            <div class="subject-cell" draggable="true" data-subject-code="CS102" data-branch="CSE" data-date="2026-02-24">
+                <div class="subject-code">CS102</div>
+                <div class="subject-name">Data Structures</div>
+                <div class="branch-label">CSE</div>
+            </div>
+        </div>
+        
+        <div class="column">
+            <h3>Unassigned Subjects</h3>
+            <div class="subject-cell unassigned" draggable="true" data-subject-code="CS103" data-branch="CSE">
+                <div class="subject-code">CS103</div>
+                <div class="subject-name">Algorithms</div>
+                <div class="branch-label">CSE</div>
+            </div>
+            <div class="subject-cell unassigned" draggable="true" data-subject-code="CS104" data-branch="CSE">
+                <div class="subject-code">CS104</div>
+                <div class="subject-name">Database Systems</div>
+                <div class="branch-label">CSE</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="log" id="log"></div>
+    
+    <script>
+        let draggedElement = null;
+        let draggedData = null;
+        
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += new Date().toLocaleTimeString() + ': ' + message + '<br>';
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        $(document).ready(function() {
+            log('Initializing drag and drop test...');
+            
+            // Remove existing event listeners
+            $('.subject-cell').off('dragstart dragend dragover dragleave drop');
+            
+            // Drag start
+            $('.subject-cell[draggable="true"]').on('dragstart', function(e) {
+                log('Drag started on: ' + $(this).data('subject-code'));
+                draggedElement = this;
+                draggedData = {
+                    subjectCode: $(this).data('subject-code'),
+                    branch: $(this).data('branch'),
+                    date: $(this).data('date'),
+                    isUnassigned: $(this).hasClass('unassigned')
+                };
+                $(this).addClass('dragging');
+                e.originalEvent.dataTransfer.effectAllowed = 'move';
+                log('Dragged data: ' + JSON.stringify(draggedData));
+            });
+            
+            // Drag end
+            $('.subject-cell[draggable="true"]').on('dragend', function() {
+                log('Drag ended');
+                $(this).removeClass('dragging');
+            });
+            
+            // Drag over
+            $('.subject-cell').on('dragover', function(e) {
+                e.preventDefault();
+                if (!$(this).hasClass('dragging')) {
+                    $(this).addClass('drag-over');
+                }
+            });
+            
+            // Drag leave
+            $('.subject-cell').on('dragleave', function() {
+                $(this).removeClass('drag-over');
+            });
+            
+            // Drop
+            $('.subject-cell').on('drop', function(e) {
+                e.preventDefault();
+                $(this).removeClass('drag-over');
+                
+                if (draggedElement === this) {
+                    log('Cannot drop on itself');
+                    return;
+                }
+                
+                const targetData = {
+                    subjectCode: $(this).data('subject-code'),
+                    branch: $(this).data('branch'),
+                    date: $(this).data('date'),
+                    isUnassigned: $(this).hasClass('unassigned')
+                };
+                
+                log('Drop detected!');
+                log('Target data: ' + JSON.stringify(targetData));
+                
+                // Validate branch matching
+                if (draggedData.branch !== targetData.branch) {
+                    log('Branch mismatch: ' + draggedData.branch + ' != ' + targetData.branch);
+                    alert('Cannot swap subjects from different branches!');
+                    return;
+                }
+                
+                // Add visual feedback
+                $(draggedElement).addClass('swapped');
+                $(this).addClass('swapped');
+                
+                log('Swap successful! Visual feedback applied.');
+                
+                // Remove visual feedback after delay
+                setTimeout(() => {
+                    $('.swapped').removeClass('swapped');
+                    log('Visual feedback removed');
+                }, 2000);
+            });
+            
+            log('Drag and drop test initialized successfully');
+        });
+    </script>
+</body>
+</html>

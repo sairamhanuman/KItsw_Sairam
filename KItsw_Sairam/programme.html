@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Programme Management - Engineering College</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .programme-container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        
+        .programme-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .form-section {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .form-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .table-section {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .data-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .data-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="programme-container">
+        <a href="index.html" class="back-link">← Back to Dashboard</a>
+        
+        <div class="programme-header">
+            <h1>Programme Management</h1>
+            <p>Manage engineering programmes such as B.Tech, M.Tech, Ph.D., etc.</p>
+        </div>
+        
+        <div id="alertContainer"></div>
+        
+        <!-- Programme Form -->
+        <div class="form-section">
+            <h2 id="formTitle">Add New Programme</h2>
+            <form id="programmeForm">
+                <input type="hidden" id="programmeId" name="programmeId">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="programmeCode">Programme Code *</label>
+                        <input type="text" id="programmeCode" name="programmeCode" required 
+                               placeholder="e.g., BTECH" maxlength="20">
+                        <small id="codeEditNote" style="color: #6c757d; display: none; margin-top: 5px;">
+                            ℹ️ Programme code cannot be changed after creation to maintain data integrity.
+                        </small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="programmeName">Programme Name *</label>
+                        <input type="text" id="programmeName" name="programmeName" required 
+                               placeholder="e.g., Bachelor of Technology" maxlength="100">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="programmeType">Programme Type *</label>
+                        <select id="programmeType" name="programmeType" required>
+                            <option value="">-- Select Type --</option>
+                            <option value="UG">UG (Undergraduate)</option>
+                            <option value="PG">PG (Postgraduate)</option>
+                            <option value="Ph.D.">Ph.D. (Doctoral)</option>
+                            <option value="Diploma">Diploma</option>
+                            <option value="Certificate">Certificate</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="durationYears">Duration (Years) *</label>
+                        <input type="number" id="durationYears" name="durationYears" required 
+                               step="0.5" min="0.5" max="10" placeholder="e.g., 4">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description" 
+                              placeholder="Enter programme description..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="isActive" name="isActive" checked>
+                        Active
+                    </label>
+                </div>
+                
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">
+                        <span id="submitBtnText">Add Programme</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="resetForm()">
+                        Reset
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Programme List -->
+        <div class="table-section">
+            <h2>Programme List</h2>
+            <div id="tableContainer">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading programmes...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/programme.js"></script>
+</body>
+</html>

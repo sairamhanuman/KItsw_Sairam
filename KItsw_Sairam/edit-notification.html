@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Internal Exam Notification</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .form-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .required-field::after {
+            content: " *";
+            color: red;
+        }
+        .preview-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .loading-spinner {
+            display: none;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="mb-1">
+                            <i class="bi bi-pencil-square text-primary"></i>
+                            Edit Internal Exam Notification
+                        </h2>
+                        <p class="text-muted mb-0">Update examination notification details</p>
+                    </div>
+                    <div>
+                        <a href="view-notifications.html" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Back to Notifications
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div class="loading-spinner text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Loading notification details...</p>
+        </div>
+
+        <!-- Edit Form -->
+        <form id="editNotificationForm" style="display: none;">
+            <!-- Basic Information -->
+            <div class="form-section">
+                <h5 class="mb-4">
+                    <i class="bi bi-info-circle"></i> Basic Information
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="programme" class="form-label required-field">Programme</label>
+                        <select class="form-select" id="programme" required>
+                            <option value="">Select Programme</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="examType" class="form-label required-field">Exam Type</label>
+                        <select class="form-select" id="examType" required>
+                            <option value="">Select Exam Type</option>
+                            <option value="Internal">Internal</option>
+                            <option value="External">External</option>
+                            <option value="Viva">Viva</option>
+                            <option value="Practical">Practical</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="examName" class="form-label required-field">Exam Name</label>
+                        <select class="form-select" id="examName" required>
+                            <option value="">Select Exam Name</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="examCode" class="form-label">Exam Code</label>
+                        <input type="text" class="form-control" id="examCode">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="session" class="form-label required-field">Session</label>
+                        <select class="form-select" id="session" required>
+                            <option value="">Select Session</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="monthYear" class="form-label required-field">Month/Year</label>
+                        <select class="form-select" id="monthYear" required>
+                            <option value="">Select Month/Year</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="batch" class="form-label required-field">Batch</label>
+                        <select class="form-select" id="batch" required>
+                            <option value="">Select Batch</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Academic Details -->
+            <div class="form-section">
+                <h5 class="mb-4">
+                    <i class="bi bi-mortarboard"></i> Academic Details
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label required-field">Semesters</label>
+                        <div id="semesterCheckboxes" class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                            <!-- Semesters will be loaded here -->
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label required-field">Regulations</label>
+                        <div id="regulationCheckboxes" class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                            <!-- Regulations will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Exam Schedule -->
+            <div class="form-section">
+                <h5 class="mb-4">
+                    <i class="bi bi-calendar-range"></i> Exam Schedule
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="examStartDate" class="form-label required-field">Exam Start Date</label>
+                        <input type="date" class="form-control" id="examStartDate" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="examEndDate" class="form-label required-field">Exam End Date</label>
+                        <input type="date" class="form-control" id="examEndDate" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="createdBy" class="form-label required-field">Created By</label>
+                        <input type="text" class="form-control" id="createdBy" required>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notification Details -->
+            <div class="form-section">
+                <h5 class="mb-4">
+                    <i class="bi bi-bell"></i> Notification Details
+                </h5>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label for="notificationTitle" class="form-label">Notification Title</label>
+                        <input type="text" class="form-control" id="notificationTitle" placeholder="Auto-generated if left empty">
+                    </div>
+                    <div class="col-12">
+                        <label for="notificationDescription" class="form-label">Notification Description</label>
+                        <textarea class="form-control" id="notificationDescription" rows="4" placeholder="Enter notification description"></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="isPublished">
+                            <label class="form-check-label" for="isPublished">
+                                Publish Notification
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview Section -->
+            <div class="preview-section">
+                <h5 class="mb-3">
+                    <i class="bi bi-eye"></i> Preview
+                </h5>
+                <div id="notificationPreview">
+                    <!-- Preview will be generated here -->
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <button type="button" class="btn btn-outline-primary" onclick="previewNotification()">
+                                <i class="bi bi-eye"></i> Preview
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
+                                <i class="bi bi-arrow-clockwise"></i> Reset
+                            </button>
+                        </div>
+                        <div>
+                            <a href="view-notifications.html" class="btn btn-outline-danger me-2">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Update Notification
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Success/Error Messages -->
+    <div id="alertContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 1050;"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function toLocalDateString(dateValue) {
+    if (!dateValue) return '';
+    const d = new Date(dateValue);
+    if (isNaN(d.getTime())) return '';
+    const year  = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day   = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+        let notificationId = null;
+        let originalNotification = null;
+// ADD THIS - Timezone-safe date helper
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get notification ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            notificationId = urlParams.get('id');
+            
+            if (!notificationId) {
+                showAlert('danger', 'Notification ID not provided');
+                setTimeout(() => {
+                    window.location.href = 'view-notifications.html';
+                }, 2000);
+                return;
+            }
+            
+            // Load master data first, then notification details
+            loadMasterData().then(() => {
+                loadNotificationDetails();
+            });
+            
+            // Form submission
+            document.getElementById('editNotificationForm').addEventListener('submit', handleFormSubmit);
+        });
+
+        // Load notification details
+        async function loadNotificationDetails() {
+            try {
+                console.log('🎯 Loading notification details for ID:', notificationId);
+                const response = await fetch(`/api/exam-notifications/${notificationId}`);
+                const result = await response.json();
+                
+                console.log('🎯 API Response:', result);
+                
+                if (result.status === 'success') {
+                    originalNotification = result.data;
+                    console.log('🎯 Original notification data:', originalNotification);
+                    
+                    // Log specific fields we need
+                    console.log('🎯 Programme data:', originalNotification.programmes);
+                    console.log('🎯 Exam name:', originalNotification.exam_name);
+                    console.log('🎯 Exam type:', originalNotification.exam_type);
+                    console.log('🎯 Session ID:', originalNotification.session_id);
+                    console.log('🎯 Description:', originalNotification.description);
+                    console.log('🎯 Semesters:', originalNotification.semesters);
+                    console.log('🎯 Regulations:', originalNotification.regulations);
+                    
+                    populateForm(originalNotification);
+                    document.querySelector('.loading-spinner').style.display = 'none';
+                    document.getElementById('editNotificationForm').style.display = 'block';
+                } else {
+                    showAlert('danger', result.message || 'Failed to load notification details');
+                }
+            } catch (error) {
+                console.error('Error loading notification details:', error);
+                showAlert('danger', 'An error occurred while loading notification details');
+            }
+        }
+
+        // Load master data
+        async function loadMasterData() {
+            try {
+                // Load programmes
+                const programmesResponse = await fetch('/api/programmes');
+                const programmesResult = await programmesResponse.json();
+                if (programmesResult.status === 'success') {
+                    const programmeSelect = document.getElementById('programme');
+                    programmesResult.data.forEach(programme => {
+                        const option = document.createElement('option');
+                        option.value = programme.programme_id;
+                        option.textContent = programme.programme_name;
+                        programmeSelect.appendChild(option);
+                    });
+                }
+
+                // Load exam naming master for exam names
+                const examNamingResponse = await fetch('/api/exam-naming-master');
+                const examNamingResult = await examNamingResponse.json();
+                if (examNamingResult.status === 'success') {
+                    const examNameSelect = document.getElementById('examName');
+                    examNamingResult.data.forEach(exam => {
+                        const option = document.createElement('option');
+                        option.value = exam.exam_naming_id;
+                        option.textContent = exam.exam_name;
+                        option.setAttribute('data-exam-code', exam.exam_code || '');
+                        examNameSelect.appendChild(option);
+                    });
+                    
+                    // Add event listener to auto-fill exam code
+                    examNameSelect.addEventListener('change', function() {
+                        const selectedOption = this.options[this.selectedIndex];
+                        const examCode = selectedOption.getAttribute('data-exam-code');
+                        document.getElementById('examCode').value = examCode || '';
+                    });
+                }
+
+                // Load sessions
+                const sessionsResponse = await fetch('/api/sessions-master');
+                const sessionsResult = await sessionsResponse.json();
+                if (sessionsResult.status === 'success') {
+                    const sessionSelect = document.getElementById('session');
+                    sessionsResult.data.forEach(session => {
+                        const option = document.createElement('option');
+                        option.value = session.session_id;
+                        // Format time from HH:MM:SS to HH:MM
+                        const startTime = session.start_time ? session.start_time.substring(0, 5) : '';
+                        const endTime = session.end_time ? session.end_time.substring(0, 5) : '';
+                        option.textContent = `${session.session_name} (${startTime} - ${endTime})`;
+                        sessionSelect.appendChild(option);
+                    });
+                }
+
+                // Load month/year
+                const monthYearResponse = await fetch('/api/month-year-master');
+                const monthYearResult = await monthYearResponse.json();
+                if (monthYearResult.status === 'success') {
+                    const monthYearSelect = document.getElementById('monthYear');
+                    monthYearResult.data.forEach(my => {
+                        const option = document.createElement('option');
+                        option.value = my.month_year_id;
+                        option.textContent = my.display_name;
+                        monthYearSelect.appendChild(option);
+                    });
+                }
+
+                // Load semesters
+                const semestersResponse = await fetch('/api/semesters');
+                const semestersResult = await semestersResponse.json();
+                if (semestersResult.status === 'success') {
+                    const semesterContainer = document.getElementById('semesterCheckboxes');
+                    semestersResult.data.forEach(semester => {
+                        const checkbox = document.createElement('div');
+                        checkbox.className = 'form-check';
+                        checkbox.innerHTML = `
+                            <input class="form-check-input" type="checkbox" value="${semester.semester_id}" id="semester${semester.semester_id}">
+                            <label class="form-check-label" for="semester${semester.semester_id}">
+                                ${semester.semester_name}
+                            </label>
+                        `;
+                        semesterContainer.appendChild(checkbox);
+                    });
+                }
+
+                // Load regulations
+                const regulationsResponse = await fetch('/api/regulations');
+                const regulationsResult = await regulationsResponse.json();
+                if (regulationsResult.status === 'success') {
+                    const regulationContainer = document.getElementById('regulationCheckboxes');
+                    regulationsResult.data.forEach(regulation => {
+                        const checkbox = document.createElement('div');
+                        checkbox.className = 'form-check';
+                        checkbox.innerHTML = `
+                            <input class="form-check-input" type="checkbox" value="${regulation.regulation_id}" id="regulation${regulation.regulation_id}">
+                            <label class="form-check-label" for="regulation${regulation.regulation_id}">
+                                ${regulation.regulation_name}
+                            </label>
+                        `;
+                        regulationContainer.appendChild(checkbox);
+                    });
+                }
+              // Load batches
+                const batchesResponse = await fetch('/api/batches');
+                const batchesResult = await batchesResponse.json();
+                if (batchesResult.status === 'success') {
+                    const batchSelect = document.getElementById('batch');
+                    batchesResult.data.forEach(batch => {
+                        if (batch.is_active && !batch.deleted_at) {
+                            const option = document.createElement('option');
+                            option.value = batch.batch_id;
+                            option.textContent = batch.batch_name;
+                            batchSelect.appendChild(option);
+                        }
+                    });
+                }
+
+                return Promise.resolve();
+            } catch (error) {
+                console.error('Error loading master data:', error);
+                return Promise.reject(error);
+            }
+        }
+
+        // Populate form with notification data
+        function populateForm(notification) {
+            console.log('🎯 Populating form with notification:', notification);
+            
+            // Parse JSON fields if they exist
+            let programmes = [];
+            let semesters = [];
+            let regulations = [];
+            
+            try {
+                if (notification.programmes) {
+                    programmes = typeof notification.programmes === 'string' ? 
+                        JSON.parse(notification.programmes) : notification.programmes;
+                }
+                if (notification.semesters) {
+                    semesters = typeof notification.semesters === 'string' ? 
+                        JSON.parse(notification.semesters) : notification.semesters;
+                }
+                if (notification.regulations) {
+                    regulations = typeof notification.regulations === 'string' ? 
+                        JSON.parse(notification.regulations) : notification.regulations;
+                }
+            } catch (e) {
+                console.error('Error parsing JSON fields:', e);
+            }
+            
+            // Programme - get the first programme ID from the parsed array
+            const programmeId = programmes && programmes.length > 0 ? programmes[0] : '';
+            console.log('🎯 Setting programme ID:', programmeId);
+            document.getElementById('programme').value = programmeId;
+            
+            // Exam Type
+            console.log('🎯 Setting exam type:', notification.exam_type);
+            document.getElementById('examType').value = notification.exam_type || '';
+            
+            // Exam Name - use exam_name_id to find the correct option
+            console.log('🎯 Setting exam name ID:', notification.exam_name_id);
+            document.getElementById('examName').value = notification.exam_name_id || '';
+            
+            // Exam Code - get from notification or from the selected exam name
+            let examCode = notification.exam_code;
+            if (!examCode && notification.exam_name_id) {
+                // Try to get exam code from the exam naming master
+                const examNameSelect = document.getElementById('examName');
+                const selectedOption = examNameSelect.querySelector(`option[value="${notification.exam_name_id}"]`);
+                if (selectedOption) {
+                    examCode = selectedOption.getAttribute('data-exam-code');
+                }
+            }
+            console.log('🎯 Setting exam code:', examCode);
+            document.getElementById('examCode').value = examCode || '';
+            
+            // Session
+            console.log('🎯 Setting session ID:', notification.session_id);
+            document.getElementById('session').value = notification.session_id || '';
+            
+            // Month Year
+            console.log('🎯 Setting month year ID:', notification.month_year_id);
+            document.getElementById('monthYear').value = notification.month_year_id || '';
+            
+            // Dates - handle both field name variations and format properly
+            let startDate = notification.start_date || notification.exam_start_date;
+            let endDate = notification.end_date || notification.exam_end_date;
+            
+            // Format dates to YYYY-MM-DD for input fields
+       // Format dates to YYYY-MM-DD using LOCAL time (fixes timezone shift)
+if (startDate) {
+    startDate = toLocalDateString(startDate);
+}
+if (endDate) {
+    endDate = toLocalDateString(endDate);
+}
+            
+            console.log('🎯 Setting exam start date:', startDate);
+            document.getElementById('examStartDate').value = startDate || '';
+            
+            console.log('🎯 Setting exam end date:', endDate);
+            document.getElementById('examEndDate').value = endDate || '';
+            
+            // Created By
+            console.log('🎯 Setting created by:', notification.created_by);
+            document.getElementById('createdBy').value = notification.created_by || '';
+            
+            // Title
+            console.log('🎯 Setting notification title:', notification.notification_title);
+            document.getElementById('notificationTitle').value = notification.notification_title || '';
+            
+            // Description - handle both field name variations
+            console.log('🎯 Setting description:', notification.description || notification.notification_description);
+            document.getElementById('notificationDescription').value = notification.description || notification.notification_description || '';
+            
+            // Published status - handle both field name variations
+            console.log('🎯 Setting published status:', notification.is_published || notification.status === 'Published');
+            document.getElementById('isPublished').checked = notification.is_published || notification.status === 'Published' || false;
+
+            // Set semesters - check if semesters data exists
+            console.log('🎯 Setting semesters:', semesters);
+            if (semesters && semesters.length > 0) {
+                semesters.forEach(semesterId => {
+                    const checkbox = document.getElementById(`semester${semesterId}`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        console.log('🎯 Checked semester:', semesterId);
+                    }
+                });
+            }
+
+            // Set regulations - check if regulations data exists
+            console.log('🎯 Setting regulations:', regulations);
+            if (regulations && regulations.length > 0) {
+                regulations.forEach(regulationId => {
+                    const checkbox = document.getElementById(`regulation${regulationId}`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        console.log('🎯 Checked regulation:', regulationId);
+                    }
+                });
+            }
+            
+           // Batch
+            console.log('🎯 Setting batch ID:', notification.batch_id);
+            document.getElementById('batch').value = notification.batch_id || '';
+
+            console.log('✅ Form populated successfully');
+        }
+
+        // Handle form submission
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+            
+            if (!validateForm()) {
+                return;
+            }
+            
+            const formData = collectFormData();
+            
+            try {
+                showLoadingSpinner();
+                
+                const response = await fetch(`/api/exam-notifications/${notificationId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    showAlert('success', 'Notification updated successfully!');
+                    setTimeout(() => {
+                        window.location.href = 'view-notifications.html';
+                    }, 2000);
+                } else {
+                    showAlert('danger', result.message || 'Failed to update notification');
+                }
+            } catch (error) {
+                console.error('Error updating notification:', error);
+                showAlert('danger', 'An error occurred while updating the notification');
+            } finally {
+                hideLoadingSpinner();
+            }
+        }
+
+        // Collect form data
+        function collectFormData() {
+            const selectedSemesters = Array.from(document.querySelectorAll('#semesterCheckboxes input:checked'))
+                .map(cb => cb.value);
+            const selectedRegulations = Array.from(document.querySelectorAll('#regulationCheckboxes input:checked'))
+                .map(cb => cb.value);
+            
+            return {
+                programme_id: document.getElementById('programme').value,
+                semester_ids: selectedSemesters.join(','),
+                regulation_ids: selectedRegulations.join(','),
+                exam_type: document.getElementById('examType').value,
+                exam_name: document.getElementById('examName').value,
+                exam_code: document.getElementById('examCode').value,
+                session_id: document.getElementById('session').value,
+                month_year_id: document.getElementById('monthYear').value,
+                exam_start_date: document.getElementById('examStartDate').value,
+                exam_end_date: document.getElementById('examEndDate').value,
+                notification_title: document.getElementById('notificationTitle').value,
+                notification_description: document.getElementById('notificationDescription').value,
+                is_published: document.getElementById('isPublished').checked,
+                created_by: document.getElementById('createdBy').value,
+                batch_id: document.getElementById('batch').value,
+                batch_name: document.getElementById('batch').selectedOptions[0]?.text || ''
+            };
+        }
+
+        // Validate form
+        function validateForm() {
+            const required = ['programme', 'examType', 'examName', 'session', 'monthYear', 'examStartDate', 'examEndDate', 'createdBy'];
+            
+            for (const fieldId of required) {
+                const field = document.getElementById(fieldId);
+                if (!field.value) {
+                    field.focus();
+                    showAlert('warning', `Please fill in the required field: ${field.previousElementSibling.textContent.replace(' *', '')}`);
+                    return false;
+                }
+            }
+            
+            // Validate semesters
+            const selectedSemesters = document.querySelectorAll('#semesterCheckboxes input:checked');
+            if (selectedSemesters.length === 0) {
+                showAlert('warning', 'Please select at least one semester');
+                return false;
+            }
+            
+            // Validate regulations
+            const selectedRegulations = document.querySelectorAll('#regulationCheckboxes input:checked');
+            if (selectedRegulations.length === 0) {
+                showAlert('warning', 'Please select at least one regulation');
+                return false;
+            }
+            
+            // Validate dates
+            const startDate = new Date(document.getElementById('examStartDate').value);
+            const endDate = new Date(document.getElementById('examEndDate').value);
+            
+            if (startDate > endDate) {
+                showAlert('warning', 'Exam start date must be before or equal to end date');
+                return false;
+            }
+            
+            return true;
+        }
+
+        // Preview notification
+        function previewNotification() {
+            if (!validateForm()) {
+                return;
+            }
+            
+            const formData = collectFormData();
+            const previewHtml = generatePreviewHtml(formData);
+            document.getElementById('notificationPreview').innerHTML = previewHtml;
+        }
+
+        // Generate preview HTML
+        function generatePreviewHtml(data) {
+            // Get display names for dropdowns
+            const programmeName = document.getElementById('programme').selectedOptions[0]?.textContent || data.programme_id;
+            const examNameDisplay = document.getElementById('examName').selectedOptions[0]?.textContent || data.exam_name;
+            const sessionSelect = document.getElementById('session');
+            const sessionName = sessionSelect.selectedOptions[0]?.textContent || data.session_id;
+            const monthYearName = document.getElementById('monthYear').selectedOptions[0]?.textContent || data.month_year_id;
+            
+            return `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Basic Information</h6>
+                        <p><strong>Programme:</strong> ${programmeName}</p>
+                        <p><strong>Exam Type:</strong> ${data.exam_type}</p>
+                        <p><strong>Exam Name:</strong> ${examNameDisplay}</p>
+                        <p><strong>Exam Code:</strong> ${data.exam_code || 'N/A'}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Schedule</h6>
+                        <p><strong>Start Date:</strong> ${formatDate(data.exam_start_date)}</p>
+                        <p><strong>End Date:</strong> ${formatDate(data.exam_end_date)}</p>
+                        <p><strong>Session:</strong> ${sessionName}</p>
+                        <p><strong>Month/Year:</strong> ${monthYearName}</p>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Notification Details</h6>
+                        <p><strong>Title:</strong> ${data.notification_title || 'Auto-generated'}</p>
+                        <p><strong>Description:</strong> ${data.notification_description || 'No description'}</p>
+                        <p><strong>Status:</strong> ${data.is_published ? 'Published' : 'Draft'}</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Format date for preview
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        // Reset form
+        function resetForm() {
+            if (originalNotification) {
+                populateForm(originalNotification);
+            }
+        }
+
+        // Show loading spinner
+        function showLoadingSpinner() {
+            const spinner = document.createElement('div');
+            spinner.className = 'loading-spinner-overlay';
+            spinner.innerHTML = `
+                <div class="d-flex justify-content-center align-items-center" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999;">
+                    <div class="text-center">
+                        <div class="spinner-border text-light" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2 text-white">Updating notification...</p>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(spinner);
+        }
+
+        // Hide loading spinner
+        function hideLoadingSpinner() {
+            const spinner = document.querySelector('.loading-spinner-overlay');
+            if (spinner) {
+                spinner.remove();
+            }
+        }
+
+        // Show alert message
+        function showAlert(type, message) {
+            const alertHtml = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            document.getElementById('alertContainer').insertAdjacentHTML('beforeend', alertHtml);
+            
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                const alerts = document.querySelectorAll('.alert');
+                if (alerts.length > 0) {
+                    alerts[alerts.length - 1].remove();
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

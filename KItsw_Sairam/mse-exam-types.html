@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSE Exam Type Management - Internal Examinations</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .mse-container {
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        
+        .mse-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .mse-header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        
+        .mse-header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        
+        .tabs-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #2a5298;
+        }
+        
+        .tab-button {
+            padding: 12px 24px;
+            background: #f5f5f5;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            color: #555;
+            transition: all 0.3s ease;
+        }
+        
+        .tab-button:hover {
+            background: #e8f0fe;
+            color: #1e3c72;
+        }
+        
+        .tab-button.active {
+            background: linear-gradient(135deg, #5b73e8 0%, #4a5fb8 100%);
+            color: white;
+            font-weight: 600;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .form-section {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #2a5298;
+            box-shadow: 0 0 0 3px rgba(42, 82, 152, 0.1);
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .data-table {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .data-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .data-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .data-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .alert {
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="mse-container">
+        <!-- Header -->
+        <div class="mse-header">
+            <h1>🎓 MSE Exam Type Management</h1>
+            <p>Manage Mid-Semester Examination types, categories, and configuration for internal assessments</p>
+        </div>
+        
+        <!-- Tabs -->
+        <div class="tabs-container">
+            <button class="tab-button active" data-tab="exam-types">Exam Types</button>
+            <button class="tab-button" data-tab="configuration">Configuration</button>
+            <button class="tab-button" data-tab="templates">Templates</button>
+        </div>
+        
+        <!-- Exam Types Tab -->
+        <div id="exam-types-tab" class="tab-content active">
+            <!-- Form Section -->
+            <div class="form-section">
+                <h3>📝 Add/Edit MSE Exam Type</h3>
+                <form id="mseExamTypeForm">
+                    <input type="hidden" id="examTypeId">
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="examTypeCode">Exam Type Code *</label>
+                            <input type="text" id="examTypeCode" required placeholder="e.g., MSE-1, CT-1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="examTypeName">Exam Type Name *</label>
+                            <input type="text" id="examTypeName" required placeholder="e.g., MSE - I">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="examCategory">Exam Category *</label>
+                            <select id="examCategory" required>
+                                <option value="">Select Category</option>
+                                <option value="MSE">MSE (Mid-Semester Examination)</option>
+                                <option value="Class Test">Class Test</option>
+                                <option value="Internal Assessment">Internal Assessment</option>
+                                <option value="Lab Exam">Lab Exam</option>
+                                <option value="Viva Voce">Viva Voce</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="maxMarks">Max Marks</label>
+                            <input type="number" id="maxMarks" placeholder="50" min="1" max="100">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="durationMinutes">Duration (Minutes)</label>
+                            <input type="number" id="durationMinutes" placeholder="120" min="15" max="300">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="gapRequiredMinutes">Gap Required (Minutes)</label>
+                            <input type="number" id="gapRequiredMinutes" placeholder="1440" min="0">
+                            <small>Gap before next exam for same department (1440 = 24 hours)</small>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" rows="3" placeholder="Enter exam type description..."></textarea>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="requiresInvigilator" checked>
+                                Requires Invigilator
+                            </label>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="allowsMultipleSections">
+                                Allows Multiple Sections
+                            </label>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="isActive" checked>
+                                Active
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="actions">
+                        <button type="submit" class="btn btn-primary">
+                            <span id="submitBtnText">Add Exam Type</span>
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="resetForm()">Clear</button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Data Table -->
+            <div class="data-table">
+                <h3 style="padding: 20px;">📊 MSE Exam Types List</h3>
+                <div id="examTypesTable">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading MSE exam types...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Configuration Tab -->
+        <div id="configuration-tab" class="tab-content">
+            <div class="form-section">
+                <h3>⚙️ MSE System Configuration</h3>
+                <div id="configurationForm">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading configuration...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Templates Tab -->
+        <div id="templates-tab" class="tab-content">
+            <div class="form-section">
+                <h3>📄 MSE Notification Templates</h3>
+                <div id="templatesForm">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading templates...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/mse-exam-types.js"></script>
+</body>
+</html>

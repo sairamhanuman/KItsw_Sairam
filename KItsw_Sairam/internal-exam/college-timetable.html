@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College Timetable Format</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: white;
+        }
+        
+        .college-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .college-logo {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 10px;
+        }
+        
+        .college-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .college-address {
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .notification-details {
+            text-align: center;
+            background: #f5f5f5;
+            padding: 10px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            border: 1px solid #ddd;
+        }
+        
+        .timetable-header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        .timetable-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .exam-timing {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        
+        .timetable-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        .timetable-table th,
+        .timetable-table td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: center;
+            vertical-align: top;
+        }
+        
+        .timetable-table th {
+            background: #f0f0f0;
+            font-weight: bold;
+        }
+        
+        .day-column {
+            width: 100px;
+            font-weight: bold;
+        }
+        
+        .date-column {
+            width: 120px;
+        }
+        
+        .branch-column {
+            min-width: 150px;
+        }
+        
+        .instructions {
+            margin-bottom: 20px;
+        }
+        
+        .instructions-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            border: 1px solid #000;
+            padding: 5px;
+            background: #f5f5f5;
+        }
+        
+        .instructions-list {
+            padding-left: 20px;
+        }
+        
+        .instructions-list li {
+            margin-bottom: 5px;
+        }
+        
+        .signatures {
+            text-align: right;
+            margin-top: 50px;
+        }
+        
+        .signature-line {
+            margin-top: 30px;
+            border-bottom: 1px solid #000;
+            width: 200px;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        
+        .signature-label {
+            display: inline-block;
+            width: 80px;
+            text-align: right;
+        }
+        
+        .signature-date {
+            margin-top: 5px;
+            margin-left: 10px;
+        }
+        
+        @media print {
+            body {
+                padding: 0;
+            }
+            
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- College Header -->
+    <div class="college-header">
+        <div class="college-logo" style="width: 100px; height: 100px; margin-bottom: 10px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; border: 2px solid #ccc; border-radius: 5px;">
+            LOGO
+        </div>
+        <div class="college-name">KITSW (AUTONOMOUS)</div>
+        <div class="college-address">WARANGAL, TELANGANA</div>
+    </div>
+
+    <!-- Notification Details -->
+    <div class="notification-details" id="notificationDetails">
+        NOTIFICATION DETAILS: Loading...
+    </div>
+
+    <!-- Time Table Header -->
+    <div class="timetable-header">
+        <div class="timetable-title">TIME TABLE</div>
+        <div class="exam-timing" id="examTiming">
+            Examination Timing: Loading...
+        </div>
+    </div>
+
+    <!-- Main Timetable Table -->
+    <table class="timetable-table" id="timetableTable">
+        <thead>
+            <tr id="tableHeader">
+                <th class="day-column">Day</th>
+                <th class="date-column">Date</th>
+                <!-- Branch columns will be added dynamically -->
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <!-- Table rows will be added dynamically -->
+        </tbody>
+    </table>
+
+    <!-- Instructions -->
+    <div class="instructions">
+        <div class="instructions-title">INSTRUCTIONS</div>
+        <ul class="instructions-list" id="instructionsList">
+            <li>Students should be in the examination hall 15 minutes before time</li>
+            <li>No electronic devices allowed in examination hall</li>
+            <li>Students must carry ID card and hall ticket</li>
+            <li>Malpractice will lead to severe disciplinary action</li>
+        </ul>
+    </div>
+
+    <!-- Signatures -->
+    <div class="signatures">
+        <div>
+            <span class="signature-label">Controller:</span>
+            <span class="signature-line"></span>
+            <div class="signature-date">Date: __________</div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="no-print" style="margin-top: 20px; text-align: center;">
+        <button onclick="window.print()" style="padding: 10px 20px; margin: 5px;">Print Timetable</button>
+        <button onclick="window.history.back()" style="padding: 10px 20px; margin: 5px;">Back</button>
+    </div>
+
+    <script>
+        // Get notification ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const notificationId = urlParams.get('notification_id');
+
+        if (!notificationId) {
+            alert('Notification ID is required');
+            window.history.back();
+        }
+
+        // Load college format timetable
+        async function loadCollegeTimetable() {
+            try {
+                const response = await fetch(`/api/internal-exam/timetable/college-format/${notificationId}`);
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    renderCollegeTimetable(result.data);
+                } else {
+                    alert('Failed to load timetable: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error loading timetable:', error);
+                alert('Error loading timetable');
+            }
+        }
+
+        function renderCollegeTimetable(data) {
+            // Update notification details
+            document.getElementById('notificationDetails').textContent = 
+                `NOTIFICATION DETAILS: ${data.notificationDetails}`;
+
+            // Update exam timing
+            document.getElementById('examTiming').textContent = 
+                `Examination Timing ${data.examTiming}`;
+
+            // Update table header with branches
+            const tableHeader = document.getElementById('tableHeader');
+            data.branches.forEach(branch => {
+                const th = document.createElement('th');
+                th.className = 'branch-column';
+                th.textContent = branch;
+                tableHeader.appendChild(th);
+            });
+
+            // Update table body
+            const tableBody = document.getElementById('tableBody');
+            data.tableData.forEach(row => {
+                const tr = document.createElement('tr');
+                
+                // Day column
+                const dayTd = document.createElement('td');
+                dayTd.className = 'day-column';
+                dayTd.textContent = row.day;
+                tr.appendChild(dayTd);
+
+                // Date column
+                const dateTd = document.createElement('td');
+                dateTd.className = 'date-column';
+                dateTd.textContent = row.date;
+                tr.appendChild(dateTd);
+
+                // Branch columns with Syllabus Code + Subject Name in same cell
+                data.branches.forEach(branch => {
+                    const branchTd = document.createElement('td');
+                    branchTd.className = 'branch-column';
+                    
+                    if (row.branches[branch]) {
+                        const subjectData = row.branches[branch];
+                        branchTd.innerHTML = `
+                            <div style="font-weight: bold; margin-bottom: 2px;">${subjectData.syllabus_code || ''}</div>
+                            <div>${subjectData.subject_name || ''}</div>
+                        `;
+                    } else {
+                        branchTd.textContent = '';
+                    }
+                    
+                    tr.appendChild(branchTd);
+                });
+
+                tableBody.appendChild(tr);
+            });
+
+            // Update instructions
+            const instructionsList = document.getElementById('instructionsList');
+            instructionsList.innerHTML = '';
+            data.instructions.forEach(instruction => {
+                const li = document.createElement('li');
+                li.textContent = instruction;
+                instructionsList.appendChild(li);
+            });
+        }
+
+        // Load timetable when page loads
+        document.addEventListener('DOMContentLoaded', loadCollegeTimetable);
+    </script>
+</body>
+</html>

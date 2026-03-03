@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="p-4">
+    <div class="container">
+        <h1>API Endpoint Test</h1>
+        <p>This page tests if the API endpoints are working and returning data.</p>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Test Results</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="testResults"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            testAPIEndpoints();
+        });
+
+        async function testAPIEndpoints() {
+            const results = document.getElementById('testResults');
+            const endpoints = [
+                { name: 'Programmes', url: '/api/programmes' },
+                { name: 'Semesters', url: '/api/semesters' },
+                { name: 'Regulations', url: '/api/regulations' },
+                { name: 'Exam Names', url: '/api/exam-naming-master' },
+                { name: 'Sessions', url: '/api/sessions-master' },
+                { name: 'Month Years', url: '/api/month-year-master' },
+                { name: 'Notifications', url: '/api/internal-exam-notifications' }
+            ];
+
+            let html = '<div class="list-group">';
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(endpoint.url);
+                    const data = await response.json();
+                    const count = data.data ? data.data.length : (data.length || 0);
+                    const status = response.ok ? 'success' : 'danger';
+                    
+                    html += `
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>${endpoint.name}</strong>
+                                    <br><small class="text-muted">${endpoint.url}</small>
+                                </div>
+                                <div>
+                                    <span class="badge bg-${status}">${response.ok ? '✅' : '❌'}</span>
+                                    <span class="badge bg-info">${count} records</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } catch (error) {
+                    html += `
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>${endpoint.name}</strong>
+                                    <br><small class="text-muted">${endpoint.url}</small>
+                                </div>
+                                <div>
+                                    <span class="badge bg-danger">❌ Error</span>
+                                    <span class="badge bg-warning">${error.message}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            
+            html += '</div>';
+            results.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

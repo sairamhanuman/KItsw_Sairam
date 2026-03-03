@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Notification System</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .success { color: green; }
+        .error { color: red; }
+        .loading { color: blue; }
+        button { padding: 10px 15px; margin: 5px; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Internal Exam Notification System - Test</h1>
+    
+    <div class="test-section">
+        <h2>1. Test Master Data APIs</h2>
+        <button onclick="testMasterData()">Test All Master Data</button>
+        <div id="masterDataResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Test Notification CRUD</h2>
+        <button onclick="testCreateNotification()">Create Test Notification</button>
+        <button onclick="testGetNotifications()">Get All Notifications</button>
+        <button onclick="testUpdateNotification()">Update Notification</button>
+        <button onclick="testDeleteNotification()">Delete Notification</button>
+        <div id="crudResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Live Form Test</h2>
+        <a href="internal-exam-notification.html" target="_blank">
+            <button>Open Notification Form</button>
+        </a>
+        <p>Click to open the actual notification form in a new tab</p>
+    </div>
+
+    <script>
+        let testNotificationId = null;
+
+        async function testMasterData() {
+            const results = document.getElementById('masterDataResults');
+            results.innerHTML = '<div class="loading">Testing master data APIs...</div>';
+            
+            const endpoints = [
+                { name: 'Programmes', url: '/api/programmes' },
+                { name: 'Semesters', url: '/api/semesters' },
+                { name: 'Regulations', url: '/api/regulations' },
+                { name: 'Exam Names', url: '/api/exam-naming-master' },
+                { name: 'Sessions', url: '/api/sessions-master' },
+                { name: 'Month Years', url: '/api/month-year-master' }
+            ];
+
+            let resultsHtml = '<h3>Master Data Test Results:</h3>';
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(endpoint.url);
+                    const data = await response.json();
+                    
+                    if (response.ok && data.data) {
+                        resultsHtml += `<div class="success">✅ ${endpoint.name}: ${data.data.length} records</div>`;
+                    } else {
+                        resultsHtml += `<div class="error">❌ ${endpoint.name}: Failed</div>`;
+                    }
+                } catch (error) {
+                    resultsHtml += `<div class="error">❌ ${endpoint.name}: ${error.message}</div>`;
+                }
+            }
+            
+            results.innerHTML = resultsHtml;
+        }
+
+        async function testCreateNotification() {
+            const results = document.getElementById('crudResults');
+            results.innerHTML = '<div class="loading">Creating notification...</div>';
+            
+            const testNotification = {
+                programme_id: 1,
+                semester_ids: "1,2",
+                regulation_ids: "1",
+                exam_naming_id: 1,
+                exam_type: "Internal",
+                exam_name: "Mid-Term Examination 1",
+                exam_code: "MT1",
+                session_id: 1,
+                month_year_id: 11,
+                exam_start_date: "2026-11-15",
+                exam_end_date: "2026-11-25",
+                notification_title: "Test API Notification",
+                notification_description: "This is a test notification created via API",
+                notification_date: "2026-02-26",
+                created_by: "API Test"
+            };
+
+            try {
+                const response = await fetch('/api/internal-exam-notifications', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testNotification)
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    testNotificationId = data.data.notification_id;
+                    results.innerHTML = `
+                        <div class="success">✅ Notification Created Successfully!</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    results.innerHTML = `
+                        <div class="error">❌ Failed to create notification</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                results.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testGetNotifications() {
+            const results = document.getElementById('crudResults');
+            results.innerHTML = '<div class="loading">Fetching notifications...</div>';
+            
+            try {
+                const response = await fetch('/api/internal-exam-notifications');
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    results.innerHTML = `
+                        <div class="success">✅ Retrieved ${data.data.length} notifications</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    results.innerHTML = `<div class="error">❌ Failed to fetch notifications</div>`;
+                }
+            } catch (error) {
+                results.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testUpdateNotification() {
+            if (!testNotificationId) {
+                const results = document.getElementById('crudResults');
+                results.innerHTML = '<div class="error">❌ Please create a notification first</div>';
+                return;
+            }
+
+            const results = document.getElementById('crudResults');
+            results.innerHTML = '<div class="loading">Updating notification...</div>';
+            
+            const updateData = {
+                notification_title: "Updated Test Notification",
+                notification_description: "This notification has been updated via API",
+                is_published: true
+            };
+
+            try {
+                const response = await fetch(`/api/internal-exam-notifications/${testNotificationId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(updateData)
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    results.innerHTML = `
+                        <div class="success">✅ Notification Updated Successfully!</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    results.innerHTML = `<div class="error">❌ Failed to update notification</div>`;
+                }
+            } catch (error) {
+                results.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testDeleteNotification() {
+            if (!testNotificationId) {
+                const results = document.getElementById('crudResults');
+                results.innerHTML = '<div class="error">❌ Please create a notification first</div>';
+                return;
+            }
+
+            const results = document.getElementById('crudResults');
+            results.innerHTML = '<div class="loading">Deleting notification...</div>';
+            
+            try {
+                const response = await fetch(`/api/internal-exam-notifications/${testNotificationId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    testNotificationId = null;
+                    results.innerHTML = `
+                        <div class="success">✅ Notification Deleted Successfully!</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    results.innerHTML = `<div class="error">❌ Failed to delete notification</div>`;
+                }
+            } catch (error) {
+                results.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        // Auto-test master data on page load
+        window.onload = function() {
+            testMasterData();
+        };
+    </script>
+</body>
+</html>

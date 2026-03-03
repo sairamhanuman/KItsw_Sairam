@@ -1,0 +1,2235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Management - Engineering College</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f7fa;
+        }
+
+        .student-container {
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        
+        .student-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .student-header h1 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+        }
+
+        .student-header p {
+            margin: 0;
+            opacity: 0.9;
+        }
+
+        /* Statistics Bar - Compact Single Line */
+        .stats-bar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stats-bar .stat-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+        }
+
+        .stats-bar .stat-divider {
+            width: 1px;
+            height: 20px;
+            background: rgba(255,255,255,0.3);
+        }
+
+        .stats-bar .stat-label {
+            font-weight: 600;
+        }
+
+        .stats-bar .stat-value {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        /* Filter Section */
+        .filter-section {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .filter-section h3 {
+            margin: 0 0 20px 0;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-group label {
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .filter-group select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* Action Bar */
+        .action-bar {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: none; /* Hidden by default, shown when filters applied */
+        }
+
+        .action-bar.visible {
+            display: block;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* Student List - Simple Table */
+        .table-section {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        .simple-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .simple-table thead {
+            background: #667eea;
+            color: white;
+        }
+
+        .simple-table th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .simple-table tbody tr {
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .simple-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .simple-table tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        /* Selected row highlight */
+        .simple-table tbody tr.selected {
+            background-color: #5b73e8 !important;
+            color: white !important;
+            font-weight: 600;
+        }
+        
+        .simple-table tbody tr.selected td {
+            color: white !important;
+        }
+        
+        .simple-table tbody tr.selected .admission-link {
+            color: white !important;
+        }
+
+        .simple-table td {
+            padding: 15px;
+        }
+
+        .simple-table .admission-link {
+            color: #667eea;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .simple-table .admission-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Details Panel */
+        .details-panel {
+            position: fixed;
+            top: 0;
+            right: -600px;
+            width: 600px;
+            height: 100vh;
+            background: white;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            transition: right 0.3s ease;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .details-panel.open {
+            right: 0;
+        }
+
+        .details-panel-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            z-index: 999;
+        }
+
+        .details-panel-overlay.visible {
+            display: block;
+        }
+
+        .details-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .details-header h3 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .close-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .details-content {
+            padding: 25px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-row.full {
+            grid-template-columns: 1fr;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .form-group label .required {
+            color: #dc3545;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .photo-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .photo-section h4 {
+            margin: 0 0 15px 0;
+            color: #333;
+        }
+
+        .current-photo {
+            margin-bottom: 15px;
+        }
+
+        .current-photo img {
+            max-width: 200px;
+            max-height: 200px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .photo-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 2px solid #eee;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #138496;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            color: #dc3545;
+            padding: 15px;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+
+        .success {
+            color: #155724;
+            padding: 15px;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 30px;
+            border: 1px solid #888;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .modal-content p {
+            color: #666;
+            margin: 10px 0;
+        }
+
+        .modal-content input[type="file"] {
+            margin: 20px 0;
+            padding: 10px;
+            border: 2px dashed #ddd;
+            border-radius: 4px;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .modal-buttons {
+            margin-top: 20px;
+            text-align: right;
+        }
+
+        .modal-buttons button {
+            margin-left: 10px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-bar::after {
+            content: '';
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2, #667eea);
+            background-size: 200% 100%;
+            animation: progress 1.5s linear infinite;
+        }
+
+        @keyframes progress {
+            0% { background-position: 0% 0%; }
+            100% { background-position: 200% 0%; }
+        }
+
+        .import-results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .import-results h4 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .import-results ul {
+            list-style: none;
+            padding: 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .import-results li {
+            padding: 8px;
+            margin: 5px 0;
+            background: white;
+            border-left: 3px solid #dc3545;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .details-panel {
+                width: 100%;
+                right: -100%;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-bar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+
+            .stats-bar .stat-divider {
+                display: none;
+            }
+        }
+
+        /* Compact student list table rows */
+        .simple-table {
+            font-size: 14px;
+        }
+
+        .simple-table thead th {
+            padding: 10px 12px;
+            background-color: #5b73e8;
+            color: white;
+            font-weight: 600;
+        }
+
+        .simple-table tbody td {
+            padding: 8px 12px;
+            line-height: 1.3;
+            vertical-align: middle;
+        }
+
+        .simple-table tbody tr {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .simple-table tbody tr:hover {
+            background-color: #f0f4ff;
+        }
+
+        .simple-table tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        /* No filter message styling */
+        .no-filter-message {
+            display: block;
+            text-align: center;
+            padding: 30px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .no-filter-message h3 {
+            margin: 0 0 10px 0;
+            color: #667eea;
+        }
+
+        .no-filter-message p {
+            margin: 0;
+            color: #666;
+        }
+
+        /* Back to Dashboard Button */
+        .back-to-dashboard {
+            padding: 15px 30px;
+            background: #f8f9fa;
+        }
+
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            padding: 10px 20px;
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            color: #495057;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-back:hover {
+            background: #4a90e2;
+            color: white;
+            border-color: #4a90e2;
+            transform: translateX(-5px);
+        }
+
+        .btn-back span {
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="student-container">
+        <!-- Header -->
+        <div class="student-header">
+            <h1>👨‍🎓 Student Management</h1>
+            <p>Manage student records, enrollment, and information</p>
+        </div>
+
+        <!-- Back to Dashboard Button -->
+        <div class="back-to-dashboard">
+            <a href="index.html" class="btn-back">
+                <span>← Back to Dashboard</span>
+            </a>
+        </div>
+
+        <!-- Statistics Bar - Compact Single Line -->
+        <div class="stats-bar">
+            <div class="stat-item">
+                <span class="stat-label">📊 Total:</span>
+                <span class="stat-value" id="stat-total">0</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <span class="stat-label">👨‍🎓 Boys:</span>
+                <span class="stat-value" id="stat-boys">0</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <span class="stat-label">👩‍🎓 Girls:</span>
+                <span class="stat-value" id="stat-girls">0</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <span class="stat-label">✅ In Roll:</span>
+                <span class="stat-value" id="stat-in-roll">0</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <span class="stat-label">⚠️ Detained:</span>
+                <span class="stat-value" id="stat-detained">0</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <span class="stat-label">❌ Left Out:</span>
+                <span class="stat-value" id="stat-left-out">0</span>
+            </div>
+        </div>
+
+        <!-- Filter Section - NO GENDER FILTER -->
+        <div class="filter-section">
+            <h3>🔍 Filter Students</h3>
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="filter-programme">Programme:</label>
+                    <select id="filter-programme">
+                        <option value="">All Programmes</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filter-branch">Branch:</label>
+                    <select id="filter-branch">
+                        <option value="">All Branches</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filter-batch">Batch:</label>
+                    <select id="filter-batch">
+                        <option value="">All Batches</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filter-semester">Semester:</label>
+                    <select id="filter-semester">
+                        <option value="">All Semesters</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filter-status">Status:</label>
+                    <select id="filter-status">
+                        <option value="">All Status</option>
+                        <option value="In Roll">✅ In Roll</option>
+                        <option value="Detained">⚠️ Detained</option>
+                        <option value="Left out">❌ Left out</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filter-regulation">Regulation:</label>
+                    <select id="filter-regulation">
+                        <option value="">All Regulations</option>
+                    </select>
+                </div>
+            </div>
+            <p class="filter-note" style="margin-top: 10px; color: #666; font-size: 12px;">
+                <small>* Regulation filter is used for Excel generation and import to set student regulations</small>
+            </p>
+            <div class="filter-actions">
+                <button class="btn btn-primary" onclick="applyFilters()">Apply Filter</button>
+                <button class="btn btn-secondary" onclick="clearFilters()">Clear Filters</button>
+            </div>
+        </div>
+
+        <!-- Action Bar - Visible After Filter Selection -->
+        <div class="action-bar" id="action-bar">
+            <div class="action-buttons">
+                <button class="btn btn-info btn-sm" onclick="generateSampleExcel()">📄 Generate Sample Excel</button>
+                <button class="btn btn-warning btn-sm" onclick="document.getElementById('excel-file').click()">📂 Browse Excel</button>
+                <button class="btn btn-success btn-sm" onclick="importExcel()">📥 Import Excel</button>
+                <button class="btn btn-primary btn-sm" onclick="exportToExcel()">📤 Export to Excel</button>
+                <button class="btn btn-info btn-sm" onclick="document.getElementById('photos-zip').click()">🖼️ Browse Photos</button>
+                <button class="btn btn-success btn-sm" onclick="importPhotos()">📸 Import New Photos</button>
+            </div>
+            <input type="file" id="excel-file" accept=".xlsx,.xls,.csv" style="display: none;" onchange="handleExcelFile()">
+            <input type="file" id="photos-zip" accept=".zip" style="display: none;" onchange="handlePhotosZip()">
+        </div>
+
+        <!-- No Filter Message -->
+        <div id="no-filter-message" class="no-filter-message">
+            <h3>📋 No Filters Applied</h3>
+            <p>Please select filters and click "Apply Filter" to view students</p>
+        </div>
+
+        <!-- Student List - Simple Table (SNO + Admission Number) -->
+        <div class="table-section" id="student-list-container" style="display: none;">
+            <h3>Student List</h3>
+            <div>
+                <table class="simple-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 100px;">SNO</th>
+                            <th>Admission Number</th>
+                        </tr>
+                    </thead>
+                    <tbody id="student-table-body">
+                        <tr>
+                            <td colspan="2" class="loading">Loading students...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Details Panel Overlay -->
+    <div class="details-panel-overlay" id="details-overlay" onclick="closeDetailsPanel()"></div>
+
+    <!-- Details Panel -->
+    <div class="details-panel" id="details-panel">
+        <div class="details-header">
+            <h3 id="details-title">Student Details</h3>
+            <button class="close-btn" onclick="closeDetailsPanel()">×</button>
+        </div>
+        <div class="details-content">
+            <form id="student-form">
+                <input type="hidden" id="student-id">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Admission Number <span class="required">*</span></label>
+                        <input type="text" id="admission-number" required>
+                    </div>
+                    <div class="form-group">
+                        <label>HT Number</label>
+                        <input type="text" id="ht-number">
+                    </div>
+                </div>
+
+                <div class="form-row full">
+                    <div class="form-group">
+                        <label>Roll Number</label>
+                        <input type="text" id="roll-number">
+                    </div>
+                </div>
+
+                <div class="form-row full">
+                    <div class="form-group">
+                        <label>Full Name <span class="required">*</span></label>
+                        <input type="text" id="full-name" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Date of Birth</label>
+                        <input type="date" id="date-of-birth">
+                    </div>
+                    <div class="form-group">
+                        <label>Gender</label>
+                        <select id="gender">
+                            <option value="">Select Gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row full">
+                    <div class="form-group">
+                        <label>Caste Category</label>
+                        <input type="text" id="caste-category">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Father Name</label>
+                        <input type="text" id="father-name">
+                    </div>
+                    <div class="form-group">
+                        <label>Mother Name</label>
+                        <input type="text" id="mother-name">
+                    </div>
+                </div>
+
+                <div class="form-row full">
+                    <div class="form-group">
+                        <label>Aadhaar Number (12 digits)</label>
+                        <input type="text" id="aadhaar-number" maxlength="12" pattern="[0-9]{12}">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Student Mobile (10 digits)</label>
+                        <input type="text" id="student-mobile" maxlength="10" pattern="[0-9]{10}">
+                    </div>
+                    <div class="form-group">
+                        <label>Parent Mobile (10 digits)</label>
+                        <input type="text" id="parent-mobile" maxlength="10" pattern="[0-9]{10}">
+                    </div>
+                </div>
+
+                <div class="form-row full">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="email">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Programme <span class="required">*</span></label>
+                        <select id="programme-id" required>
+                            <option value="">Select Programme</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Branch <span class="required">*</span></label>
+                        <select id="branch-id" required>
+                            <option value="">Select Branch</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Batch <span class="required">*</span></label>
+                        <select id="batch-id" required>
+                            <option value="">Select Batch</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Semester</label>
+                        <select id="semester-id">
+                            <option value="">Select Semester</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Joining Regulation <span class="required">*</span></label>
+                        <select id="joining-regulation-id" required>
+                            <option value="">Select Regulation</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Current Regulation <span class="required">*</span></label>
+                        <select id="current-regulation-id" required>
+                            <option value="">Select Regulation</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row full">
+                    <div class="form-group">
+                        <label>Section</label>
+                        <select id="section-id">
+                            <option value="">Select Section</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row full">
+                    <div class="form-group">
+                        <label>Student Status <span class="required">*</span></label>
+                        <select id="student-status" required>
+                            <option value="In Roll">In Roll</option>
+                            <option value="Detained">Detained</option>
+                            <option value="Left out">Left out</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Admission Date</label>
+                        <input type="date" id="admission-date">
+                    </div>
+                    <div class="form-group">
+                        <label>Completion Year</label>
+                        <input type="text" id="completion-year" pattern="[0-9]{4}">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Date of Leaving</label>
+                        <input type="date" id="date-of-leaving">
+                    </div>
+                    <div class="form-group">
+                        <label>Discontinue Date</label>
+                        <input type="date" id="discontinue-date">
+                    </div>
+                </div>
+
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="is-detainee">
+                        <label for="is-detainee">Detainee</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="is-transitory">
+                        <label for="is-transitory">Transitory</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="is-handicapped">
+                        <label for="is-handicapped">Handicapped</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="is-lateral">
+                        <label for="is-lateral">Lateral</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="join-curriculum">
+                        <label for="join-curriculum">Join Curriculum</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="is-locked">
+                        <label for="is-locked">Lock Student</label>
+                    </div>
+                </div>
+
+                <!-- Photo Section -->
+                <div class="photo-section">
+                    <h4>Student Photo</h4>
+                    <div class="current-photo" id="current-photo-display">
+                        <p>No photo uploaded</p>
+                    </div>
+                    <div class="photo-actions">
+                        <input type="file" id="photo-file" accept="image/jpeg,image/jpg,image/png" style="display: none;" onchange="uploadPhoto()">
+                        <button type="button" class="btn btn-info btn-sm" onclick="document.getElementById('photo-file').click()">Choose File</button>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="removePhoto()">Remove Photo</button>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <button type="button" class="btn btn-success" onclick="saveStudent()">💾 Save Changes</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeDetailsPanel()">❌ Cancel</button>
+                    <button type="button" class="btn btn-danger" onclick="deleteStudent()">🗑️ Delete Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Import Excel Modal -->
+    <div id="importExcelModal" class="modal">
+        <div class="modal-content">
+            <h3>📥 Import Students from Excel</h3>
+            <p>Upload a CSV or Excel file matching the sample template format.</p>
+            <p><small>The file should have 6 header rows followed by student data.</small></p>
+            
+            <input type="file" id="excelFileInput" accept=".csv,.xlsx,.xls">
+            
+            <div id="importProgress" style="display:none;">
+                <p>⏳ Importing students...</p>
+                <div class="progress-bar"></div>
+            </div>
+            
+            <div id="importResults" class="import-results" style="display:none;"></div>
+            
+            <div class="modal-buttons">
+                <button onclick="performImportExcel()" class="btn btn-primary">Import</button>
+                <button onclick="closeImportModal()" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Photos Modal -->
+    <div id="importPhotosModal" class="modal">
+        <div class="modal-content">
+            <h3>📸 Import Student Photos (ZIP)</h3>
+            <p>Upload a ZIP file containing photos named by admission number or roll number.</p>
+            <p><small>Example: B25AI001.jpg, B25AI002.png, 101.jpg</small></p>
+            <p><small>Supported formats: JPG, JPEG, PNG (max 5MB per photo)</small></p>
+            
+            <input type="file" id="zipFileInput" accept=".zip">
+            
+            <div id="photoImportProgress" style="display:none;">
+                <p>⏳ Importing photos...</p>
+                <div class="progress-bar"></div>
+            </div>
+            
+            <div id="photoImportResults" class="import-results" style="display:none;"></div>
+            
+            <div class="modal-buttons">
+                <button onclick="performImportPhotos()" class="btn btn-primary">Import</button>
+                <button onclick="closePhotoModal()" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentStudents = [];
+        let currentStudentId = null;
+        let selectedRow = null; // Track selected row for highlighting (persists after panel close)
+        let masterData = {
+            programmes: [],
+            branches: [],
+            batches: [],
+            semesters: [],
+            sections: []
+        };
+
+        // Constants
+        const RELOAD_DELAY_MS = 1500; // Delay before reloading students after import (for UX - allows user to read results)
+        
+        // Validation regex patterns
+        const MOBILE_REGEX = /^\d{10}$/;
+        const AADHAAR_REGEX = /^\d{12}$/;
+        const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        // Helper utility functions for safe DOM element access
+        // Helper function to safely get element value
+        function getElementValue(elementId, defaultValue = '') {
+            const element = document.getElementById(elementId);
+            return element?.value || defaultValue;
+        }
+
+        // Helper function to safely show/hide element
+        function toggleElement(elementId, show) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.style.display = show ? 'block' : 'none';
+            }
+        }
+
+        // Helper function to safely set element content
+        function setElementContent(elementId, content) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.innerHTML = content;
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMasterData();
+            loadRegulations();  // Add this to load regulations
+            // Don't load students on page load - hide list and reset statistics
+            hideStudentList();
+            resetStatistics();
+        });
+
+        // Hide student list and show filter message
+        function hideStudentList() {
+            const studentListContainer = document.getElementById('student-list-container');
+            const noFilterMessage = document.getElementById('no-filter-message');
+            
+            if (studentListContainer) {
+                studentListContainer.style.display = 'none';
+            }
+            
+            if (noFilterMessage) {
+                noFilterMessage.style.display = 'block';
+            }
+        }
+
+        // Show student list and hide filter message
+        function showStudentList() {
+            const studentListContainer = document.getElementById('student-list-container');
+            const noFilterMessage = document.getElementById('no-filter-message');
+            
+            if (studentListContainer) {
+                studentListContainer.style.display = 'block';
+            }
+            
+            if (noFilterMessage) {
+                noFilterMessage.style.display = 'none';
+            }
+        }
+
+        // Reset statistics to 0
+        function resetStatistics() {
+            updateStatistics({
+                total: 0,
+                boys: 0,
+                girls: 0,
+                in_roll: 0,
+                detained: 0,
+                left_out: 0
+            });
+        }
+
+        // Load master data for dropdowns
+        async function loadMasterData() {
+            try {
+                // Load Programmes
+                const progResponse = await fetch('/api/programmes');
+                const progData = await progResponse.json();
+                if (progData.status === 'success') {
+                    masterData.programmes = progData.data;
+                    populateDropdown('filter-programme', progData.data, 'programme_id', 'programme_code');
+                    populateDropdown('programme-id', progData.data, 'programme_id', 'programme_code');
+                }
+
+                // Load Branches
+                const branchResponse = await fetch('/api/branches');
+                const branchData = await branchResponse.json();
+                if (branchData.status === 'success') {
+                    masterData.branches = branchData.data;
+                    populateDropdown('filter-branch', branchData.data, 'branch_id', 'branch_code');
+                    populateDropdown('branch-id', branchData.data, 'branch_id', 'branch_code');
+                }
+
+                // Load Batches
+                const batchResponse = await fetch('/api/batches');
+                const batchData = await batchResponse.json();
+                if (batchData.status === 'success') {
+                    masterData.batches = batchData.data;
+                    populateDropdown('filter-batch', batchData.data, 'batch_id', 'batch_name');
+                    populateDropdown('batch-id', batchData.data, 'batch_id', 'batch_name');
+                }
+
+                // Load Semesters
+                const semesterResponse = await fetch('/api/semesters');
+                const semesterData = await semesterResponse.json();
+                if (semesterData.status === 'success') {
+                    masterData.semesters = semesterData.data;
+                    populateDropdown('filter-semester', semesterData.data, 'semester_id', 'semester_name');
+                    populateDropdown('semester-id', semesterData.data, 'semester_id', 'semester_name');
+                }
+
+                // Load Sections
+                const sectionResponse = await fetch('/api/sections');
+                const sectionData = await sectionResponse.json();
+                if (sectionData.status === 'success') {
+                    masterData.sections = sectionData.data;
+                    populateDropdown('section-id', sectionData.data, 'section_id', 'section_name');
+                }
+            } catch (error) {
+                console.error('Error loading master data:', error);
+            }
+        }
+
+        // Populate dropdown with data
+        function populateDropdown(elementId, data, valueKey, labelKey) {
+            const select = document.getElementById(elementId);
+            const currentValue = select.value;
+            const isFilter = elementId.startsWith('filter-');
+            
+            // Keep the default option
+            const defaultOption = select.options[0];
+            select.innerHTML = '';
+            select.appendChild(defaultOption);
+            
+            data.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item[valueKey];
+                option.textContent = item[labelKey];
+                select.appendChild(option);
+            });
+            
+            if (currentValue) {
+                select.value = currentValue;
+            }
+        }
+
+        // Load regulations for dropdowns
+        async function loadRegulations() {
+            try {
+                console.log('Loading regulations...');
+                const response = await fetch('/api/regulations');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                let regulations;
+                
+                // Handle both response formats
+                if (data.status === 'success' && data.data) {
+                    regulations = data.data;
+                } else if (Array.isArray(data)) {
+                    regulations = data;
+                } else {
+                    throw new Error('Invalid regulations data format');
+                }
+                
+                console.log(`Loaded ${regulations.length} regulations`);
+                console.log('Regulations data:', regulations);
+                
+                // Populate joining regulation dropdown
+                const joiningRegSelect = document.getElementById('joining-regulation-id');
+                if (joiningRegSelect) {
+                    joiningRegSelect.innerHTML = '<option value="">Select Regulation</option>';
+                    regulations.forEach(reg => {
+                        const option = document.createElement('option');
+                        option.value = reg.regulation_id;
+                        option.textContent = `${reg.regulation_name}`;  // ✅ Just use regulation_name (URR-19, URR-22)
+                        joiningRegSelect.appendChild(option);
+                    });
+                }
+                
+                // Populate current regulation dropdown
+                const currentRegSelect = document.getElementById('current-regulation-id');
+                if (currentRegSelect) {
+                    currentRegSelect.innerHTML = '<option value="">Select Regulation</option>';
+                    regulations.forEach(reg => {
+                        const option = document.createElement('option');
+                        option.value = reg.regulation_id;
+                        option.textContent = `${reg.regulation_name}`;  // ✅ Just use regulation_name
+                        currentRegSelect.appendChild(option);
+                    });
+                }
+                
+                // Populate filter regulation dropdown
+                const filterRegSelect = document.getElementById('filter-regulation');
+                if (filterRegSelect) {
+                    filterRegSelect.innerHTML = '<option value="">All Regulations</option>';
+                    regulations.forEach(reg => {
+                        const option = document.createElement('option');
+                        option.value = reg.regulation_id;
+                        option.textContent = `${reg.regulation_name}`;  // ✅ Just use regulation_name
+                        filterRegSelect.appendChild(option);
+                    });
+                }
+                
+                console.log('Regulation dropdowns populated successfully');
+                
+            } catch (error) {
+                console.error('Error loading regulations:', error);
+            }
+        }
+
+        // Load students with filters
+        async function loadStudents() {
+            try {
+                // Build query string
+                const params = new URLSearchParams();
+                
+                // Safely get filter values
+                const programmeId = getElementValue('filter-programme');
+                const branchId = getElementValue('filter-branch');
+                const batchId = getElementValue('filter-batch');
+                const semesterId = getElementValue('filter-semester');
+                const studentStatus = getElementValue('filter-status');
+                
+                if (programmeId) params.append('programme_id', programmeId);
+                if (branchId) params.append('branch_id', branchId);
+                if (batchId) params.append('batch_id', batchId);
+                if (semesterId) params.append('semester_id', semesterId);
+                if (studentStatus) params.append('student_status', studentStatus);
+                
+                const response = await fetch(`/api/students?${params.toString()}`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    currentStudents = data.data.students;
+                    
+                    // Show student list
+                    showStudentList();
+                    
+                    // Display students and update statistics
+                    displayStudents(data.data.students);
+                    updateStatistics(data.data.statistics);
+                    
+                    // Show action bar if filters are applied
+                    if (programmeId || branchId || batchId || semesterId || studentStatus) {
+                        document.getElementById('action-bar').classList.add('visible');
+                    }
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                console.error('Error loading students:', error);
+                document.getElementById('student-table-body').innerHTML = 
+                    `<tr><td colspan="2" class="error">Error loading students: ${error.message}</td></tr>`;
+            }
+        }
+
+        // Display students in simple table
+        function displayStudents(students) {
+            const tbody = document.getElementById('student-table-body');
+            
+            if (students.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 40px;">No students found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = students.map((student, index) => `
+                <tr data-student-id="${student.student_id}">
+                    <td>${index + 1}</td>
+                    <td>
+                        <a href="javascript:void(0)" class="admission-link" onclick="showStudentDetails(${student.student_id}, event)">
+                            ${student.admission_number}
+                        </a>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Update statistics bar
+        function updateStatistics(stats) {
+            document.getElementById('stat-total').textContent = stats.total || 0;
+            document.getElementById('stat-boys').textContent = stats.boys || 0;
+            document.getElementById('stat-girls').textContent = stats.girls || 0;
+            document.getElementById('stat-in-roll').textContent = stats.in_roll || 0;
+            document.getElementById('stat-detained').textContent = stats.detained || 0;
+            document.getElementById('stat-left-out').textContent = stats.left_out || 0;
+        }
+
+        // Apply filters
+        function applyFilters() {
+            loadStudents();
+        }
+
+        // Clear filters
+        function clearFilters() {
+            // Safely clear filter values
+            const filterProgramme = document.getElementById('filter-programme');
+            const filterBranch = document.getElementById('filter-branch');
+            const filterBatch = document.getElementById('filter-batch');
+            const filterSemester = document.getElementById('filter-semester');
+            const filterStatus = document.getElementById('filter-status');
+            const actionBar = document.getElementById('action-bar');
+            
+            if (filterProgramme) filterProgramme.value = '';
+            if (filterBranch) filterBranch.value = '';
+            if (filterBatch) filterBatch.value = '';
+            if (filterSemester) filterSemester.value = '';
+            if (filterStatus) filterStatus.value = '';
+            if (actionBar) actionBar.classList.remove('visible');
+            
+            // Hide student list and reset stats
+            hideStudentList();
+            resetStatistics();
+        }
+        
+        // Highlight selected row
+        function selectStudentRow(rowElement) {
+            console.log('Selecting student row');
+            
+            // Remove previous selection
+            if (selectedRow) {
+                selectedRow.classList.remove('selected');
+            }
+            
+            // Add selection to clicked row
+            if (rowElement) {
+                rowElement.classList.add('selected');
+                selectedRow = rowElement;
+            }
+        }
+        
+        // Clear row selection
+        function clearRowSelection() {
+            if (selectedRow) {
+                selectedRow.classList.remove('selected');
+                selectedRow = null;
+            }
+        }
+
+        /**
+         * Show student details panel
+         * @param {number} studentId - The ID of the student to display
+         * @param {Event} [event] - Optional click event (used to find the row element for highlighting)
+         */
+        async function showStudentDetails(studentId, event) {
+            try {
+                console.log('=== SHOW STUDENT DETAILS ===');
+                console.log('Student ID:', studentId);
+                
+                // Find the clicked row
+                let rowElement = null;
+                if (event && event.currentTarget) {
+                    rowElement = event.currentTarget.closest('tr');
+                } else {
+                    // Fallback: find row by data-student-id attribute
+                    const tbody = document.getElementById('student-table-body');
+                    if (tbody) {
+                        rowElement = tbody.querySelector(`tr[data-student-id="${studentId}"]`);
+                    }
+                }
+                
+                // Highlight selected row
+                selectStudentRow(rowElement);
+                
+                const response = await fetch(`/api/students/${studentId}`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const student = data.data;
+                    currentStudentId = studentId;
+                    
+                    // Populate form
+                    document.getElementById('student-id').value = student.student_id;
+                    document.getElementById('admission-number').value = student.admission_number || '';
+                    document.getElementById('ht-number').value = student.ht_number || '';
+                    document.getElementById('roll-number').value = student.roll_number || '';
+                    document.getElementById('full-name').value = student.full_name || '';
+                    document.getElementById('date-of-birth').value = student.date_of_birth ? student.date_of_birth.split('T')[0] : '';
+                    document.getElementById('gender').value = student.gender || '';
+                    document.getElementById('caste-category').value = student.caste_category || '';
+                    document.getElementById('father-name').value = student.father_name || '';
+                    document.getElementById('mother-name').value = student.mother_name || '';
+                    document.getElementById('aadhaar-number').value = student.aadhaar_number || '';
+                    document.getElementById('student-mobile').value = student.student_mobile || '';
+                    document.getElementById('parent-mobile').value = student.parent_mobile || '';
+                    document.getElementById('email').value = student.email || '';
+                    document.getElementById('programme-id').value = student.programme_id || '';
+                    document.getElementById('branch-id').value = student.branch_id || '';
+                    document.getElementById('batch-id').value = student.batch_id || '';
+                    document.getElementById('semester-id').value = student.semester_id || '';
+                    document.getElementById('joining-regulation-id').value = student.joining_regulation_id || '';
+                    document.getElementById('current-regulation-id').value = student.current_regulation_id || '';
+                    document.getElementById('section-id').value = student.section_id || '';
+                    document.getElementById('student-status').value = student.student_status || 'In Roll';
+                    document.getElementById('admission-date').value = student.admission_date ? student.admission_date.split('T')[0] : '';
+                    document.getElementById('completion-year').value = student.completion_year || '';
+                    document.getElementById('date-of-leaving').value = student.date_of_leaving ? student.date_of_leaving.split('T')[0] : '';
+                    document.getElementById('discontinue-date').value = student.discontinue_date ? student.discontinue_date.split('T')[0] : '';
+                    
+                    // Checkboxes
+                    document.getElementById('is-detainee').checked = student.is_detainee ? true : false;
+                    document.getElementById('is-transitory').checked = student.is_transitory ? true : false;
+                    document.getElementById('is-handicapped').checked = student.is_handicapped ? true : false;
+                    document.getElementById('is-lateral').checked = student.is_lateral ? true : false;
+                    document.getElementById('join-curriculum').checked = student.join_curriculum ? true : false;
+                    document.getElementById('is-locked').checked = student.is_locked ? true : false;
+                    
+                    // Photo
+                    const photoDisplay = document.getElementById('current-photo-display');
+                    if (student.photo_url) {
+                        photoDisplay.innerHTML = `<img src="${student.photo_url}" alt="Student Photo">`;
+                    } else {
+                        photoDisplay.innerHTML = '<p>No photo uploaded</p>';
+                    }
+                    
+                    // Update title
+                    document.getElementById('details-title').textContent = `Student Details - ${student.admission_number}`;
+                    
+                    // Open panel
+                    document.getElementById('details-panel').classList.add('open');
+                    document.getElementById('details-overlay').classList.add('visible');
+                } else {
+                    alert('Error loading student details: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error loading student details:', error);
+                alert('Error loading student details: ' + error.message);
+            }
+        }
+
+        // Close details panel
+        function closeDetailsPanel() {
+            console.log('Closing details panel');
+            document.getElementById('details-panel').classList.remove('open');
+            document.getElementById('details-overlay').classList.remove('visible');
+            currentStudentId = null;
+            
+            // Optionally clear row selection when closing
+            // Uncomment next line if you want selection to clear on close:
+            // clearRowSelection();
+        }
+
+        // Save student
+        async function saveStudent() {
+            try {
+                console.log('=== SAVE STUDENT DETAILS ===');
+                console.log('Current Student ID:', currentStudentId);
+                
+                if (!currentStudentId) {
+                    alert('No student selected');
+                    return;
+                }
+                
+                // Get all form values with .trim() where appropriate
+                const admissionNumber = document.getElementById('admission-number')?.value.trim();
+                const htNumber = document.getElementById('ht-number')?.value.trim();
+                const rollNumber = document.getElementById('roll-number')?.value.trim();
+                const fullName = document.getElementById('full-name')?.value.trim();
+                const dateOfBirth = document.getElementById('date-of-birth')?.value;
+                const gender = document.getElementById('gender')?.value;
+                const casteCategory = document.getElementById('caste-category')?.value.trim();
+                const fatherName = document.getElementById('father-name')?.value.trim();
+                const motherName = document.getElementById('mother-name')?.value.trim();
+                const aadhaarNumber = document.getElementById('aadhaar-number')?.value.trim();
+                const studentMobile = document.getElementById('student-mobile')?.value.trim();
+                const parentMobile = document.getElementById('parent-mobile')?.value.trim();
+                const email = document.getElementById('email')?.value.trim();
+                const programmeId = document.getElementById('programme-id')?.value;
+                const branchId = document.getElementById('branch-id')?.value;
+                const batchId = document.getElementById('batch-id')?.value;
+                const semesterId = document.getElementById('semester-id')?.value;
+                const joiningRegulationId = document.getElementById('joining-regulation-id')?.value;
+                const currentRegulationId = document.getElementById('current-regulation-id')?.value;
+                const sectionId = document.getElementById('section-id')?.value;
+                const studentStatus = document.getElementById('student-status')?.value || 'In Roll';
+                const admissionDate = document.getElementById('admission-date')?.value;
+                const completionYear = document.getElementById('completion-year')?.value.trim();
+                const dateOfLeaving = document.getElementById('date-of-leaving')?.value;
+                const discontinueDate = document.getElementById('discontinue-date')?.value;
+                
+                // Get checkboxes
+                const isDetainee = document.getElementById('is-detainee')?.checked || false;
+                const isTransitory = document.getElementById('is-transitory')?.checked || false;
+                const isHandicapped = document.getElementById('is-handicapped')?.checked || false;
+                const isLateral = document.getElementById('is-lateral')?.checked || false;
+                const joinCurriculum = document.getElementById('join-curriculum')?.checked || false;
+                const isLocked = document.getElementById('is-locked')?.checked || false;
+                
+                // Build data object with proper NULL handling
+                const studentData = {
+                    admission_number: admissionNumber,
+                    ht_number: htNumber || null,
+                    roll_number: rollNumber || null,
+                    full_name: fullName,
+                    date_of_birth: dateOfBirth || null,
+                    gender: gender || null,
+                    caste_category: casteCategory || null,
+                    father_name: fatherName || null,
+                    mother_name: motherName || null,
+                    aadhaar_number: aadhaarNumber || null,
+                    student_mobile: studentMobile || null,
+                    parent_mobile: parentMobile || null,
+                    email: email || null,
+                    programme_id: programmeId || null,
+                    branch_id: branchId || null,
+                    batch_id: batchId || null,
+                    semester_id: semesterId || null,
+                    joining_regulation_id: joiningRegulationId || null,
+                    current_regulation_id: currentRegulationId || null,
+                    section_id: sectionId || null,
+                    student_status: studentStatus,
+                    admission_date: admissionDate || null,
+                    completion_year: completionYear || null,
+                    date_of_leaving: dateOfLeaving || null,
+                    discontinue_date: discontinueDate || null,
+                    is_detainee: isDetainee,
+                    is_transitory: isTransitory,
+                    is_handicapped: isHandicapped,
+                    is_lateral: isLateral,
+                    join_curriculum: joinCurriculum,
+                    is_locked: isLocked
+                };
+                
+                // LOG FULL DATA (not just "Object")
+                console.log('=== FORM DATA COLLECTED ===');
+                console.log(JSON.stringify(studentData, null, 2));
+                
+                // Validate required fields
+                if (!admissionNumber) {
+                    alert('❌ Admission Number is required');
+                    return;
+                }
+                
+                if (!fullName) {
+                    alert('❌ Full Name is required');
+                    return;
+                }
+                
+                // Validate mobile numbers (10 digits)
+                if (studentMobile && !MOBILE_REGEX.test(studentMobile)) {
+                    alert('❌ Student Mobile must be exactly 10 digits');
+                    return;
+                }
+                
+                if (parentMobile && !MOBILE_REGEX.test(parentMobile)) {
+                    alert('❌ Parent Mobile must be exactly 10 digits');
+                    return;
+                }
+                
+                // Validate Aadhaar (12 digits)
+                if (aadhaarNumber && !AADHAAR_REGEX.test(aadhaarNumber)) {
+                    alert('❌ Aadhaar Number must be exactly 12 digits');
+                    return;
+                }
+                
+                // Validate email
+                if (email && !EMAIL_REGEX.test(email)) {
+                    alert('❌ Invalid email format');
+                    return;
+                }
+                
+                // Send PUT request
+                const url = `/api/students/${currentStudentId}`;
+                console.log(`Sending PUT request to: ${url}`);
+                
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(studentData)
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response ok:', response.ok);
+                
+                const data = await response.json();
+                
+                // LOG FULL RESPONSE (not just "Object")
+                console.log('=== SERVER RESPONSE ===');
+                console.log(JSON.stringify(data, null, 2));
+                
+                if (response.ok && data.status === 'success') {
+                    console.log('✅ SUCCESS: Student updated');
+                    alert('✅ Student updated successfully!');
+                    
+                    // Reload student list to reflect changes
+                    await loadStudents();
+                    
+                    // Close panel after successful save
+                    closeDetailsPanel();
+                } else {
+                    console.error('❌ SAVE FAILED');
+                    console.error('Status:', data.status);
+                    console.error('Message:', data.message);
+                    console.error('Error:', data.error);
+                    console.error('Error Code:', data.errorCode);
+                    console.error('Error Type:', data.errorType);
+                    
+                    // Show specific error message
+                    const errorMsg = data.error || data.message || 'Failed to update student';
+                    alert('❌ Error: ' + errorMsg);
+                }
+                
+            } catch (error) {
+                console.error('=== EXCEPTION CAUGHT ===');
+                console.error('Error type:', error.name);
+                console.error('Error message:', error.message);
+                console.error('Error stack:', error.stack);
+                
+                alert('❌ Error updating student: ' + error.message);
+            }
+        }
+
+        // Delete student
+        async function deleteStudent() {
+            if (!confirm('Are you sure you want to delete this student? This will be a soft delete and can be restored.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/students/${currentStudentId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    alert('Student deleted successfully!');
+                    closeDetailsPanel();
+                    loadStudents();
+                } else {
+                    alert('Error deleting student: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error deleting student:', error);
+                alert('Error deleting student: ' + error.message);
+            }
+        }
+
+        // Upload photo
+        async function uploadPhoto() {
+            const fileInput = document.getElementById('photo-file');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                return;
+            }
+            
+            if (!currentStudentId) {
+                alert('Please save the student first before uploading a photo');
+                return;
+            }
+            
+            try {
+                const formData = new FormData();
+                formData.append('photo', file);
+                
+                const response = await fetch(`/api/students/${currentStudentId}/upload-photo`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    alert('Photo uploaded successfully!');
+                    // Refresh photo display
+                    showStudentDetails(currentStudentId);
+                } else {
+                    alert('Error uploading photo: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error uploading photo:', error);
+                alert('Error uploading photo: ' + error.message);
+            }
+        }
+
+        // Remove photo
+        async function removePhoto() {
+            if (!confirm('Are you sure you want to remove this photo?')) {
+                return;
+            }
+            
+            if (!currentStudentId) {
+                alert('No student selected');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/students/${currentStudentId}/remove-photo`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    alert('Photo removed successfully!');
+                    // Clear photo display
+                    const photoDisplay = document.getElementById('current-photo-display');
+                    if (photoDisplay) {
+                        photoDisplay.innerHTML = '<p>No photo uploaded</p>';
+                    }
+                    // Clear file input
+                    const fileInput = document.getElementById('photo-file');
+                    if (fileInput) {
+                        fileInput.value = '';
+                    }
+                    // Refresh student details
+                    showStudentDetails(currentStudentId);
+                } else {
+                    alert('Error removing photo: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error removing photo:', error);
+                alert('Error removing photo: ' + error.message);
+            }
+        }
+
+        // Export to Excel
+        async function exportToExcel() {
+            try {
+                // Build query string with current filters
+                const params = new URLSearchParams();
+                
+                const programmeId = document.getElementById('filter-programme').value;
+                const branchId = document.getElementById('filter-branch').value;
+                const batchId = document.getElementById('filter-batch').value;
+                const semesterId = document.getElementById('filter-semester').value;
+                
+                if (programmeId) params.append('programme_id', programmeId);
+                if (branchId) params.append('branch_id', branchId);
+                if (batchId) params.append('batch_id', batchId);
+                if (semesterId) params.append('semester_id', semesterId);
+                
+                // Download file
+                window.location.href = `/api/students/export/excel?${params.toString()}`;
+            } catch (error) {
+                console.error('Error exporting to Excel:', error);
+                alert('Error exporting to Excel: ' + error.message);
+            }
+        }
+
+        // Generate sample Excel
+        function generateSampleExcel() {
+            // Build query string with current filter values
+            const params = new URLSearchParams();
+            
+            const programmeId = document.getElementById('filter-programme').value;
+            const branchId = document.getElementById('filter-branch').value;
+            const batchId = document.getElementById('filter-batch').value;
+            const semesterId = document.getElementById('filter-semester').value;
+            const regulationId = document.getElementById('filter-regulation').value;
+            
+            if (programmeId) params.append('programme_id', programmeId);
+            if (branchId) params.append('branch_id', branchId);
+            if (batchId) params.append('batch_id', batchId);
+            if (semesterId) params.append('semester_id', semesterId);
+            if (regulationId) params.append('regulation_id', regulationId);
+            
+            // Download file
+            window.location.href = `/api/students/sample-excel?${params.toString()}`;
+        }
+
+        // Handle Excel file selection
+        function handleExcelFile() {
+            const fileInput = document.getElementById('excel-file');
+            if (fileInput.files.length > 0) {
+                console.log('Excel file selected:', fileInput.files[0].name);
+            }
+        }
+
+        // Import Excel - Open Modal
+        function importExcel() {
+            document.getElementById('importExcelModal').style.display = 'block';
+            // Reset modal state
+            document.getElementById('excelFileInput').value = '';
+            document.getElementById('importProgress').style.display = 'none';
+            document.getElementById('importResults').style.display = 'none';
+        }
+
+        // Perform Excel Import
+        async function performImportExcel() {
+            console.log('=== EXCEL IMPORT DEBUG ===');
+            console.log('Filter elements check:');
+            console.log('- filter-programme:', document.getElementById('filter-programme'));
+            console.log('- filter-branch:', document.getElementById('filter-branch'));
+            console.log('- filter-batch:', document.getElementById('filter-batch'));
+            console.log('- filter-semester:', document.getElementById('filter-semester'));
+            
+            const fileInput = document.getElementById('excelFileInput');
+            const file = fileInput?.files[0];
+            
+            if (!file) {
+                showMessage('Please select a file', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // Safely get filter values with null checks and defaults - using correct element IDs
+            const programmeId = getElementValue('filter-programme');
+            const branchId = getElementValue('filter-branch');
+            const batchId = getElementValue('filter-batch');
+            const semesterId = getElementValue('filter-semester');
+            const regulationId = getElementValue('filter-regulation');
+            
+            // Check if regulation is selected (required for import)
+            if (!regulationId) {
+                showMessage('Please select a Regulation from the filter before importing', 'error');
+                toggleElement('importProgress', false);
+                return;
+            }
+            
+            // Only append if values exist
+            if (programmeId) formData.append('programme_id', programmeId);
+            if (branchId) formData.append('branch_id', branchId);
+            if (batchId) formData.append('batch_id', batchId);
+            if (semesterId) formData.append('semester_id', semesterId);
+            formData.append('regulation_id', regulationId);  // Always append regulation
+            
+            console.log('Import Excel with filters:', {
+                programme_id: programmeId,
+                branch_id: branchId,
+                batch_id: batchId,
+                semester_id: semesterId,
+                regulation_id: regulationId
+            });
+            
+            // Show progress with safe element access
+            toggleElement('importProgress', true);
+            toggleElement('importResults', false);
+            
+            try {
+                const response = await fetch('/api/students/import/excel', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                // Hide progress
+                toggleElement('importProgress', false);
+                
+                if (response.ok) {
+                    // Show results
+                    const resultsDiv = document.getElementById('importResults');
+                    if (resultsDiv) {
+                        resultsDiv.style.display = 'block';
+                        
+                        let html = `<div class="alert alert-success">`;
+                        html += `<h4>✅ Import Results</h4>`;
+                        html += `<p><strong>${result.data.imported}</strong> students imported successfully</p>`;
+                        
+                        if (result.data.failed > 0) {
+                            html += `<p class="text-warning"><strong>${result.data.failed}</strong> students failed</p>`;
+                            html += `<div style="max-height: 200px; overflow-y: auto; margin-top: 10px;">`;
+                            html += `<ul style="text-align: left;">`;
+                            result.data.errors.forEach(err => {
+                                html += `<li><small>Row ${err.row}: ${err.error}`;
+                                if (err.admission_number) {
+                                    html += ` (${err.admission_number})`;
+                                }
+                                html += `</small></li>`;
+                            });
+                            html += `</ul></div>`;
+                        }
+                        
+                        html += `</div>`;
+                        resultsDiv.innerHTML = html;
+                    }
+                    
+                    showMessage(`Successfully imported ${result.data.imported} students`, 'success');
+                    
+                    // Reload student list after 3 seconds
+                    setTimeout(() => {
+                        if (typeof loadStudents === 'function') {
+                            loadStudents();
+                        }
+                        closeImportExcelModal();
+                    }, 3000);
+                    
+                } else {
+                    showMessage(result.message || 'Import failed', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error importing Excel:', error);
+                showMessage('Failed to import Excel file: ' + error.message, 'error');
+                
+                toggleElement('importProgress', false);
+            }
+        }
+
+        // Close Import Excel Modal with safe element access
+        function closeImportExcelModal() {
+            const modal = document.getElementById('importExcelModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            
+            const results = document.getElementById('importResults');
+            if (results) {
+                results.style.display = 'none';
+                results.innerHTML = '';
+            }
+            
+            const fileInput = document.getElementById('excelFileInput');
+            if (fileInput) {
+                fileInput.value = '';
+            }
+        }
+
+        // Close Import Modal (alias for backward compatibility)
+        function closeImportModal() {
+            closeImportExcelModal();
+        }
+
+        // Open Import Excel Modal with error handling
+        function openImportExcelModal() {
+            const modal = document.getElementById('importExcelModal');
+            if (modal) {
+                modal.style.display = 'block';
+            } else {
+                console.error('Import Excel modal not found');
+                showMessage('Import modal not available', 'error');
+            }
+        }
+
+        // Import Photos - Open Modal with safe element access
+        function importPhotos() {
+            openImportPhotosModal();
+        }
+
+        // Open Import Photos Modal with error handling
+        function openImportPhotosModal() {
+            const modal = document.getElementById('importPhotosModal');
+            if (modal) {
+                modal.style.display = 'block';
+                // Reset modal state with safe element access
+                const fileInput = document.getElementById('zipFileInput');
+                if (fileInput) {
+                    fileInput.value = '';
+                }
+                toggleElement('photoImportProgress', false);
+                toggleElement('photoImportResults', false);
+            } else {
+                console.error('Import Photos modal not found');
+                showMessage('Import photos modal not available', 'error');
+            }
+        }
+
+        // Perform Photo Import
+        async function performImportPhotos() {
+            const fileInput = document.getElementById('zipFileInput');
+            const file = fileInput?.files[0];
+            
+            if (!file) {
+                showMessage('Please select a ZIP file', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            console.log('Importing photos from ZIP:', file.name);
+            
+            // Show progress with safe element access
+            toggleElement('photoImportProgress', true);
+            toggleElement('photoImportResults', false);
+            
+            try {
+                const response = await fetch('/api/students/import-photos', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                // Hide progress
+                toggleElement('photoImportProgress', false);
+                
+                if (response.ok) {
+                    // Show results
+                    const resultsDiv = document.getElementById('photoImportResults');
+                    if (resultsDiv) {
+                        resultsDiv.style.display = 'block';
+                        
+                        let html = `<div class="alert alert-success">`;
+                        html += `<h4>✅ Photo Import Results</h4>`;
+                        html += `<p><strong>${result.data.uploaded}</strong> photos uploaded successfully</p>`;
+                        
+                        if (result.data.failed > 0) {
+                            html += `<p class="text-warning"><strong>${result.data.failed}</strong> photos failed</p>`;
+                            html += `<div style="max-height: 200px; overflow-y: auto; margin-top: 10px;">`;
+                            html += `<ul style="text-align: left;">`;
+                            result.data.errors.forEach(err => {
+                                html += `<li><small>${err.filename}: ${err.error}</small></li>`;
+                            });
+                            html += `</ul></div>`;
+                        }
+                        
+                        html += `</div>`;
+                        resultsDiv.innerHTML = html;
+                    }
+                    
+                    showMessage(`Successfully uploaded ${result.data.uploaded} photos`, 'success');
+                    
+                    // Reload student list after 3 seconds
+                    setTimeout(() => {
+                        if (typeof loadStudents === 'function') {
+                            loadStudents();
+                        }
+                        closeImportPhotosModal();
+                    }, 3000);
+                    
+                } else {
+                    showMessage(result.message || 'Photo import failed', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error importing photos:', error);
+                showMessage('Failed to import photos: ' + error.message, 'error');
+                
+                toggleElement('photoImportProgress', false);
+            }
+        }
+
+        // Close Import Photos Modal with safe element access
+        function closeImportPhotosModal() {
+            const modal = document.getElementById('importPhotosModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            
+            const results = document.getElementById('photoImportResults');
+            if (results) {
+                results.style.display = 'none';
+                results.innerHTML = '';
+            }
+            
+            const fileInput = document.getElementById('zipFileInput');
+            if (fileInput) {
+                fileInput.value = '';
+            }
+        }
+
+        // Close Photo Modal (alias for backward compatibility)
+        function closePhotoModal() {
+            closeImportPhotosModal();
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const excelModal = document.getElementById('importExcelModal');
+            const photoModal = document.getElementById('importPhotosModal');
+            
+            if (event.target === excelModal) {
+                closeImportModal();
+            }
+            if (event.target === photoModal) {
+                closePhotoModal();
+            }
+        }
+        
+        // ESC key listener to close details panel
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' || event.key === 'Esc') {
+                const panel = document.getElementById('details-panel');
+                const overlay = document.getElementById('details-overlay');
+                
+                // Check if panel is open
+                if (panel && panel.classList.contains('open')) {
+                    closeDetailsPanel();
+                }
+            }
+        });
+        
+        // Helper function to determine if click should close the panel
+        function shouldCloseOnClick(event) {
+            const isClickOnModal = event.target.closest('#importExcelModal, #importPhotosModal');
+            const isClickOnActionButton = event.target.closest('.filter-actions, .action-buttons');
+            const isClickOnStudentLink = event.target.closest('.admission-link');
+            
+            // Close panel unless clicking on modals, action buttons, or student links
+            return !(isClickOnModal || isClickOnActionButton || isClickOnStudentLink);
+        }
+        
+        // Click outside to close details panel
+        document.addEventListener('click', (event) => {
+            const panel = document.getElementById('details-panel');
+            const overlay = document.getElementById('details-overlay');
+            
+            // If clicking on overlay, close panel
+            if (event.target === overlay) {
+                closeDetailsPanel();
+                return;
+            }
+            
+            // Check if panel is open and click is outside
+            if (panel && panel.classList.contains('open')) {
+                const isClickInside = panel.contains(event.target);
+                
+                // If click is outside panel and appropriate, close it
+                if (!isClickInside && shouldCloseOnClick(event)) {
+                    closeDetailsPanel();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

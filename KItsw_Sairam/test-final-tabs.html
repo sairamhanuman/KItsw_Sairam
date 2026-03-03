@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Final Tab Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="p-4">
+    <div class="container">
+        <h1 class="text-center mb-4">✅ Tab Test - Should Work Perfectly</h1>
+        
+        <ul class="nav nav-tabs mb-4" id="testTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="create-tab" data-bs-toggle="tab" data-bs-target="#create" type="button" role="tab">
+                    <i class="bi bi-plus-circle"></i> Create
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="view-tab" data-bs-toggle="tab" data-bs-target="#view" type="button" role="tab">
+                    <i class="bi bi-list-ul"></i> View
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="edit-tab" data-bs-toggle="tab" data-bs-target="#edit" type="button" role="tab">
+                    <i class="bi bi-pencil-square"></i> Edit
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="timetable-tab" data-bs-toggle="tab" data-bs-target="#timetable" type="button" role="tab">
+                    <i class="bi bi-calendar3"></i> Generate
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="testTabContent">
+            <div class="tab-pane fade show active" id="create" role="tabpanel">
+                <div class="alert alert-success">
+                    <h4>✅ Create Tab Content</h4>
+                    <p>This should only be visible when Create tab is active. All other tabs should be hidden.</p>
+                </div>
+            </div>
+            
+            <div class="tab-pane fade" id="view" role="tabpanel">
+                <div class="alert alert-info">
+                    <h4>📋 View Tab Content</h4>
+                    <p>This should only be visible when View tab is active. Create tab content should be hidden.</p>
+                    <table class="table table-bordered mt-3">
+                        <tr><th>ID</th><th>Name</th><th>Status</th></tr>
+                        <tr><td>1</td><td>Test Notification</td><td>Active</td></tr>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="tab-pane fade" id="edit" role="tabpanel">
+                <div class="alert alert-warning">
+                    <h4>✏️ Edit Tab Content</h4>
+                    <p>This should only be visible when Edit tab is active. Other tabs should be hidden.</p>
+                </div>
+            </div>
+            
+            <div class="tab-pane fade" id="timetable" role="tabpanel">
+                <div class="alert alert-danger">
+                    <h4>📅 Generate Tab Content</h4>
+                    <p>This should only be visible when Generate tab is active. Other tabs should be hidden.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        console.log('✅ Final tab test loaded');
+        
+        // Add click listeners to verify tab switching
+        document.querySelectorAll('[data-bs-toggle="tab"]').forEach(button => {
+            button.addEventListener('click', function() {
+                console.log('🔄 Tab clicked:', this.textContent.trim());
+                
+                // Verify tab switching after a short delay
+                setTimeout(() => {
+                    const activePanes = document.querySelectorAll('.tab-pane.active, .tab-pane.show');
+                    console.log('📊 Active panes:', activePanes.length);
+                    activePanes.forEach(pane => {
+                        console.log('✅ Active pane:', pane.id, '-', pane.textContent.trim().substring(0, 30));
+                    });
+                }, 100);
+            });
+        });
+    </script>
+</body>
+</html>

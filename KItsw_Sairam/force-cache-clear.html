@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Force Cache Clear</title>
+</head>
+<body>
+    <h1>Force Browser Cache Clear</h1>
+    <p>This page will help clear the browser cache for the JavaScript file.</p>
+    
+    <script>
+        // Force cache busting
+        console.log('🔧 Forcing cache clear...');
+        
+        // Add timestamp to force reload
+        const timestamp = new Date().getTime();
+        console.log('🔧 Timestamp:', timestamp);
+        
+        // Clear any cached scripts
+        const scripts = document.querySelectorAll('script');
+        scripts.forEach(script => {
+            if (script.src.includes('generate-timetable.js')) {
+                console.log('🔧 Found generate-timetable.js script');
+                const newSrc = script.src.split('?')[0] + '?t=' + timestamp;
+                console.log('🔧 New script src:', newSrc);
+                // Force reload
+                window.location.href = window.location.href.split('?')[0] + '?t=' + timestamp;
+            }
+        });
+        
+        // Auto-redirect after 2 seconds
+        setTimeout(() => {
+            console.log('🔧 Redirecting to generate-timetable page...');
+            window.location.href = 'generate-timetable.html?notification_id=NOT-26-BTEC-VII-1-667361044&t=' + timestamp;
+        }, 2000);
+    </script>
+</body>
+</html>
