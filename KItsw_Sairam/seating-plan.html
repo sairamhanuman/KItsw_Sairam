@@ -606,6 +606,24 @@
         .empty-state p {
             font-size: 14px;
         }
+        /* ── Room Blocking Styles ── */
+        .btn-block-dates {
+            font-size: 11px;
+            padding: 4px 10px;
+            border: 1px solid #fcd34d;
+            background: #fffbeb;
+            color: #d97706;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all .2s;
+            margin-left: 3px;
+        }
+        .btn-block-dates:hover {
+            background: #fef3c7;
+            border-color: #f59e0b;
+        }
+
     </style>
 </head>
 <body>
@@ -895,6 +913,103 @@
         <div class="spinner"></div>
     </div>
 
+   
+    <!-- Block Room Modal -->
+    <div id="blockRoomModal" style="display:none; position:fixed; z-index:2000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+        <div style="background:white; margin:5% auto; border-radius:8px; width:90%; max-width:500px; box-shadow:0 10px 40px rgba(0,0,0,0.3); overflow:hidden;">
+            <div style="background:#fffbeb; border-bottom:2px solid #fde68a; padding:18px 24px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <strong style="font-size:17px;">⛔ Block Room</strong><br>
+                    <small id="blockModalRoomLabel" style="color:#92400e;"></small>
+                </div>
+                <span style="font-size:28px; cursor:pointer; color:#555; line-height:1;" onclick="closeBlockModal()">×</span>
+            </div>
+            <div style="padding:24px;">
+                <input type="hidden" id="blockRoomId"/>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+                    <div>
+                        <label style="font-size:12px; font-weight:600; color:#666; display:block; margin-bottom:5px;">FROM DATE *</label>
+                        <input type="date" id="blockFromDate" style="width:100%; padding:9px; border:1px solid #ddd; border-radius:4px; font-size:14px; box-sizing:border-box;"/>
+                    </div>
+                    <div>
+                        <label style="font-size:12px; font-weight:600; color:#666; display:block; margin-bottom:5px;">TO DATE</label>
+                        <input type="date" id="blockToDate" style="width:100%; padding:9px; border:1px solid #ddd; border-radius:4px; font-size:14px; box-sizing:border-box;"/>
+                        <small style="color:#999; font-size:11px;">Leave same as From for single day</small>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:15px;">
+                    <label style="font-size:12px; font-weight:600; color:#666; display:block; margin-bottom:8px;">SESSIONS *</label>
+                    <div style="display:flex; gap:30px;">
+                        <label style="display:flex; align-items:center; gap:7px; cursor:pointer; font-size:14px;">
+                            <input type="checkbox" id="blockFN" value="1" checked style="width:16px; height:16px;"/>
+                            <span style="background:#1e3c72; color:white; padding:2px 8px; border-radius:4px; font-size:12px; font-weight:600;">FN</span>
+                            Fore Noon
+                        </label>
+                        <label style="display:flex; align-items:center; gap:7px; cursor:pointer; font-size:14px;">
+                            <input type="checkbox" id="blockAN" value="2" checked style="width:16px; height:16px;"/>
+                            <span style="background:#4caf50; color:white; padding:2px 8px; border-radius:4px; font-size:12px; font-weight:600;">AN</span>
+                            After Noon
+                        </label>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:15px;">
+                    <label style="font-size:12px; font-weight:600; color:#666; display:block; margin-bottom:5px;">REASON *</label>
+                    <select id="blockReason" style="width:100%; padding:9px; border:1px solid #ddd; border-radius:4px; font-size:14px;">
+                        <option value="Regular Lecture">Regular Lecture</option>
+                        <option value="Lab Session">Lab Session</option>
+                        <option value="Faculty Meeting">Faculty Meeting</option>
+                        <option value="Maintenance">Maintenance</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom:15px;">
+                    <label style="font-size:12px; font-weight:600; color:#666; display:block; margin-bottom:5px;">NOTE (optional)</label>
+                    <input type="text" id="blockNote" placeholder="Any additional note..."
+                        style="width:100%; padding:9px; border:1px solid #ddd; border-radius:4px; font-size:14px; box-sizing:border-box;"/>
+                </div>
+
+                <div style="margin-bottom:18px;">
+                    <label style="font-size:12px; font-weight:600; color:#666; display:block; margin-bottom:5px;">BLOCKED BY</label>
+                    <input type="text" id="blockBy" placeholder="Your name / department"
+                        style="width:100%; padding:9px; border:1px solid #ddd; border-radius:4px; font-size:14px; box-sizing:border-box;"/>
+                </div>
+
+                <!-- Live preview of slots -->
+                <div id="blockSlotPreview" style="display:none; background:#f8f9fa; border:1px solid #e0e0e0; border-radius:6px; padding:12px; margin-bottom:18px; max-height:130px; overflow-y:auto;">
+                    <strong style="font-size:11px; color:#555; display:block; margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">Slots to be blocked:</strong>
+                    <div id="blockPreviewList"></div>
+                </div>
+
+                <div style="display:flex; gap:10px; justify-content:flex-end;">
+                    <button class="btn btn-secondary" onclick="closeBlockModal()">Cancel</button>
+                    <button class="btn btn-warning" onclick="submitBlockRoom()">⛔ Block Room</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Blocked Slots Modal -->
+    <div id="viewBlockedModal" style="display:none; position:fixed; z-index:2000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+        <div style="background:white; margin:5% auto; border-radius:8px; width:90%; max-width:620px; box-shadow:0 10px 40px rgba(0,0,0,0.3); overflow:hidden; max-height:85vh; display:flex; flex-direction:column;">
+            <div style="background:linear-gradient(135deg,#1e3c72 0%,#2a5298 100%); color:white; padding:18px 24px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+                <strong style="font-size:16px;">📅 Blocked Dates &mdash; <span id="viewBlockedRoomLabel"></span></strong>
+                <span style="font-size:28px; cursor:pointer; line-height:1;" onclick="closeViewBlockedModal()">×</span>
+            </div>
+            <div id="viewBlockedContent" style="padding:20px; overflow-y:auto; flex:1;">
+                <div style="text-align:center; padding:30px; color:#999;">Loading...</div>
+            </div>
+            <div style="padding:14px 20px; border-top:1px solid #f0f0f0; display:flex; gap:10px; justify-content:flex-end; flex-shrink:0;">
+                <button class="btn btn-warning btn-sm" id="addMoreBlockBtn">+ Add More Blocks</button>
+                <button class="btn btn-secondary btn-sm" onclick="closeViewBlockedModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script src="js/seating-plan.js"></script>
 </body>
+
 </html>

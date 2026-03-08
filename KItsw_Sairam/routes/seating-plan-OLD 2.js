@@ -24,7 +24,8 @@ let currentViewRoomNumber = '';
 
 document.addEventListener('DOMContentLoaded', function() {
     initializeTabs();
-    loadAllData();setupFormHandlers();
+    loadAllData();
+    setupFormHandlers();
 });
 
 function initializeTabs() {
@@ -927,11 +928,4 @@ async function unblockSlot(blockId, roomId, roomNumber) {
     } finally {
         hideLoading();
     }
-}
-function closeBlockModal() {
-    document.getElementById('blockRoomModal').style.display = 'none';
-}
-
-function closeViewBlockedModal() {
-    document.getElementById('viewBlockedModal').style.display = 'none';
 }

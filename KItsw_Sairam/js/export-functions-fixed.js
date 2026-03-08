@@ -552,6 +552,7 @@ window.saveTimetable = async function() {
 
         if (result.status === 'success') {
             Swal.fire('Saved!', `${entries.length} timetable entries saved successfully.`, 'success');
+            if (typeof showStudentDataButtons === 'function') showStudentDataButtons();
         } else {
             Swal.fire('Error', result.message || 'Failed to save', 'error');
         }

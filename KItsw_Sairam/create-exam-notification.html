@@ -176,6 +176,24 @@
             content: " *";
             color: #dc3545;
         }
+        
+.back-link::before {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: #007bff; /* Arrow box color */
+  color: #ad0a0a;               /* Arrow color */
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.back-link:hover {
+  background-color: #007bff;
+  color: #fff;
+  text-decoration: none;
+}
     </style>
 </head>
 <body>
@@ -186,7 +204,7 @@
                 <h1>📋 Create Internal Exam Notification</h1>
                 <p>Configure exam parameters and generate notification</p>
             </div>
-            
+            <a href="index.html" class="back-link">← Back to Dashboard</a>
             <!-- Form Section -->
             <div class="form-section">
                 <form id="notificationForm">

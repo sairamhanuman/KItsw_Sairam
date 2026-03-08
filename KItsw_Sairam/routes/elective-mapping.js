@@ -8,10 +8,6 @@ const router = express.Router();
 
 let promisePool;
 
-function initializeRouter(pool) {
-    promisePool = pool;
-    return router;
-}
 
 // ========================================
 // GET GROUP-WISE ELECTIVE SUBJECTS
@@ -498,7 +494,7 @@ router.get('/report', async (req, res) => {
                 AND sem.branch_id = ?
                 AND sem.semester_id = ?
             LEFT JOIN student_master sm ON sem.student_id = sm.student_id
-            WHERE subm. is_elective = 1
+            WHERE subm.is_elective = 1
             AND subm.is_active = 1
             GROUP BY subm.subject_id, subm.syllabus_code, subm.subject_name
             ORDER BY subm.syllabus_code

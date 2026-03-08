@@ -177,10 +177,14 @@ app.use('/api/month-year-master', monthYearMasterRoutes.initializeRouter(promise
 app.use('/api/exam-naming-master', examNamingMasterRoutes.initializeRouter(promisePool));
 app.use('/api/exam-types-master', examTypesMasterRoutes.initializeRouter(promisePool));
 
+
+// // Subject Replacement Routes (MUST be before broad /api mounts)
+const subjectReplacementRoutes = require('./routes/subject-replacement');
+app.use('/api/subject-replacement', subjectReplacementRoutes.initializeRouter(promisePool));
+console.log('✅ Subject replacement route registered');
 // Master Lookup Routes (for resolving IDs to names)
 const { initializeRouter: masterLookupRoutes } = require('./routes/master-lookup');
 app.use('/api', masterLookupRoutes(promisePool));
-
 // Setup Masters Route
 const setupMastersRoutes = require('./routes/setup-masters');
 app.use('/api/setup', setupMastersRoutes.initializeRouter(promisePool));
@@ -277,6 +281,21 @@ app.use('/api/elective-mapping', electiveMgmtRoutes);
 const studentManagementProfessional = require('./routes/student-management-professional-routes');
 const studentMgmtRoutes = studentManagementProfessional.initializeRouter(promisePool);
 app.use('/api/student-management', studentMgmtRoutes);
+
+
+// ── STEP 1: Add these require() lines ────────────────────
+// (Place near your other route requires at the top of server.js)
+
+const seatingRoutes    = require('./routes/seating-allocation-routes');
+const seatingPdfRoutes = require('./routes/seating-pdf-export');
+
+
+// ── STEP 2: Add these app.use() lines ────────────────────
+// (Place BEFORE your catch-all routes like app.use('/api', ...))
+// (Place AFTER your database pool is initialized)
+
+app.use('/api/seating', seatingRoutes.initializeRouter(promisePool));
+app.use('/api/seating', seatingPdfRoutes.initializeRouter(promisePool));
 
 
 // Photo upload route for students (must be after students routes initialization)
@@ -403,6 +422,13 @@ app.use('/api/exam-timetable', examTimetableGeneratorRoutes.initializeRouter(pro
 // Exam Timetable Entries Routes (FIXED VERSION - for Save functionality)
 const examTimetableEntriesRoutes = require('./routes/exam-timetable-entries');
 app.use('/api/exam-timetable', examTimetableEntriesRoutes.initializeRouter(promisePool));
+
+// Student Exam Data Routes
+const studentExamDataRoutes = require('./routes/student-exam-data');
+app.use('/api/student-exam-data', studentExamDataRoutes.initializeRouter(promisePool));
+
+const studentEntriesRoutes = require('./routes/student-entries-routes');
+app.use('/api/student-entries', studentEntriesRoutes.initializeRouter(promisePool));
 
 // Handle 404 for API routes
 app.use('/api', (req, res) => {

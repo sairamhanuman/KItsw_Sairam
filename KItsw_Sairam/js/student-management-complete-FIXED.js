@@ -110,6 +110,8 @@ function openTab(tabName) {
     } else if (tabName === 'elective-mapping') {
         loadMasterData('elective');
         clearElectiveBoxes();
+    } else if (tabName === 'subject-replacement') {
+        loadMasterData('repl');
     }
 }
 
@@ -1336,7 +1338,7 @@ async function loadAvailableStudents() {
             document.getElementById('available-count').textContent = result.data.total;
             
             // Show group context
-            showGroupContext(groupCategory);
+           
             
             console.log(`Loaded ${result.data.total} available students for ${groupCategory} (${electiveName})`);
         } else {
@@ -1420,17 +1422,16 @@ function displayAvailableStudents(students) {
         return;
     }
     
-    let html = '';
-    students.forEach((s, index) => {
+let html = '<div style="display:grid; grid-template-rows: repeat(25, auto); grid-auto-flow: column; gap:4px;">';
+    students.forEach((s) => {
         html += `
-            <div class="elective-student-item">
-                <span class="student-number">${index + 1}.</span>
+            <div class="elective-student-item" style="padding:4px; justify-content:center;">
                 <input type="checkbox" id="avail-${s.student_id}" value="${s.student_id}" onchange="updateAvailableSelectedCount()">
-                <label for="avail-${s.student_id}">${s.roll_number} - ${s.full_name}</label>
+                <label for="avail-${s.student_id}" style="font-size:11px;">${s.roll_number}</label>
             </div>
         `;
     });
-    
+    html += '</div>';
     box.innerHTML = html;
 }
 
@@ -1442,18 +1443,16 @@ function displayMappedStudents(students) {
         return;
     }
     
-    let html = '';
-    students.forEach((s, index) => {
-        const electiveBadge = s.elective_name ? `<span class="elective-badge">${s.elective_name}</span>` : '';
+ let html = '<div style="display:grid; grid-template-rows: repeat(25, auto); grid-auto-flow: column; gap:4px;">';
+    students.forEach((s) => {
         html += `
-            <div class="elective-student-item">
-                <span class="student-number">${index + 1}.</span>
+            <div class="elective-student-item" style="padding:4px; justify-content:center;">
                 <input type="checkbox" id="mapped-${s.student_id}" value="${s.student_id}" onchange="updateMappedSelectedCount()">
-                <label for="mapped-${s.student_id}">${s.roll_number} - ${s.full_name} ${electiveBadge}</label>
+                <label for="mapped-${s.student_id}" style="font-size:11px;">${s.roll_number}</label>
             </div>
         `;
     });
-    
+    html += '</div>';
     box.innerHTML = html;
 }
 
@@ -1620,8 +1619,8 @@ async function moveStudentsBetweenBoxes(studentIds, fromBox, toBox) {
 
 // Update student counts in both boxes
 function updateStudentCounts() {
-    const availableCount = document.querySelectorAll('#available-students-box .student-checkbox-item').length;
-    const mappedCount = document.querySelectorAll('#mapped-students-box .student-checkbox-item').length;
+    const availableCount = document.querySelectorAll('#available-students-box .elective-student-item').length;
+const mappedCount = document.querySelectorAll('#mapped-students-box .elective-student-item').length;
     
     document.getElementById('available-count').textContent = availableCount;
     document.getElementById('mapped-count').textContent = mappedCount;
@@ -1744,74 +1743,101 @@ let pendingAdditions = new Set();
 let pendingRemovals = new Set();
 let selectedStudentIndex = -1; // For keyboard navigation
 let currentFocusBox = 'available'; // 'available' or 'mapped'
+let highlightStart = -1;
+let highlightEnd = -1;
 
 // ========================================
 // KEYBOARD NAVIGATION
 // ========================================
 
 // Initialize keyboard navigation
-document.addEventListener('keydown', function(event) {
-    // Only handle keyboard navigation when not typing in input fields, textareas, or selects
+function highlightCurrentBox() {
+    // Remove highlight from both boxes
+    document.getElementById('available-students-box').style.border = '';
+    document.getElementById('mapped-students-box').style.border = '';
+    
+    // Highlight current box
+    const currentBox = currentFocusBox === 'available' ? 'available-students-box' : 'mapped-students-box';
+    document.getElementById(currentBox).style.border = '2px solid #007bff';
+}document.addEventListener('keydown', function(event) {
+    if (currentTab !== 'elective-mapping') return;
+
     const target = event.target;
-    if (target.tagName === 'INPUT' && target.type !== 'checkbox' || 
-        target.tagName === 'TEXTAREA' || 
+    if ((target.tagName === 'INPUT' && target.type !== 'checkbox') ||
+        target.tagName === 'TEXTAREA' ||
         target.tagName === 'SELECT') {
         return;
     }
-    
-    // Only handle keyboard navigation when elective mapping is visible
-    const availableBox = document.getElementById('available-students-box');
-    const mappedBox = document.getElementById('mapped-students-box');
-    
-    if (!availableBox || !mappedBox || 
-        availableBox.style.display === 'none' || 
-        mappedBox.style.display === 'none') {
-        return;
-    }
-    
-    const currentBox = currentFocusBox === 'available' ? 'available-students-box' : 'mapped-students-box';
-    const studentItems = document.querySelectorAll(`#${currentBox} .elective-student-item`);
-    
-    if (studentItems.length === 0) {
-        console.log('No students found in current box for keyboard navigation');
-        return;
-    }
-    
-    console.log('Key pressed:', event.key, 'Shift:', event.shiftKey, 'Current box:', currentFocusBox);
-    
+
+    const boxId = currentFocusBox === 'available' ? 'available-students-box' : 'mapped-students-box';
+    const studentItems = Array.from(document.querySelectorAll(`#${boxId} .elective-student-item`));
+    if (studentItems.length === 0) return;
+
     switch(event.key) {
+
+        case 'Tab':
+            event.preventDefault();
+            if (event.shiftKey) {
+                currentFocusBox = 'available';
+            } else {
+                currentFocusBox = 'mapped';
+            }
+            selectedStudentIndex = -1;
+            highlightStart = -1;
+            highlightEnd = -1;
+            highlightCurrentBox();
+            break;
+
         case 'ArrowDown':
             event.preventDefault();
-            selectNextStudent(studentItems, 1);
+            if (event.shiftKey) {
+                kbExtendHighlight(studentItems, 1);
+            } else {
+                kbMoveCursor(studentItems, 1);
+            }
             break;
-            
+
         case 'ArrowUp':
             event.preventDefault();
-            selectNextStudent(studentItems, -1);
+            if (event.shiftKey) {
+                kbExtendHighlight(studentItems, -1);
+            } else {
+                kbMoveCursor(studentItems, -1);
+            }
             break;
-            
+
         case 'ArrowRight':
             event.preventDefault();
-            // Switch focus between boxes
-            currentFocusBox = currentFocusBox === 'available' ? 'mapped' : 'available';
-            selectedStudentIndex = -1;
-            highlightCurrentBox();
+            if (event.shiftKey) {
+                kbHighlightColumn(studentItems);
+            } else {
+                currentFocusBox = 'mapped';
+                selectedStudentIndex = -1;
+                highlightStart = -1;
+                highlightEnd = -1;
+                highlightCurrentBox();
+            }
             break;
-            
-        case 'ArrowLeft':
+
+       case 'ArrowLeft':
             event.preventDefault();
-            // Switch focus between boxes
-            currentFocusBox = currentFocusBox === 'available' ? 'mapped' : 'available';
-            selectedStudentIndex = -1;
-            highlightCurrentBox();
+            if (event.shiftKey) {
+                kbHighlightColumn(studentItems);
+            } else {
+                currentFocusBox = 'available';
+                selectedStudentIndex = -1;
+                highlightStart = -1;
+                highlightEnd = -1;
+                highlightCurrentBox();
+            }
             break;
-            
+
         case ' ':
         case 'Enter':
             event.preventDefault();
-            toggleCurrentStudentSelection(studentItems);
+            kbCheckHighlighted(studentItems);
             break;
-            
+
         case 'a':
         case 'A':
             if (event.ctrlKey || event.metaKey) {
@@ -1819,15 +1845,138 @@ document.addEventListener('keydown', function(event) {
                 selectAllInCurrentBox();
             }
             break;
-    }
-    
-    // Handle Shift + Arrow keys for range selection
-    if (event.shiftKey && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
-        event.preventDefault();
-        console.log('Shift + Arrow detected - selecting range');
-        selectRange(studentItems, event.key === 'ArrowDown' ? 1 : -1);
+
+        case 'Escape':
+            event.preventDefault();
+            kbClearHighlights(studentItems);
+            break;
     }
 });
+
+function kbMoveCursor(studentItems, direction) {
+    const newIndex = selectedStudentIndex + direction;
+    if (newIndex < 0 || newIndex >= studentItems.length) return;
+
+    kbClearHighlights(studentItems);
+
+    selectedStudentIndex = newIndex;
+    highlightStart = newIndex;
+    highlightEnd = newIndex;
+
+    studentItems[newIndex].style.background = '#fff3cd';
+    studentItems[newIndex].style.outline = '2px solid #ffc107';
+    studentItems[newIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function kbExtendHighlight(studentItems, direction) {
+    if (selectedStudentIndex === -1) {
+        kbMoveCursor(studentItems, direction > 0 ? 0 : studentItems.length - 1);
+        return;
+    }
+
+    const newEnd = highlightEnd + direction;
+    if (newEnd < 0 || newEnd >= studentItems.length) return;
+
+    highlightEnd = newEnd;
+
+    kbClearHighlights(studentItems);
+    const from = Math.min(highlightStart, highlightEnd);
+    const to = Math.max(highlightStart, highlightEnd);
+    for (let i = from; i <= to; i++) {
+        studentItems[i].style.background = '#fff3cd';
+        studentItems[i].style.outline = '2px solid #ffc107';
+    }
+    studentItems[highlightEnd].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    updateSelectedCount();
+}
+
+function kbHighlightColumn(studentItems) {
+    if (selectedStudentIndex === -1) return;
+
+    const totalRows = 25;
+    const currentCol = Math.floor(selectedStudentIndex / totalRows);
+    const colStart = currentCol * totalRows;
+    const colEnd = Math.min(colStart + totalRows - 1, studentItems.length - 1);
+
+    kbClearHighlights(studentItems);
+    highlightStart = colStart;
+    highlightEnd = colEnd;
+
+    for (let i = colStart; i <= colEnd; i++) {
+        studentItems[i].style.background = '#fff3cd';
+        studentItems[i].style.outline = '2px solid #ffc107';
+    }
+    updateSelectedCount();
+}
+
+function kbCheckHighlighted(studentItems) {
+    if (highlightStart === -1) return;
+
+    const from = Math.min(highlightStart, highlightEnd);
+    const to = Math.max(highlightStart, highlightEnd);
+
+    // Check if ALL highlighted items are already checked
+    const allChecked = Array.from({length: to - from + 1}, (_, i) => {
+        const cb = studentItems[from + i].querySelector('input[type="checkbox"]');
+        return cb && cb.checked;
+    }).every(Boolean);
+
+    // If all checked → uncheck all (deselect). Otherwise → check all.
+    const newState = !allChecked;
+
+    for (let i = from; i <= to; i++) {
+        const checkbox = studentItems[i].querySelector('input[type="checkbox"]');
+        if (checkbox) {
+            checkbox.checked = newState;
+            if (newState) {
+                studentItems[i].style.background = '#d4edda';
+                studentItems[i].style.outline = '2px solid #28a745';
+            } else {
+                studentItems[i].style.background = '#fff3cd';
+                studentItems[i].style.outline = '2px solid #ffc107';
+            }
+        }
+    }
+    updateSelectedCount();
+}
+
+function kbClearHighlights(studentItems) {
+    studentItems.forEach(item => {
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        if (checkbox && !checkbox.checked) {
+            item.style.background = '';
+            item.style.outline = '';
+        }
+    });
+}
+
+function selectAllInCurrentBox() {
+    const boxId = currentFocusBox === 'available' ? 'available-students-box' : 'mapped-students-box';
+    document.querySelectorAll(`#${boxId} input[type="checkbox"]`).forEach(cb => {
+        cb.checked = true;
+        const item = cb.closest('.elective-student-item');
+        if (item) {
+            item.style.background = '#d4edda';
+            item.style.outline = '2px solid #28a745';
+        }
+    });
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    if (currentFocusBox === 'available') {
+        updateAvailableSelectedCount();
+    } else {
+        updateMappedSelectedCount();
+    }
+}
+
+function highlightCurrentBox() {
+    document.getElementById('available-students-box').style.border = '1px solid #e0e0e0';
+    document.getElementById('mapped-students-box').style.border = '1px solid #e0e0e0';
+    const boxId = currentFocusBox === 'available' ? 'available-students-box' : 'mapped-students-box';
+    document.getElementById(boxId).style.border = '2px solid #007bff';
+}
 
 function selectNextStudent(studentItems, direction) {
     const newIndex = selectedStudentIndex + direction;
@@ -1938,3 +2087,486 @@ window.addEventListener('DOMContentLoaded', () => {
     console.log('Professional Student Management System loaded - ALL BUGS FIXED!');
     loadMasterData('initial');
 });
+
+// ========================================
+// TAB 7: REPLACEMENT SUBJECT ALLOTMENT
+// Add this entire block at the BOTTOM of student-management-complete-FIXED.js
+// ========================================
+
+let replPendingAdditions = new Set();
+let replPendingRemovals  = new Set();
+
+// ----------------------------------------
+// Load subjects into both dropdowns
+// Called when semester or regulation changes
+// ----------------------------------------
+async function loadReplacementSubjects() {
+    const programmeId  = document.getElementById('repl-programme').value;
+    const branchId     = document.getElementById('repl-branch').value;
+    const semesterId   = document.getElementById('repl-semester').value;
+    const regulationId = document.getElementById('repl-regulation').value;
+
+    if (!semesterId) return;
+
+    try {
+        const params = new URLSearchParams({
+            programme_id:  programmeId  || '',
+            branch_id:     branchId     || '',
+            semester_id:   semesterId,
+            regulation_id: regulationId || ''
+        });
+
+        const response = await fetch(`/api/subject-replacement/subjects?${params}`);
+        const result   = await response.json();
+
+        if (!response.ok) {
+            console.error('Failed to load replacement subjects:', result);
+            return;
+        }
+
+        const originals    = result.data.originals;
+        const replacements = result.data.replacements;
+        const groups       = result.data.groups;
+
+        // ---- "Substitute for" dropdown = originals only ----
+        const origSelect = document.getElementById('repl-original-subject');
+        origSelect.innerHTML = '<option value="">Select Original Subject</option>';
+        originals.forEach(s => {
+            origSelect.innerHTML += `<option value="${s.subject_id}">${s.syllabus_code} - ${s.subject_name}</option>`;
+        });
+
+        // ---- "Replacement Subject" dropdown = replacements grouped ----
+        const replSelect = document.getElementById('repl-replacement-subject');
+        replSelect.innerHTML = '<option value="">Select Replacement Subject</option>';
+
+        if (replacements.length === 0) {
+            // Fallback: show all subjects if no is_replacement=1 found
+            originals.forEach(s => {
+                replSelect.innerHTML += `<option value="${s.subject_id}">${s.syllabus_code} - ${s.subject_name}</option>`;
+            });
+        } else {
+            // Group by replacement_group_order
+            Object.keys(groups).sort((a, b) => a - b).forEach(grp => {
+                if (Object.keys(groups).length > 1) {
+                    const label = document.createElement('option');
+                    label.disabled = true;
+                    label.textContent = `--- Group ${grp} ---`;
+                    replSelect.appendChild(label);
+                }
+                groups[grp].forEach(s => {
+                    replSelect.innerHTML += `<option value="${s.subject_id}">${s.syllabus_code} - ${s.subject_name}</option>`;
+                });
+            });
+        }
+
+        console.log(`Loaded ${originals.length} originals, ${replacements.length} replacements`);
+
+    } catch (error) {
+        console.error('Error loading replacement subjects:', error);
+    }
+}
+
+// ----------------------------------------
+// SHOW button — load both boxes
+// ----------------------------------------
+async function showReplacementStudents() {
+    const programmeId   = document.getElementById('repl-programme').value;
+    const batchId       = document.getElementById('repl-batch').value;
+    const branchId      = document.getElementById('repl-branch').value;
+    const semesterId    = document.getElementById('repl-semester').value;
+    const origSubjectId = document.getElementById('repl-original-subject').value;
+
+    if (!programmeId || !batchId || !branchId || !semesterId) {
+        showAlert('Please select Programme, Batch, Branch and Semester', 'error');
+        return;
+    }
+
+    if (!origSubjectId) {
+        showAlert('Please select the Original Subject (Substitute for)', 'error');
+        return;
+    }
+
+    // Clear pending changes when loading fresh
+    replPendingAdditions.clear();
+    replPendingRemovals.clear();
+
+    // Reset checkboxes
+    const saEl = document.getElementById('repl-select-all-available');
+    const smEl = document.getElementById('repl-select-all-mapped');
+    if (saEl) saEl.checked = false;
+    if (smEl) smEl.checked = false;
+
+    await loadReplAvailableStudents();
+    await loadReplMappedStudents();
+}
+
+// ----------------------------------------
+// Left Box — Available students
+// ----------------------------------------
+async function loadReplAvailableStudents() {
+    const programmeId   = document.getElementById('repl-programme').value;
+    const batchId       = document.getElementById('repl-batch').value;
+    const branchId      = document.getElementById('repl-branch').value;
+    const semesterId    = document.getElementById('repl-semester').value;
+    const origSubjectId = document.getElementById('repl-original-subject').value;
+
+    const box = document.getElementById('repl-available-box');
+    box.innerHTML = '<p style="color:#999; font-size:12px;">Loading...</p>';
+
+    try {
+        const params = new URLSearchParams({
+            programme_id:        programmeId,
+            batch_id:            batchId,
+            branch_id:           branchId,
+            semester_id:         semesterId,
+            original_subject_id: origSubjectId
+        });
+
+        const response = await fetch(`/api/subject-replacement/available-students?${params}`);
+        const result   = await response.json();
+
+        if (!response.ok) {
+            box.innerHTML = `<p style="color:red;">Error: ${result.message}</p>`;
+            return;
+        }
+
+        const students = result.data.students;
+        document.getElementById('repl-available-count').textContent    = result.data.total;
+        document.getElementById('repl-available-selected').textContent = '0';
+
+        if (students.length === 0) {
+            box.innerHTML = '<p style="color:#999; font-size:12px;">No students available (all already replaced)</p>';
+            return;
+        }
+
+        let html = '<div style="display:grid; grid-template-rows: repeat(25, auto); grid-auto-flow: column; gap:3px;">';
+        students.forEach(s => {
+            html += `
+                <div class="elective-student-item" style="padding:3px 5px;">
+                    <input type="checkbox"
+                        id="repl-avail-${s.student_id}"
+                        value="${s.student_id}"
+                        onchange="replUpdateCount('available')">
+                    <label for="repl-avail-${s.student_id}"
+                        style="font-size:11px; cursor:pointer;"
+                        title="${s.full_name}">${s.roll_number}</label>
+                </div>`;
+        });
+        html += '</div>';
+        box.innerHTML = html;
+
+    } catch (error) {
+        console.error('Error loading available students:', error);
+        box.innerHTML = '<p style="color:red;">Failed to load students</p>';
+    }
+}
+
+// ----------------------------------------
+// Right Box — Already replaced students
+// ----------------------------------------
+async function loadReplMappedStudents() {
+    const programmeId      = document.getElementById('repl-programme').value;
+    const batchId          = document.getElementById('repl-batch').value;
+    const branchId         = document.getElementById('repl-branch').value;
+    const semesterId       = document.getElementById('repl-semester').value;
+    const origSubjectId    = document.getElementById('repl-original-subject').value;
+    const replSubjectId    = document.getElementById('repl-replacement-subject').value;
+
+    const box = document.getElementById('repl-mapped-box');
+    box.innerHTML = '<p style="color:#999; font-size:12px;">Loading...</p>';
+
+    try {
+        const params = new URLSearchParams({
+            programme_id:           programmeId,
+            batch_id:               batchId,
+            branch_id:              branchId,
+            semester_id:            semesterId,
+            original_subject_id:    origSubjectId,
+            replacement_subject_id: replSubjectId || ''
+        });
+
+        const response = await fetch(`/api/subject-replacement/replaced-students?${params}`);
+        const result   = await response.json();
+
+        if (!response.ok) {
+            box.innerHTML = `<p style="color:red;">Error: ${result.message}</p>`;
+            return;
+        }
+
+        const students = result.data.students;
+        document.getElementById('repl-mapped-count').textContent    = result.data.total;
+        document.getElementById('repl-mapped-selected').textContent = '0';
+
+        if (students.length === 0) {
+            box.innerHTML = '<p style="color:#999; font-size:12px;">No students replaced yet</p>';
+            return;
+        }
+
+        let html = '<div style="display:grid; grid-template-rows: repeat(25, auto); grid-auto-flow: column; gap:3px;">';
+        students.forEach(s => {
+            html += `
+                <div class="elective-student-item" style="padding:3px 5px;">
+                    <input type="checkbox"
+                        id="repl-mapped-${s.student_id}"
+                        value="${s.student_id}"
+                        onchange="replUpdateCount('mapped')">
+                    <label for="repl-mapped-${s.student_id}"
+                        style="font-size:11px; cursor:pointer;"
+                        title="${s.full_name} → ${s.replacement_subject_name}">${s.roll_number}</label>
+                </div>`;
+        });
+        html += '</div>';
+        box.innerHTML = html;
+
+    } catch (error) {
+        console.error('Error loading replaced students:', error);
+        box.innerHTML = '<p style="color:red;">Failed to load students</p>';
+    }
+}
+
+// ----------------------------------------
+// Select All toggle
+// ----------------------------------------
+function replToggleSelectAll(box) {
+    const isAvail  = box === 'available';
+    const checkAll = document.getElementById(isAvail ? 'repl-select-all-available' : 'repl-select-all-mapped').checked;
+    const boxId    = isAvail ? 'repl-available-box' : 'repl-mapped-box';
+    document.querySelectorAll(`#${boxId} input[type="checkbox"]`).forEach(cb => {
+        cb.checked = checkAll;
+    });
+    replUpdateCount(box);
+}
+
+// ----------------------------------------
+// Update selected count display
+// ----------------------------------------
+function replUpdateCount(box) {
+    if (box === 'available') {
+        const count = document.querySelectorAll('#repl-available-box input[type="checkbox"]:checked').length;
+        document.getElementById('repl-available-selected').textContent = count;
+    } else {
+        const count = document.querySelectorAll('#repl-mapped-box input[type="checkbox"]:checked').length;
+        document.getElementById('repl-mapped-selected').textContent = count;
+    }
+}
+
+// ----------------------------------------
+// ADD button — move selected left → right
+// ----------------------------------------
+function addReplacementStudents() {
+    const replSubjectId = document.getElementById('repl-replacement-subject').value;
+    if (!replSubjectId) {
+        showAlert('Please select a Replacement Subject first', 'error');
+        return;
+    }
+
+    const selectedIds = Array.from(
+        document.querySelectorAll('#repl-available-box input[type="checkbox"]:checked')
+    ).map(cb => cb.value);
+
+    if (selectedIds.length === 0) {
+        showAlert('Please select students to add', 'error');
+        return;
+    }
+
+    // Track pending
+    selectedIds.forEach(id => {
+        replPendingAdditions.add(id);
+        replPendingRemovals.delete(id);
+    });
+
+    // Move visually
+    const fromBox = document.getElementById('repl-available-box');
+    const toBox   = document.getElementById('repl-mapped-box');
+
+    // Clear "no students" message if present
+    const emptyMsg = toBox.querySelector('p');
+    if (emptyMsg) toBox.innerHTML = '<div style="display:grid; grid-template-rows: repeat(25, auto); grid-auto-flow: column; gap:3px;"></div>';
+
+    const grid = toBox.querySelector('div') || toBox;
+
+    selectedIds.forEach(id => {
+        const el = fromBox.querySelector(`input[value="${id}"]`)?.closest('.elective-student-item');
+        if (el) {
+            el.querySelector('input').checked = false;
+            grid.appendChild(el);
+        }
+    });
+
+    // Update counts
+    replUpdateCount('available');
+    replUpdateCount('mapped');
+
+    // Update total counts
+    document.getElementById('repl-available-count').textContent =
+        document.querySelectorAll('#repl-available-box .elective-student-item').length;
+    document.getElementById('repl-mapped-count').textContent =
+        document.querySelectorAll('#repl-mapped-box .elective-student-item').length;
+
+    // Uncheck select all
+    document.getElementById('repl-select-all-available').checked = false;
+
+    // Show notification
+    replShowNotification(`${selectedIds.length} student(s) moved → Save to confirm`, '#28a745');
+}
+
+// ----------------------------------------
+// REMOVE button — move selected right → left
+// ----------------------------------------
+function removeReplacementStudents() {
+    const selectedIds = Array.from(
+        document.querySelectorAll('#repl-mapped-box input[type="checkbox"]:checked')
+    ).map(cb => cb.value);
+
+    if (selectedIds.length === 0) {
+        showAlert('Please select students to remove', 'error');
+        return;
+    }
+
+    // Track pending
+    selectedIds.forEach(id => {
+        replPendingRemovals.add(id);
+        replPendingAdditions.delete(id);
+    });
+
+    // Move visually
+    const fromBox = document.getElementById('repl-mapped-box');
+    const toBox   = document.getElementById('repl-available-box');
+
+    const emptyMsg = toBox.querySelector('p');
+    if (emptyMsg) toBox.innerHTML = '<div style="display:grid; grid-template-rows: repeat(25, auto); grid-auto-flow: column; gap:3px;"></div>';
+
+    const grid = toBox.querySelector('div') || toBox;
+
+    selectedIds.forEach(id => {
+        const el = fromBox.querySelector(`input[value="${id}"]`)?.closest('.elective-student-item');
+        if (el) {
+            el.querySelector('input').checked = false;
+            grid.appendChild(el);
+        }
+    });
+
+    replUpdateCount('available');
+    replUpdateCount('mapped');
+
+    document.getElementById('repl-available-count').textContent =
+        document.querySelectorAll('#repl-available-box .elective-student-item').length;
+    document.getElementById('repl-mapped-count').textContent =
+        document.querySelectorAll('#repl-mapped-box .elective-student-item').length;
+
+    document.getElementById('repl-select-all-mapped').checked = false;
+
+    replShowNotification(`${selectedIds.length} student(s) removed → Save to confirm`, '#dc3545');
+}
+
+// ----------------------------------------
+// SAVE button — persist to database
+// ----------------------------------------
+async function saveReplacementMapping() {
+    if (replPendingAdditions.size === 0 && replPendingRemovals.size === 0) {
+        showAlert('No changes to save', 'info');
+        return;
+    }
+
+    const programmeId   = document.getElementById('repl-programme').value;
+    const batchId       = document.getElementById('repl-batch').value;
+    const branchId      = document.getElementById('repl-branch').value;
+    const semesterId    = document.getElementById('repl-semester').value;
+    const origSubjectId = document.getElementById('repl-original-subject').value;
+    const replSubjectId = document.getElementById('repl-replacement-subject').value;
+    const academicYear  = document.getElementById('repl-academic-year').value;
+
+    if (!origSubjectId) {
+        showAlert('Original subject is required', 'error');
+        return;
+    }
+
+    if (replPendingAdditions.size > 0 && !replSubjectId) {
+        showAlert('Please select a Replacement Subject before saving additions', 'error');
+        return;
+    }
+
+    try {
+        let totalAdded   = 0;
+        let totalRemoved = 0;
+
+        // Process additions
+        if (replPendingAdditions.size > 0) {
+            console.log(`Saving ${replPendingAdditions.size} additions...`);
+            const res = await fetch('/api/subject-replacement/add-students', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_ids:            Array.from(replPendingAdditions),
+                    programme_id:           programmeId,
+                    batch_id:               batchId,
+                    branch_id:              branchId,
+                    semester_id:            semesterId,
+                    original_subject_id:    origSubjectId,
+                    replacement_subject_id: replSubjectId,
+                    academic_year:          academicYear
+                })
+            });
+            const result = await res.json();
+            if (res.ok) {
+                totalAdded = result.data.added;
+                console.log(`✅ Added ${totalAdded} students`);
+            } else {
+                throw new Error(result.message || 'Failed to add students');
+            }
+        }
+
+        // Process removals
+        if (replPendingRemovals.size > 0) {
+            console.log(`Saving ${replPendingRemovals.size} removals...`);
+            const res = await fetch('/api/subject-replacement/remove-students', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_ids:         Array.from(replPendingRemovals),
+                    original_subject_id: origSubjectId,
+                    semester_id:         semesterId
+                })
+            });
+            const result = await res.json();
+            if (res.ok) {
+                totalRemoved = result.data.removed;
+                console.log(`✅ Removed ${totalRemoved} students`);
+            } else {
+                throw new Error(result.message || 'Failed to remove students');
+            }
+        }
+
+        showAlert(`✅ Saved — Added: ${totalAdded}, Removed: ${totalRemoved}`, 'success');
+
+        // Clear pending
+        replPendingAdditions.clear();
+        replPendingRemovals.clear();
+
+        // Reload both boxes fresh from DB
+        await loadReplAvailableStudents();
+        await loadReplMappedStudents();
+
+    } catch (error) {
+        console.error('Error saving replacement mapping:', error);
+        showAlert('Failed to save: ' + error.message, 'error');
+    }
+}
+
+// ----------------------------------------
+// Small toast notification helper
+// ----------------------------------------
+function replShowNotification(message, color) {
+    const div = document.createElement('div');
+    div.style.cssText = `
+        position: fixed; top: 15px; right: 15px;
+        background: ${color}; color: white;
+        padding: 8px 14px; border-radius: 4px;
+        font-size: 12px; font-weight: 600;
+        z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    `;
+    div.textContent = message;
+    document.body.appendChild(div);
+    setTimeout(() => { if (div.parentNode) div.parentNode.removeChild(div); }, 2500);
+}
+

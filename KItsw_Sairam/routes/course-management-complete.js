@@ -181,7 +181,7 @@ router.post('/subjects', async (req, res) => {
             external_exam_code, subject_name, subject_type,
             internal_max_marks, external_max_marks, ta_max_marks,
             credits, is_elective, is_under_group, elective_name,
-            is_exempt_exam_fee, replacement_group_order, is_running_curriculum, is_locked
+            is_exempt_exam_fee, is_replacement, replacement_group_order, is_running_curriculum, is_locked
         } = req.body;
         
         // Validation
@@ -210,13 +210,13 @@ router.post('/subjects', async (req, res) => {
         // Insert new subject with elective_name
         const [result] = await promisePool.query(
             `INSERT INTO subject_master (
-                programme_id, branch_id, semester_id, regulation_id,
-                subject_order, syllabus_code, ref_code, internal_exam_code,
-                external_exam_code, subject_name, subject_type,
-                internal_max_marks, external_max_marks, ta_max_marks,
-                credits, is_elective, is_under_group, elective_name,
-                is_exempt_exam_fee, replacement_group_order, is_running_curriculum, is_locked
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    programme_id, branch_id, semester_id, regulation_id,
+    subject_order, syllabus_code, ref_code, internal_exam_code,
+    external_exam_code, subject_name, subject_type,
+    internal_max_marks, external_max_marks, ta_max_marks,
+    credits, is_elective, is_under_group, elective_name,
+        is_exempt_exam_fee, is_replacement, replacement_group_order, is_running_curriculum, is_locked  
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 programme_id, branch_id, semester_id, regulation_id,
                 subject_order || 1, syllabus_code, ref_code || null, 
@@ -224,7 +224,7 @@ router.post('/subjects', async (req, res) => {
                 subject_name, subject_type || 'Theory',
                 internal_max_marks || 0, external_max_marks || 0, ta_max_marks || 0,
                 credits || 0, is_elective || 0, is_under_group || 0, elective_name || null,
-                is_exempt_exam_fee || 0, replacement_group_order || null,
+                                is_exempt_exam_fee || 0, is_replacement || 0, replacement_group_order || null,
                 is_running_curriculum !== false ? 1 : 0, is_locked || 0
             ]
         );
@@ -254,9 +254,11 @@ router.put('/subjects/:id', async (req, res) => {
             external_exam_code, subject_name, subject_type,
             internal_max_marks, external_max_marks, ta_max_marks,
             credits, is_elective, is_under_group, elective_name,
-            is_exempt_exam_fee, replacement_group_order, is_running_curriculum, is_locked
+            is_exempt_exam_fee,is_replacement, replacement_group_order, is_running_curriculum, is_locked
         } = req.body;
-        
+        // Add after line 258
+console.log('Request body:', req.body);
+console.log('is_replacement value:', req.body.is_replacement);
         // Check if subject exists
         const [existing] = await promisePool.query(
             'SELECT subject_id, is_locked FROM subject_master WHERE subject_id = ?',
@@ -286,7 +288,7 @@ router.put('/subjects/:id', async (req, res) => {
                 subject_name = ?, subject_type = ?,
                 internal_max_marks = ?, external_max_marks = ?, ta_max_marks = ?,
                 credits = ?, is_elective = ?, is_under_group = ?, elective_name = ?,
-                is_exempt_exam_fee = ?, replacement_group_order = ?,
+                is_exempt_exam_fee = ?, is_replacement = ?, replacement_group_order = ?,
                 is_running_curriculum = ?, is_locked = ?
             WHERE subject_id = ?`,
             [
@@ -295,7 +297,7 @@ router.put('/subjects/:id', async (req, res) => {
                 subject_name, subject_type,
                 internal_max_marks, external_max_marks, ta_max_marks,
                 credits, is_elective, is_under_group, elective_name,
-                is_exempt_exam_fee, replacement_group_order,
+                is_exempt_exam_fee, is_replacement,replacement_group_order,
                 is_running_curriculum, is_locked,
                 req.params.id
             ]

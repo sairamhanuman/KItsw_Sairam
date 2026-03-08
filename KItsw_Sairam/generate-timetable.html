@@ -6,6 +6,7 @@
     <title>Generate Exam Time Table</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .timetable-container {
             background: #f8f9fa;
@@ -442,34 +443,73 @@
             </div>
             
             <!-- Timetable Management Buttons (shown after generation) -->
-            <div id="timetableActions" style="display: none;" class="card mb-4">
-                <div class="card-body">
-                    <h5 class="mb-3"><i class="bi bi-gear"></i> Timetable Management</h5>
-                    <div class="row g-3">
-                        <div class="col-md-3">
-                            <button id="saveBtn" class="btn btn-warning w-100" style="display: none;">
-                                <i class="bi bi-save"></i> Save Changes
-                            </button>
-                        </div>
-                        <div class="col-md-3">
-                            <button id="exportBtn" class="btn btn-info w-100" style="display: none;">
-                                <i class="bi bi-download"></i> Export
-                            </button>
-                        </div>
-                        <div class="col-md-3">
-                            <button id="clearBtn" class="btn btn-danger w-100" style="display: none;">
-                                <i class="bi bi-trash"></i> Clear
-                            </button>
-                        </div>
-                        <div class="col-md-3">
-                            <button id="regenerateBtn" class="btn btn-secondary w-100" style="display: none;">
-                                <i class="bi bi-arrow-clockwise"></i> Regenerate
-                            </button>
-                        </div>
-                    </div>
-                </div>
+           <!-- Timetable Management Buttons -->
+<div id="timetableActions" style="display: none;" class="card mb-4">
+    <div class="card-body">
+        <h5 class="mb-3"><i class="bi bi-gear"></i> Timetable Management</h5>
+        <div class="row g-3">
+            <div class="col-md-3">
+                <button id="saveBtn" class="btn btn-warning w-100" style="display: none;">
+                    <i class="bi bi-save"></i> Save Changes
+                </button>
+            </div>
+            <div class="col-md-3">
+                <button id="exportBtn" class="btn btn-info w-100" style="display: none;">
+                    <i class="bi bi-download"></i> Export
+                </button>
+            </div>
+            <div class="col-md-3">
+                <button id="clearBtn" class="btn btn-danger w-100" style="display: none;">
+                    <i class="bi bi-trash"></i> Clear
+                </button>
+            </div>
+            <div class="col-md-3">
+                <button id="regenerateBtn" class="btn btn-secondary w-100" style="display: none;">
+                    <i class="bi bi-arrow-clockwise"></i> Regenerate
+                </button>
             </div>
         </div>
+
+        <!-- ✅ Snippet A — INSIDE card-body, AFTER row g-3 closes -->
+        <div id="studentDataActions" style="display:none; margin-top: 12px;">
+            <div class="d-flex gap-2 flex-wrap">
+                <button id="btnGenerateStudentData" class="btn btn-primary" onclick="generateStudentData()">
+                    <i class="bi bi-people-fill"></i> Generate Student Data
+                </button>
+                <button id="btnViewSummary" class="btn btn-success" onclick="viewSummary()" disabled>
+                    <i class="bi bi-table"></i> View Summary
+                </button>
+                <span id="studentDataStatus" class="text-muted align-self-center small"></span>
+            </div>
+        </div>
+
+    </div>
+</div>
+<!-- ============================================================
+     SNIPPET B: Summary Modal — Paste before closing </body>
+     ============================================================ -->
+
+<div class="modal fade" id="summaryModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-table me-2"></i>Exam Summary — Student Count</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="summaryTableContainer">
+                    <div class="text-center p-4"><div class="spinner-border text-success"></div><p class="mt-2">Loading summary...</p></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" onclick="exportSummaryCSV()"><i class="fas fa-file-csv me-1"></i>Export CSV</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
     </div>
 
     <!-- Success/Error Messages -->
@@ -1728,6 +1768,232 @@ dateObj.branches[branch.id].push({
         }
     </script>
     
+<script>
+// ── Show student data buttons after timetable is saved ───────
+// Call this from inside your existing saveTimetable() success block:
+//   showStudentDataButtons();
+
+function showStudentDataButtons() {
+    document.getElementById('studentDataActions').style.display = 'block';
+    checkStudentDataStatus();
+}
+
+// ── Check if student data already generated ───────────────────
+async function checkStudentDataStatus() {
+    const notificationId = new URLSearchParams(window.location.search).get('notificationId');
+    if (!notificationId) return;
+
+    try {
+        const res    = await fetch(`/api/student-entries/status/${notificationId}`);
+        const result = await res.json();
+
+        if (result.status === 'success' && result.data.is_generated) {
+            const dt = new Date(result.data.last_generated).toLocaleString();
+            document.getElementById('studentDataStatus').innerHTML =
+                `<i class="fas fa-check-circle text-success"></i> ${result.data.total_entries} entries generated on ${dt}`;
+            document.getElementById('btnViewSummary').disabled = false;
+        } else {
+            document.getElementById('studentDataStatus').textContent = 'Not yet generated';
+            document.getElementById('btnViewSummary').disabled = true;
+        }
+    } catch (e) {
+        console.warn('Could not check student data status:', e);
+    }
+}
+
+// ── BUTTON 1: Generate Student Data ──────────────────────────
+async function generateStudentData() {
+    const notificationId = new URLSearchParams(window.location.search).get('notificationId');
+
+    const confirm = await Swal.fire({
+        title: 'Generate Student Data?',
+        html: 'This will resolve subjects for all students<br>based on the saved timetable.<br><br>Any previous generation will be replaced.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Generate',
+        confirmButtonColor: '#0d6efd'
+    });
+    if (!confirm.isConfirmed) return;
+
+    Swal.fire({ title: 'Generating...', html: 'Resolving subjects for all students...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+    try {
+        const res    = await fetch(`/api/student-entries/generate/${notificationId}`, { method: 'POST' });
+        const result = await res.json();
+        Swal.close();
+
+        if (result.status === 'success') {
+            await Swal.fire({
+                title: 'Generated!',
+                html: `<b>${result.data.total_students}</b> students processed<br><b>${result.data.total_entries}</b> entries saved`,
+                icon: 'success'
+            });
+            document.getElementById('btnViewSummary').disabled = false;
+            checkStudentDataStatus();
+        } else {
+            Swal.fire('Error', result.message, 'error');
+        }
+    } catch (e) {
+        Swal.close();
+        Swal.fire('Error', 'Failed to generate: ' + e.message, 'error');
+    }
+}
+
+// ── BUTTON 2: View Summary ────────────────────────────────────
+let summaryDataGlobal = null;
+
+async function viewSummary() {
+    const notificationId = new URLSearchParams(window.location.search).get('notificationId');
+
+    const modal = new bootstrap.Modal(document.getElementById('summaryModal'));
+    modal.show();
+    document.getElementById('summaryTableContainer').innerHTML =
+        '<div class="text-center p-4"><div class="spinner-border text-success"></div><p class="mt-2">Loading...</p></div>';
+
+    try {
+        const res    = await fetch(`/api/student-entries/summary/${notificationId}`);
+        const result = await res.json();
+
+        if (result.status !== 'success') throw new Error(result.message);
+
+        summaryDataGlobal = result.data;
+        renderSummaryTable(result.data);
+    } catch (e) {
+        document.getElementById('summaryTableContainer').innerHTML =
+            `<div class="alert alert-danger m-3">Failed to load summary: ${e.message}</div>`;
+    }
+}
+
+// ── Render Summary Table ──────────────────────────────────────
+function renderSummaryTable(data) {
+    const { summary, totals, grand_total } = data;
+
+    // Group by date+session
+    const grouped = {};
+    summary.forEach(row => {
+        const key = `${row.exam_date}_${row.session_order}`;
+        if (!grouped[key]) grouped[key] = { rows: [], meta: row };
+        grouped[key].rows.push(row);
+    });
+
+    const totalsMap = {};
+    totals.forEach(t => { totalsMap[`${t.exam_date}_${t.session_order}`] = t.total_students; });
+
+    const formatDate = d => {
+        const dt = new Date(d);
+        return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', weekday: 'short' });
+    };
+    const formatTime = t => {
+        if (!t) return '';
+        const [h, m] = t.substring(0,5).split(':');
+        const hr = parseInt(h);
+        return `${hr > 12 ? hr-12 : hr}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
+    };
+
+    let html = `
+        <div class="p-3">
+            <div class="alert alert-info py-2 mb-3">
+                <strong>Grand Total:</strong> ${grand_total} student-subject entries across ${totals.length} date-session(s)
+            </div>
+        </div>
+        <div class="table-responsive px-3 pb-3">
+        <table class="table table-bordered table-hover table-sm align-middle" id="summaryTable">
+            <thead class="table-dark">
+                <tr>
+                    <th>Date</th>
+                    <th>Session</th>
+                    <th>Timing</th>
+                    <th>Branch</th>
+                    <th>Syllabus Code</th>
+                    <th>Subject Name</th>
+                    <th>Type</th>
+                    <th class="text-center">Student Count</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+    Object.entries(grouped).forEach(([key, group]) => {
+        const { rows, meta } = group;
+        const totalForSlot   = totalsMap[key] || 0;
+        const rowspan        = rows.length;
+
+        rows.forEach((row, idx) => {
+            html += `<tr>`;
+            if (idx === 0) {
+                html += `
+                    <td rowspan="${rowspan}" class="fw-bold text-nowrap bg-light">
+                        ${formatDate(row.exam_date)}
+                    </td>
+                    <td rowspan="${rowspan}" class="text-center bg-light">
+                        <span class="badge bg-primary">${row.session_name || 'FN'}</span>
+                    </td>
+                    <td rowspan="${rowspan}" class="text-nowrap bg-light small">
+                        ${formatTime(row.start_time)} – ${formatTime(row.end_time)}
+                    </td>`;
+            }
+            html += `
+                <td><span class="badge bg-secondary">${row.branch_code}</span> ${row.branch_name}</td>
+                <td class="fw-bold text-primary">${row.syllabus_code || '—'}</td>
+                <td>${row.subject_name}</td>
+                <td><span class="badge bg-light text-dark border">${row.subject_type || 'Theory'}</span></td>
+                <td class="text-center fw-bold fs-5 text-success">${row.student_count}</td>
+            </tr>`;
+        });
+
+        // Sub-total row per date+session
+        html += `
+            <tr class="table-warning">
+                <td colspan="4" class="text-end fw-bold">Total for this slot:</td>
+                <td colspan="3" class="text-center fw-bold text-danger fs-5">${totalForSlot}</td>
+            </tr>`;
+    });
+
+    html += `
+            </tbody>
+            <tfoot class="table-dark">
+                <tr>
+                    <td colspan="7" class="text-end fw-bold">Grand Total (all slots):</td>
+                    <td class="text-center fw-bold fs-5">${grand_total}</td>
+                </tr>
+            </tfoot>
+        </table>
+        </div>`;
+
+    document.getElementById('summaryTableContainer').innerHTML = html;
+}
+
+// ── Export Summary as CSV ─────────────────────────────────────
+function exportSummaryCSV() {
+    if (!summaryDataGlobal) return;
+
+    const { summary } = summaryDataGlobal;
+    let csv = 'Date,Session,Start Time,End Time,Branch Code,Branch Name,Syllabus Code,Subject Name,Subject Type,Student Count\n';
+
+    summary.forEach(row => {
+        const d = new Date(row.exam_date).toLocaleDateString('en-GB');
+        csv += `"${d}","${row.session_name || ''}","${row.start_time || ''}","${row.end_time || ''}","${row.branch_code}","${row.branch_name}","${row.syllabus_code || ''}","${row.subject_name}","${row.subject_type || 'Theory'}",${row.student_count}\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `exam_summary_${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// ── Auto-check status on page load ───────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    // Show buttons if timetable already saved (check param)
+    const notificationId = new URLSearchParams(window.location.search).get('notificationId');
+    if (notificationId) {
+        document.getElementById('studentDataActions').style.display = 'block';
+        checkStudentDataStatus();
+    }
+});
+</script>
+
     <!-- Export Functions Script (Fixed Version) -->
     <script src="js/export-functions-fixed.js"></script>
     

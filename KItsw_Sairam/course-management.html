@@ -271,7 +271,7 @@
 
         /* Table Section */
         .table-section {
-            background: rgb(243, 235, 235)1);
+            background: rgb(243, 235, 235);
             padding: 25px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -488,11 +488,42 @@
             padding: 40px;
             color: #6c757d;
         }
+          .back-link {
+  display: inline-block;
+  text-decoration: none;
+  color: #007bff; /* Link text color */
+  font-weight: 500;
+  font-size: 16px;
+  padding: 8px 12px 8px 36px; /* extra left padding for the arrow box */
+  border: 1px solid #007bff;
+  border-radius: 4px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.back-link::before {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: #007bff; /* Arrow box color */
+  color: #ad0a0a;               /* Arrow color */
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.back-link:hover {
+  background-color: #007bff;
+  color: #fff;
+  text-decoration: none;
+}
     </style>
 </head>
 <body>
     <div class="course-container">
-        <!-- Header -->
+         <a href="index.html" class="back-link">← Back to Dashboard</a>
+        <!-- Tabs --><!-- Header -->
         <div class="course-header">
             <h1>📚 Course/Subject Management</h1>
             <p>Manage curriculum subjects by programme, branch, semester, and regulation</p>
@@ -552,8 +583,7 @@
                 <button class="btn btn-success" onclick="exportToExcel()">📥 Export to Excel</button>
                 <button class="btn btn-info" onclick="generateSampleExcel()">📄 Download Sample Excel</button>
                 <button class="btn btn-warning" onclick="showImportModal()">📤 Import from Excel</button>
-                <button type="submit" class="btn btn-primary">Save Subject</button>
-                <button type="button" class="btn btn-secondary" onclick="resetForm()">Clear Form</button>
+                
             </div>
         </div>
 
@@ -649,6 +679,10 @@
                             <input type="checkbox" id="isUnderGroup">
                             <label for="isUnderGroup">Is Under Group</label>
                         </div>
+                        <div class="checkbox-group">
+                       <input type="checkbox" id="isReplacement">
+                            <label for="isReplacement">🔄 Is Replacement Subject</label>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="electiveName">Elective Name</label>
@@ -677,9 +711,11 @@
                     </div>
                 </div>
 
-                <div class="form-actions">
-                   
-                </div>
+               <div class="form-actions">
+    <button type="submit" class="btn btn-primary">💾 Save Subject</button>
+    <button type="button" class="btn btn-secondary" onclick="resetForm()">Clear Form</button>
+</div>
+         
             </form>
         </div>
 
@@ -975,6 +1011,7 @@
         // Setup form submit
         function setupFormSubmit() {
             document.getElementById('subjectForm').addEventListener('submit', async (e) => {
+               console.log("🔥 FORM SUBMIT TRIGGERED");
                 e.preventDefault();
                 
                 // Check if edit mode is enabled
@@ -1008,6 +1045,7 @@
                     credits: parseFloat(document.getElementById('credits').value),
                     is_elective: document.getElementById('isElective').checked ? 1 : 0,
                     is_under_group: document.getElementById('isUnderGroup').checked ? 1 : 0,
+                    is_replacement: document.getElementById('isReplacement').checked ? 1 : 0,
                     elective_name: document.getElementById('electiveName').value,
                     is_exempt_exam_fee: document.getElementById('isExemptExamFee').checked ? 1 : 0,
                     replacement_group_order: document.getElementById('replacementGroupOrder').value || null,
@@ -1074,6 +1112,7 @@
                     document.getElementById('credits').value = subject.credits;
                     document.getElementById('isElective').checked = subject.is_elective;
                     document.getElementById('isUnderGroup').checked = subject.is_under_group;
+                    document.getElementById('isReplacement').checked = subject.is_replacement;
                     document.getElementById('electiveName').value = subject.elective_name || '';
                     document.getElementById('isExemptExamFee').checked = subject.is_exempt_exam_fee;
                     document.getElementById('replacementGroupOrder').value = subject.replacement_group_order || '';

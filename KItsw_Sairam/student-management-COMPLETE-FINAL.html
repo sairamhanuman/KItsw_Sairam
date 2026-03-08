@@ -476,16 +476,48 @@
             .elective-boxes { grid-template-columns: 1fr; }
             .modal-content { width: 95%; margin: 5% auto; }
         }
+        .back-link {
+  display: inline-block;
+  text-decoration: none;
+  color: #007bff; /* Link text color */
+  font-weight: 500;
+  font-size: 16px;
+  padding: 8px 12px 8px 36px; /* extra left padding for the arrow box */
+  border: 1px solid #007bff;
+  border-radius: 4px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.back-link::before {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: #007bff; /* Arrow box color */
+  color: #ad0a0a;               /* Arrow color */
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.back-link:hover {
+  background-color: #007bff;
+  color: #fff;
+  text-decoration: none;
+}
     </style>
 </head>
 <body>
     <div class="container">
+        
         <!-- Smaller Header -->
         <div class="header">
             <h1>🎓 Professional Student Management</h1>
             <p>Complete lifecycle management system</p>
+            
         </div>
-
+ <a href="index.html" class="back-link">← Back to Dashboard</a>
         <!-- Tabs -->
         <div class="tab-nav">
             <button class="tab-button active" onclick="openTab('import-initial')">📥 Import Database</button>
@@ -494,6 +526,7 @@
             <button class="tab-button" onclick="openTab('mapping')">🔄 Regulation / Batch Allotement</button>
             <button class="tab-button" onclick="openTab('promotions')">🎓 Promotions</button>
             <button class="tab-button" onclick="openTab('elective-mapping')">📚 Elective Allotement</button>
+            <button class="tab-button" onclick="openTab('subject-replacement')">🔄 Replacement Allotment</button>
         </div>
 
         <!-- TAB 1: Import Initial Database -->
@@ -807,7 +840,7 @@
             </div>
             
             <!-- Group Context Display -->
-            <div id="elective-group-context" style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin: 10px 0; display: none; color: white; font-weight: bold;">
+            <div id="elective-group-context" style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin: 10px 0; display: none; color: #0d47a1; font-weight: bold;">
                 <!-- Group context will be shown here -->
             </div>
 
@@ -866,7 +899,145 @@
             </div>
         </div>
     </div>
+<!-- TAB 7: REPLACEMENT SUBJECT -->
+<div id="subject-replacement" class="tab-content">
 
+    <!-- Top Filter Section -->
+    <div style="border: 2px solid #28a745; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+        
+        <div style="font-weight:700; color:#333; margin-bottom:12px;">Select Branch &amp; Sem</div>
+
+        <!-- Row 1 -->
+        <div style="display:flex; gap:15px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
+            <div class="form-group" style="flex:1; min-width:150px;">
+                <label>Course</label>
+                <select id="repl-programme" onchange="loadBranches('repl')">
+                    <option value="">Select</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex:1; min-width:150px;">
+                <label>Batch</label>
+                <select id="repl-batch">
+                    <option value="">Select</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex:1; min-width:150px;">
+                <label>Branch</label>
+                <select id="repl-branch">
+                    <option value="">Select</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex:1; min-width:150px;">
+                <label>Sem</label>
+                <select id="repl-semester" onchange="loadReplacementSubjects()">
+                    <option value="">Select</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex:1; min-width:150px;">
+                <label>Regulation</label>
+                <select id="repl-regulation" onchange="loadReplacementSubjects()">
+                    <option value="">Select</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex:1; min-width:150px;">
+                <label>Academic Year</label>
+                <input type="text" id="repl-academic-year" placeholder="2025-2026">
+            </div>
+        </div>
+
+        <!-- Row 2 -->
+        <div style="display:flex; gap:15px; flex-wrap:wrap; align-items:flex-end; margin-bottom:5px;">
+            <div class="form-group" style="flex:2; min-width:200px;">
+                <label>Replacement Subject</label>
+                <select id="repl-replacement-subject">
+                    <option value="">Select Replacement Subject</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex:2; min-width:200px;">
+                <label>Substitute for</label>
+                <select id="repl-original-subject">
+                    <option value="">Select Original Subject</option>
+                </select>
+            </div>
+            <div style="margin-bottom:2px;">
+                <button class="btn btn-primary" 
+                    style="background:#6a0dad; border:none; padding:10px 20px; color:white; font-weight:700; border-radius:4px; cursor:pointer;"
+                    onclick="showReplacementStudents()">
+                    SHOW
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Student Selection Section -->
+    <div style="border: 2px solid #28a745; border-radius: 8px; padding: 15px;">
+
+        <div style="font-weight:700; color:#333; margin-bottom:12px;">Select Students</div>
+
+        <div style="display:grid; grid-template-columns: 1fr auto 1fr; gap:15px; align-items:start;">
+
+            <!-- Left Box -->
+            <div>
+                <div style="font-size:12px; color:#333; margin-bottom:8px; font-weight:600;">
+                    Students whom which the Selected Replacement Subject is not allotted
+                </div>
+                <div style="margin-bottom:8px;">
+                    <label style="font-size:12px;">
+                        <input type="checkbox" id="repl-select-all-available" onchange="replToggleSelectAll('available')">
+                        Select All Students
+                    </label>
+                </div>
+                <div id="repl-available-box" 
+                    style="border:1px solid #ccc; border-radius:4px; min-height:300px; max-height:400px; overflow-y:auto; padding:8px; background:#fff;">
+                    <p style="color:#999; font-size:12px;">Select filters and click SHOW</p>
+                </div>
+                <div style="font-size:11px; color:#666; margin-top:4px;">
+                    Total: <strong id="repl-available-count">0</strong> | 
+                    Selected: <strong id="repl-available-selected">0</strong>
+                </div>
+            </div>
+
+            <!-- Middle Buttons -->
+            <div style="display:flex; flex-direction:column; gap:10px; padding-top:80px;">
+                <button onclick="addReplacementStudents()"
+                    style="background:#6a0dad; color:white; border:none; padding:10px 18px; font-weight:700; border-radius:4px; cursor:pointer; white-space:nowrap;">
+                    ADD STUDENTS
+                </button>
+                <button onclick="removeReplacementStudents()"
+                    style="background:#6a0dad; color:white; border:none; padding:10px 18px; font-weight:700; border-radius:4px; cursor:pointer; white-space:nowrap;">
+                    &lt;&lt; REMOVE
+                </button>
+                <button onclick="saveReplacementMapping()"
+                    style="background:#28a745; color:white; border:none; padding:10px 18px; font-weight:700; border-radius:4px; cursor:pointer; white-space:nowrap;">
+                    💾 SAVE
+                </button>
+            </div>
+
+            <!-- Right Box -->
+            <div>
+                <div style="font-size:12px; color:#333; margin-bottom:8px; font-weight:600;">
+                    Students whom which the Selected Replacement Subject is allotted
+                </div>
+                <div style="margin-bottom:8px;">
+                    <label style="font-size:12px;">
+                        <input type="checkbox" id="repl-select-all-mapped" onchange="replToggleSelectAll('mapped')">
+                        Select All Students
+                    </label>
+                </div>
+                <div id="repl-mapped-box" 
+                    style="border:1px solid #ccc; border-radius:4px; min-height:300px; max-height:400px; overflow-y:auto; padding:8px; background:#fff;">
+                    <p style="color:#999; font-size:12px;">Select original subject and click SHOW</p>
+                </div>
+                <div style="font-size:11px; color:#666; margin-top:4px;">
+                    Total: <strong id="repl-mapped-count">0</strong> | 
+                    Selected: <strong id="repl-mapped-selected">0</strong>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
     <!-- Student Edit Modal -->
     <div id="student-edit-modal" class="modal">
         <div class="modal-content">
@@ -992,6 +1163,8 @@
         </div>
     </div>
 
+
+    
     <!-- Load JavaScript -->
     <script src="js/student-management-complete-FIXED.js"></script>
 </body>

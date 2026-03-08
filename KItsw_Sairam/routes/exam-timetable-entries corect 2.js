@@ -12,16 +12,6 @@ function hashNotificationId(notificationId) {
     }, 0));
 }
 
-// ============================================================
-// HELPER: Parse JSON field from MySQL (already parsed or string)
-// ============================================================
-function parseJsonField(field) {
-    if (!field) return [];
-    if (Array.isArray(field)) return field.map(Number);
-    if (typeof field === 'string') return JSON.parse(field).map(Number);
-    return [Number(field)];
-}
-
 // Initialize routes function
 function initializeRouter(promisePool) {
     const router = express.Router();
@@ -78,22 +68,6 @@ function initializeRouter(promisePool) {
             
             const notificationIdNumber = hashNotificationId(notificationId);
             console.log(`🔄 ${entries.length} entries for ${notificationId} → hash: ${notificationIdNumber}`);
-
-            // ✅ Fetch semester_id and regulation_id from exam_notifications
-            // Stored as JSON arrays e.g. ["8"] and ["2"] — resolved once, stamped on every entry
-            const [notifRows] = await promisePool.query(
-                'SELECT semesters, regulations FROM exam_notifications WHERE notification_id = ?',
-                [notificationId]
-            );
-
-            if (notifRows.length === 0) {
-                return res.status(404).json({ status: 'error', message: 'Notification not found' });
-            }
-
-            const semesterId   = parseJsonField(notifRows[0].semesters)[0]   || null;
-            const regulationId = parseJsonField(notifRows[0].regulations)[0] || null;
-
-            console.log(`📌 Stamping all entries: semester_id=${semesterId}, regulation_id=${regulationId}`);
             
             const connection = await promisePool.getConnection();
             await connection.beginTransaction();
@@ -107,17 +81,15 @@ function initializeRouter(promisePool) {
                 for (const entry of entries) {
                     await connection.query(`
                         INSERT INTO exam_timetable_entries (
-                            notification_id, exam_date, branch_id, semester_id, regulation_id,
-                            subject_id, session_order, room_id, invigilator_staff_id, 
+                            notification_id, exam_date, branch_id, subject_id, 
+                            session_order, room_id, invigilator_staff_id, 
                             status, notes, batch_id, batch_name,
                             created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     `, [
                         notificationIdNumber,
                         entry.exam_date,
                         entry.branch_id,
-                        semesterId,                       // ✅ from notification
-                        regulationId,                     // ✅ from notification
                         entry.subject_id,
                         entry.session_order || 1,
                         entry.room_id || null,
@@ -130,7 +102,7 @@ function initializeRouter(promisePool) {
                 }
                 
                 await connection.commit();
-                console.log(`✅ Inserted ${entries.length} entries with semester_id=${semesterId}, regulation_id=${regulationId}`);
+                console.log(`✅ Inserted ${entries.length} entries`);
                 
                 const [updatedEntries] = await promisePool.query(
                     `SELECT ete.*, 
@@ -163,31 +135,32 @@ function initializeRouter(promisePool) {
     });
 
     // PATCH single timetable entry
+    // ✅ FIX: Was using raw notificationId string → now uses hash
     router.patch('/:notificationId/entries/:entryId', async (req, res) => {
         try {
             console.log('=== UPDATE SINGLE TIMETABLE ENTRY ===');
             const { notificationId, entryId } = req.params;
-            const notificationIdNumber = hashNotificationId(notificationId);
+            const notificationIdNumber = hashNotificationId(notificationId); // ✅ FIXED
             const updateData = req.body;
             
             const updateFields = [];
             const updateValues = [];
             
-            if (updateData.exam_date !== undefined)            { updateFields.push('exam_date = ?');             updateValues.push(updateData.exam_date); }
-            if (updateData.branch_id !== undefined)            { updateFields.push('branch_id = ?');             updateValues.push(updateData.branch_id); }
-            if (updateData.subject_id !== undefined)           { updateFields.push('subject_id = ?');            updateValues.push(updateData.subject_id); }
-            if (updateData.session_order !== undefined)        { updateFields.push('session_order = ?');         updateValues.push(updateData.session_order); }
-            if (updateData.room_id !== undefined)              { updateFields.push('room_id = ?');               updateValues.push(updateData.room_id); }
+            if (updateData.exam_date !== undefined) { updateFields.push('exam_date = ?'); updateValues.push(updateData.exam_date); }
+            if (updateData.branch_id !== undefined) { updateFields.push('branch_id = ?'); updateValues.push(updateData.branch_id); }
+            if (updateData.subject_id !== undefined) { updateFields.push('subject_id = ?'); updateValues.push(updateData.subject_id); }
+            if (updateData.session_order !== undefined) { updateFields.push('session_order = ?'); updateValues.push(updateData.session_order); }
+            if (updateData.room_id !== undefined) { updateFields.push('room_id = ?'); updateValues.push(updateData.room_id); }
             if (updateData.invigilator_staff_id !== undefined) { updateFields.push('invigilator_staff_id = ?'); updateValues.push(updateData.invigilator_staff_id); }
-            if (updateData.status !== undefined)               { updateFields.push('status = ?');               updateValues.push(updateData.status); }
-            if (updateData.notes !== undefined)                { updateFields.push('notes = ?');                updateValues.push(updateData.notes); }
+            if (updateData.status !== undefined) { updateFields.push('status = ?'); updateValues.push(updateData.status); }
+            if (updateData.notes !== undefined) { updateFields.push('notes = ?'); updateValues.push(updateData.notes); }
             
             if (updateFields.length === 0) {
                 return res.status(400).json({ status: 'error', message: 'No fields to update' });
             }
             
             updateFields.push('updated_at = CURRENT_TIMESTAMP');
-            updateValues.push(entryId, notificationIdNumber);
+            updateValues.push(entryId, notificationIdNumber); // ✅ FIXED: was notificationId (string)
             
             const [result] = await promisePool.query(
                 `UPDATE exam_timetable_entries 
@@ -212,7 +185,7 @@ function initializeRouter(promisePool) {
                  LEFT JOIN room_master rm ON ete.room_id = rm.room_id
                  LEFT JOIN staff_master sf ON ete.invigilator_staff_id = sf.staff_id
                  WHERE ete.timetable_id = ? AND ete.notification_id = ?`,
-                [entryId, notificationIdNumber]
+                [entryId, notificationIdNumber] // ✅ FIXED
             );
             
             res.json({ status: 'success', message: 'Timetable entry updated successfully', data: updatedEntry[0] });
@@ -228,29 +201,19 @@ function initializeRouter(promisePool) {
         try {
             console.log('=== CREATE TIMETABLE ENTRY ===');
             const { notificationId } = req.params;
-            const notificationIdNumber = hashNotificationId(notificationId);
+            const notificationIdNumber = hashNotificationId(notificationId); // ✅ Use hash here too
             const entryData = req.body;
-
-            // ✅ Fetch semester_id and regulation_id from notification
-            const [notifRows] = await promisePool.query(
-                'SELECT semesters, regulations FROM exam_notifications WHERE notification_id = ?',
-                [notificationId]
-            );
-            const semesterId   = notifRows.length ? (parseJsonField(notifRows[0].semesters)[0]   || null) : null;
-            const regulationId = notifRows.length ? (parseJsonField(notifRows[0].regulations)[0] || null) : null;
             
             const [result] = await promisePool.query(`
                 INSERT INTO exam_timetable_entries (
-                    notification_id, exam_date, branch_id, semester_id, regulation_id,
-                    subject_id, session_order, room_id, invigilator_staff_id, 
+                    notification_id, exam_date, branch_id, subject_id, 
+                    session_order, room_id, invigilator_staff_id, 
                     status, notes, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             `, [
-                notificationIdNumber,
+                notificationIdNumber, // ✅ FIXED: was raw notificationId
                 entryData.exam_date,
                 entryData.branch_id,
-                semesterId,    // ✅ from notification
-                regulationId,  // ✅ from notification
                 entryData.subject_id,
                 entryData.session_order || 1,
                 entryData.room_id || null,
@@ -283,15 +246,16 @@ function initializeRouter(promisePool) {
     });
 
     // DELETE timetable entry
+    // ✅ FIX: Was using raw notificationId string → now uses hash
     router.delete('/:notificationId/entries/:entryId', async (req, res) => {
         try {
             console.log('=== DELETE TIMETABLE ENTRY ===');
             const { notificationId, entryId } = req.params;
-            const notificationIdNumber = hashNotificationId(notificationId);
+            const notificationIdNumber = hashNotificationId(notificationId); // ✅ FIXED
             
             const [result] = await promisePool.query(
                 'DELETE FROM exam_timetable_entries WHERE timetable_id = ? AND notification_id = ?',
-                [entryId, notificationIdNumber]
+                [entryId, notificationIdNumber] // ✅ FIXED: was notificationId (string)
             );
             
             if (result.affectedRows === 0) {
@@ -311,7 +275,7 @@ function initializeRouter(promisePool) {
         try {
             console.log('=== CHECK TIMETABLE CONFLICTS ===');
             const { notificationId } = req.params;
-            const notificationIdNumber = hashNotificationId(notificationId);
+            const notificationIdNumber = hashNotificationId(notificationId); // ✅ Use hash
             const { entries } = req.body;
             
             const conflicts = [];

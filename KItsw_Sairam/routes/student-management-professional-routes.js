@@ -1146,27 +1146,14 @@ router.post('/promotions/summary', async (req, res) => {
 
         console.log('Querying with params:', [programme_id, batch_id, branch_id, semester_id]);
 
-        // Simple test response first
-        return res.json({
-            status: 'success',
-            data: {
-                total_students: 45,
-                in_roll: 42,
-                detained: 3,
-                left: 0,
-                completed: 0,
-                dropout: 0,
-                eligible_for_promotion: 42
-            }
-        });
-
+     
         // Get students summary for promotion
         const [students] = await promisePool.query(
             `SELECT 
                 COUNT(*) as total_students,
                 SUM(CASE WHEN student_status = 'In Roll' THEN 1 ELSE 0 END) as in_roll,
                 SUM(CASE WHEN student_status = 'Detained' THEN 1 ELSE 0 END) as detained,
-                SUM(CASE WHEN student_status = 'Left' THEN 1 ELSE 0 END) as left,
+                SUM(CASE WHEN student_status = 'Left' THEN 1 ELSE 0 END) as students_left,
                 SUM(CASE WHEN student_status = 'Completed' THEN 1 ELSE 0 END) as completed,
                 SUM(CASE WHEN student_status = 'Dropout' THEN 1 ELSE 0 END) as dropout
             FROM student_semester_history
@@ -1189,7 +1176,7 @@ router.post('/promotions/summary', async (req, res) => {
                 total_students: summary.total_students || 0,
                 in_roll: summary.in_roll || 0,
                 detained: summary.detained || 0,
-                left: summary.left || 0,
+                left: summary.students_left || 0,
                 completed: summary.completed || 0,
                 dropout: summary.dropout || 0,
                 eligible_for_promotion: summary.in_roll || 0 // Only "In Roll" students can be promoted
@@ -1244,32 +1231,29 @@ router.post('/promotions/promote', async (req, res) => {
 
         try {
 
-            // 1️⃣ Get all "In Roll" students from student_master (current students)
-            const [students] = await connection.query(
-                `SELECT 
-                    student_id,
-                    admission_number,
-                    roll_number,
-                    full_name,
-                    programme_id,
-                    batch_id,
-                    branch_id,
-                    current_semester as semester_id,
-                    regulation_id,
-                    section_id
-                 FROM student_master
-                 WHERE programme_id = ?
-                   AND batch_id = ?
-                   AND branch_id = ?
-                   AND current_semester = ?
-                   AND is_active = 1`,
-                [
-                    from_programme_id,
-                    from_batch_id,
-                    from_branch_id,
-                    from_semester_id
-                ]
-            );
+           // ✅ FIXED - get students from student_semester_history (where data actually exists)
+const [students] = await connection.query(
+    `SELECT 
+        sm.student_id,
+        sm.admission_number,
+        sm.roll_number,
+        sm.full_name,
+        ssh.programme_id,
+        ssh.batch_id,
+        ssh.branch_id,
+        ssh.semester_id,
+        ssh.regulation_id,
+        ssh.section_id
+     FROM student_master sm
+     INNER JOIN student_semester_history ssh ON sm.student_id = ssh.student_id
+     WHERE ssh.programme_id = ?
+       AND ssh.batch_id = ?
+       AND ssh.branch_id = ?
+       AND ssh.semester_id = ?
+       AND ssh.student_status = 'In Roll'
+       AND sm.is_active = 1`,
+    [from_programme_id, from_batch_id, from_branch_id, from_semester_id]
+);
 
             if (students.length === 0) {
                 throw new Error('No students found to promote');
@@ -1278,45 +1262,41 @@ router.post('/promotions/promote', async (req, res) => {
             let promotedCount = 0;
 
             // 2️⃣ Loop students
-            for (const student of students) {
-                // All students from student_master are "In Roll" by default
-                // ✅ Update student_master to new semester
-                await connection.query(
-                    `UPDATE student_master 
-                     SET current_semester = ?,
-                         regulation_id = ?,
-                         updated_at = CURRENT_TIMESTAMP
-                     WHERE student_id = ?`,
-                    [
-                        to_semester_id,
-                        to_regulation_id || student.regulation_id,
-                        student.student_id
-                    ]
-                );
+           for (const student of students) {
+    // All students from student_master are "In Roll" by default
+    // ✅ Update student_master to new semester
+// ✅ FIXED - use actual column names from your schema
+await connection.query(
+    `UPDATE student_master 
+     SET semester_id = ?,
+         current_regulation_id = ?,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE student_id = ?`,
+    [to_semester_id, to_regulation_id || student.regulation_id, student.student_id]
+);
 
-                // ✅ Insert semester history record for old semester
-                await connection.query(
-                    `INSERT INTO student_semester_history 
-                     (student_id, academic_year, semester_id, programme_id, branch_id, batch_id, 
-                      regulation_id, section_id, roll_number, student_status, status_date, 
-                      is_promoted, promotion_date, created_at, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Promoted', CURRENT_DATE, 1, CURRENT_DATE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-                    [
-                        student.student_id,
-                        academic_year,
-                        from_semester_id,  // Old semester
-                        student.programme_id,
-                        student.branch_id,
-                        student.batch_id,
-                        student.regulation_id,
-                        student.section_id,
-                        student.roll_number
-                    ]
-                );
+            // ✅ Insert semester history record for old semester
+            await connection.query(
+                `INSERT INTO student_semester_history 
+                 (student_id, academic_year, semester_id, programme_id, branch_id, batch_id, 
+                  regulation_id, section_id, roll_number, student_status, status_date, 
+                  is_promoted, promotion_date, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Promoted', CURRENT_DATE, 1, CURRENT_DATE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+                [
+                    student.student_id,
+                    academic_year,
+                    from_semester_id,  // Old semester
+                    student.programme_id,
+                    student.branch_id,
+                    student.batch_id,
+                    student.regulation_id,
+                    student.section_id,
+                    student.roll_number
+                ]
+            );
 
-                promotedCount++;
-            }
-
+            promotedCount++;
+        }
             // 3️⃣ Log the promotion
             await connection.query(
                 `INSERT INTO promotion_batch_log 

@@ -1,509 +1,337 @@
-/**
- * Seating Plan Management Routes
- * Handles blocks, rooms, and seating arrangements for examinations
- */
+// ============================================================
+//  routes/seating-plans.js
+//  Handles: Blocks, Rooms, Arrangements (for seating-plan.html)
+//  API Base: /api/seating-plans
+// ============================================================
 
 const express = require('express');
 
-module.exports = (pool) => {
+module.exports = function(pool) {
     const router = express.Router();
 
     // =====================================================
-    // BLOCK MASTER ROUTES
+    // BLOCKS
     // =====================================================
 
     // GET all blocks
     router.get('/blocks', async (req, res) => {
         try {
-            const [blocks] = await pool.query(
-                'SELECT * FROM block_master WHERE deleted_at IS NULL ORDER BY block_code'
-            );
-            res.json({ status: 'success', data: blocks });
-        } catch (error) {
-            console.error('Error fetching blocks:', error);
-            res.status(500).json({ 
-                status: 'error', 
-                message: 'Failed to fetch blocks',
-                error: error.message 
-            });
+            const [rows] = await pool.query(`
+                SELECT * FROM block_master 
+                WHERE deleted_at IS NULL 
+                ORDER BY block_code
+            `);
+            res.json({ status: 'success', data: rows });
+        } catch (err) {
+            console.error('GET /blocks error:', err);
+            res.status(500).json({ status: 'error', message: err.message });
         }
     });
 
-    // POST create new block
+    // POST create block
     router.post('/blocks', async (req, res) => {
         try {
             const { block_code, block_name, total_floors, description } = req.body;
 
-            // Validation
             if (!block_code || !block_name) {
-                return res.status(400).json({
-                    status: 'error',
-                    message: 'Block code and name are required'
-                });
+                return res.status(400).json({ status: 'error', message: 'block_code and block_name are required' });
             }
 
-            const [result] = await pool.query(
-                `INSERT INTO block_master (block_code, block_name, total_floors, description) 
-                 VALUES (?, ?, ?, ?)`,
-                [block_code, block_name, total_floors || 1, description]
-            );
+            const [result] = await pool.query(`
+                INSERT INTO block_master (block_code, block_name, total_floors, description, is_active)
+                VALUES (?, ?, ?, ?, 1)
+            `, [block_code, block_name, total_floors || 1, description || null]);
 
-            res.json({ 
-                status: 'success', 
-                message: 'Block created successfully',
-                data: { block_id: result.insertId }
-            });
-        } catch (error) {
-            console.error('Error creating block:', error);
-            res.status(500).json({ 
-                status: 'error', 
-                message: error.code === 'ER_DUP_ENTRY' ? 'Block code already exists' : 'Failed to create block',
-                error: error.message 
-            });
+            res.json({ status: 'success', data: { block_id: result.insertId }, message: 'Block created successfully' });
+        } catch (err) {
+            console.error('POST /blocks error:', err);
+            res.status(500).json({ status: 'error', message: err.message });
         }
     });
 
     // PUT update block
     router.put('/blocks/:id', async (req, res) => {
         try {
-            const { id } = req.params;
-            const { block_code, block_name, total_floors, description, is_active } = req.body;
+            const { block_code, block_name, total_floors, description } = req.body;
 
-            await pool.query(
-                `UPDATE block_master 
-                 SET block_code = ?, block_name = ?, total_floors = ?, description = ?, is_active = ?
-                 WHERE block_id = ? AND deleted_at IS NULL`,
-                [block_code, block_name, total_floors, description, is_active, id]
-            );
+            await pool.query(`
+                UPDATE block_master 
+                SET block_code = ?, block_name = ?, total_floors = ?, description = ?
+                WHERE block_id = ?
+            `, [block_code, block_name, total_floors, description || null, req.params.id]);
 
             res.json({ status: 'success', message: 'Block updated successfully' });
-        } catch (error) {
-            console.error('Error updating block:', error);
-            res.status(500).json({ 
-                status: 'error', 
-                message: 'Failed to update block',
-                error: error.message 
-            });
+        } catch (err) {
+            console.error('PUT /blocks/:id error:', err);
+            res.status(500).json({ status: 'error', message: err.message });
         }
     });
 
-    // DELETE block (soft delete)
+    // DELETE block
     router.delete('/blocks/:id', async (req, res) => {
         try {
-            const { id } = req.params;
-            await pool.query(
-                'UPDATE block_master SET deleted_at = NOW() WHERE block_id = ?',
-                [id]
-            );
+            await pool.query(`DELETE FROM block_master WHERE block_id = ?`, [req.params.id]);
             res.json({ status: 'success', message: 'Block deleted successfully' });
-        } catch (error) {
-            console.error('Error deleting block:', error);
-            res.status(500).json({ 
-                status: 'error', 
-                message: 'Failed to delete block',
-                error: error.message 
-            });
+        } catch (err) {
+            console.error('DELETE /blocks/:id error:', err);
+            res.status(500).json({ status: 'error', message: err.message });
         }
     });
 
     // =====================================================
-    // ROOM MASTER ROUTES
+    // ROOMS
     // =====================================================
 
     // GET all rooms
     router.get('/rooms', async (req, res) => {
         try {
-            const { block_id, room_type } = req.query;
-            let query = `
-                SELECT r.*, b.block_name, b.block_code
-                FROM room_master r
-                LEFT JOIN block_master b ON r.block_id = b.block_id
-                WHERE r.deleted_at IS NULL
-            `;
-            const params = [];
-
-            if (block_id) {
-                query += ' AND r.block_id = ?';
-                params.push(block_id);
-            }
-
-            if (room_type) {
-                query += ' AND r.room_type = ?';
-                params.push(room_type);
-            }
-
-            query += ' ORDER BY b.block_code, r.floor_number, r.room_code';
-
-            const [rooms] = await pool.query(query, params);
-            res.json({ status: 'success', data: rooms });
-        } catch (error) {
-            console.error('Error fetching rooms:', error);
-            res.status(500).json({ 
-                status: 'error', 
-                message: 'Failed to fetch rooms',
-                error: error.message 
-            });
+            const [rows] = await pool.query(`
+                SELECT 
+                    rm.*,
+                    bm.block_code,
+                    bm.block_name
+                FROM room_master rm
+                LEFT JOIN block_master bm ON bm.block_id = rm.block_id
+                WHERE rm.deleted_at IS NULL
+                ORDER BY bm.block_code, rm.floor_number, rm.room_code
+            `);
+            res.json({ status: 'success', data: rows });
+        } catch (err) {
+            console.error('GET /rooms error:', err);
+            res.status(500).json({ status: 'error', message: err.message });
         }
     });
 
-    // GET single room with layout
+    // GET single room
     router.get('/rooms/:id', async (req, res) => {
         try {
-            const { id } = req.params;
-            const [rooms] = await pool.query(
-                `SELECT r.*, b.block_name, b.block_code
-                 FROM room_master r
-                 LEFT JOIN block_master b ON r.block_id = b.block_id
-                 WHERE r.room_id = ? AND r.deleted_at IS NULL`,
-                [id]
-            );
+            const [[room]] = await pool.query(`
+                SELECT 
+                    rm.*,
+                    bm.block_code,
+                    bm.block_name
+                FROM room_master rm
+                LEFT JOIN block_master bm ON bm.block_id = rm.block_id
+                WHERE rm.room_id = ?
+            `, [req.params.id]);
 
-            if (rooms.length === 0) {
-                return res.status(404).json({ 
-                    status: 'error', 
-                    message: 'Room not found' 
-                });
-            }
-
-            res.json({ status: 'success', data: rooms[0] });
-        } catch (error) {
-            console.error('Error fetching room:', error);
-            res.status(500).json({ 
-                status: 'error', 
-                message: 'Failed to fetch room',
-                error: error.message 
-            });
+            if (!room) return res.status(404).json({ status: 'error', message: 'Room not found' });
+            res.json({ status: 'success', data: room });
+        } catch (err) {
+            console.error('GET /rooms/:id error:', err);
+            res.status(500).json({ status: 'error', message: err.message });
         }
     });
 
-    // POST create new room
+    // POST create room
     router.post('/rooms', async (req, res) => {
         try {
-            const { 
-                block_id, room_code, room_name, room_type, floor_number,
-                total_rows, total_columns, students_per_bench,
-                has_projector, has_ac, description, remarks, layout_data
+            const {
+                block_id, room_code, room_name, room_type,
+                floor_number, total_rows, total_columns,
+                students_per_bench, has_projector, has_ac,
+                description, layout_data
             } = req.body;
 
-            // Validation
-            if (!block_id || !room_code || !room_name || !total_rows || !total_columns || !students_per_bench) {
-                return res.status(400).json({
-                    status: 'error',
-                    message: 'Block, room code, name, rows, columns, and students per bench are required'
-                });
+            if (!block_id || !room_code || !room_name) {
+                return res.status(400).json({ status: 'error', message: 'block_id, room_code, room_name are required' });
             }
 
-            // Generate default layout data if not provided
-            const layoutData = layout_data || generateDefaultLayout(total_rows, total_columns);
+            const totalCapacity = (total_rows * total_columns) * students_per_bench;
+            const layoutJson = layout_data ? JSON.stringify(layout_data) : null;
 
-            const [result] = await pool.query(
-                `INSERT INTO room_master 
-                 (block_id, room_code, room_name, room_type, floor_number, 
-                  total_rows, total_columns, students_per_bench,
-                  has_projector, has_ac, description, remarks, layout_data) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [
-                    block_id, room_code, room_name, room_type || 'Classroom', floor_number || 1,
-                    total_rows, total_columns, students_per_bench,
-                    has_projector || false, has_ac || false, description, remarks,
-                    JSON.stringify(layoutData)
-                ]
-            );
+            // Calculate usable capacity from selected benches in layout_data
+            let usableCapacity = totalCapacity;
+            if (layout_data && layout_data.benches) {
+                const available = layout_data.benches.filter(b => b.available).length;
+                usableCapacity = available * students_per_bench;
+            }
 
-            res.json({ 
-                status: 'success', 
-                message: 'Room created successfully',
-                data: { room_id: result.insertId }
-            });
-        } catch (error) {
-            console.error('Error creating room:', error);
-            res.status(500).json({ 
-                status: 'error', 
-                message: error.code === 'ER_DUP_ENTRY' ? 'Room code already exists' : 'Failed to create room',
-                error: error.message 
-            });
+            const [result] = await pool.query(`
+                INSERT INTO room_master 
+                    (block_id, room_number, room_name, room_type, floor_number,
+                     total_rows, total_columns, students_per_bench,
+                     total_capacity, usable_capacity,
+                     has_projector, has_ac, description, layout_data,
+                     exam_status, is_active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available', 1)
+            `, [
+                block_id, room_code, room_name,
+                room_type || 'Classroom', floor_number || 1,
+                total_rows, total_columns, students_per_bench,
+                totalCapacity, usableCapacity,
+                has_projector ? 1 : 0, has_ac ? 1 : 0,
+                description || null, layoutJson
+            ]);
+
+            res.json({ status: 'success', data: { room_id: result.insertId }, message: 'Room created successfully' });
+        } catch (err) {
+            console.error('POST /rooms error:', err);
+            res.status(500).json({ status: 'error', message: err.message });
         }
     });
 
     // PUT update room
     router.put('/rooms/:id', async (req, res) => {
         try {
-            const { id } = req.params;
-            const { 
-                block_id, room_code, room_name, room_type, floor_number,
-                total_rows, total_columns, students_per_bench,
-                has_projector, has_ac, description, remarks, layout_data, is_active
+            const {
+                block_id, room_code, room_name, room_type,
+                floor_number, total_rows, total_columns,
+                students_per_bench, has_projector, has_ac,
+                description, layout_data, exam_status
             } = req.body;
 
-            // If dimensions changed, regenerate layout
-            let finalLayoutData = layout_data;
-            if (layout_data === undefined || layout_data === null) {
-                finalLayoutData = generateDefaultLayout(total_rows, total_columns);
+            const totalCapacity = (total_rows * total_columns) * students_per_bench;
+            const layoutJson = layout_data ? JSON.stringify(layout_data) : null;
+
+            let usableCapacity = totalCapacity;
+            if (layout_data && layout_data.benches) {
+                const available = layout_data.benches.filter(b => b.available).length;
+                usableCapacity = available * students_per_bench;
             }
 
-            await pool.query(
-                `UPDATE room_master 
-                 SET block_id = ?, room_code = ?, room_name = ?, room_type = ?, floor_number = ?,
-                     total_rows = ?, total_columns = ?, students_per_bench = ?,
-                     has_projector = ?, has_ac = ?, description = ?, remarks = ?,
-                     layout_data = ?, is_active = ?
-                 WHERE room_id = ? AND deleted_at IS NULL`,
-                [
-                    block_id, room_code, room_name, room_type, floor_number,
-                    total_rows, total_columns, students_per_bench,
-                    has_projector, has_ac, description, remarks,
-                    JSON.stringify(finalLayoutData), is_active, id
-                ]
-            );
+            await pool.query(`
+                UPDATE room_master SET
+                    block_id          = ?,
+                    room_number       = ?,
+                    room_name         = ?,
+                    room_type         = ?,
+                    floor_number      = ?,
+                    total_rows        = ?,
+                    total_columns     = ?,
+                    students_per_bench = ?,
+                    total_capacity    = ?,
+                    usable_capacity   = ?,
+                    has_projector     = ?,
+                    has_ac            = ?,
+                    description       = ?,
+                    layout_data       = ?,
+                    exam_status       = COALESCE(?, exam_status)
+                WHERE room_id = ?
+            `, [
+                block_id, room_code, room_name,
+                room_type, floor_number,
+                total_rows, total_columns, students_per_bench,
+                totalCapacity, usableCapacity,
+                has_projector ? 1 : 0, has_ac ? 1 : 0,
+                description || null, layoutJson,
+                exam_status || null,
+                req.params.id
+            ]);
 
             res.json({ status: 'success', message: 'Room updated successfully' });
-        } catch (error) {
-            console.error('Error updating room:', error);
-            res.status(500).json({ 
-                status: 'error', 
-                message: 'Failed to update room',
-                error: error.message 
-            });
+        } catch (err) {
+            console.error('PUT /rooms/:id error:', err);
+            res.status(500).json({ status: 'error', message: err.message });
         }
     });
 
-    // DELETE room (soft delete)
+    // PATCH room — for exam_status toggle only
+    router.patch('/rooms/:id', async (req, res) => {
+        try {
+            const { exam_status } = req.body;
+            await pool.query(`
+                UPDATE room_master SET exam_status = ? WHERE room_id = ?
+            `, [exam_status, req.params.id]);
+            res.json({ status: 'success', message: 'Room status updated' });
+        } catch (err) {
+            console.error('PATCH /rooms/:id error:', err);
+            res.status(500).json({ status: 'error', message: err.message });
+        }
+    });
+
+    // DELETE room
     router.delete('/rooms/:id', async (req, res) => {
         try {
-            const { id } = req.params;
-            await pool.query(
-                'UPDATE room_master SET deleted_at = NOW() WHERE room_id = ?',
-                [id]
-            );
+            await pool.query(`DELETE FROM room_master WHERE room_id = ?`, [req.params.id]);
             res.json({ status: 'success', message: 'Room deleted successfully' });
-        } catch (error) {
-            console.error('Error deleting room:', error);
-            res.status(500).json({ 
-                status: 'error', 
-                message: 'Failed to delete room',
-                error: error.message 
-            });
+        } catch (err) {
+            console.error('DELETE /rooms/:id error:', err);
+            res.status(500).json({ status: 'error', message: err.message });
         }
     });
 
     // =====================================================
-    // SEATING ARRANGEMENT ROUTES
+    // ARRANGEMENTS
+    // (Reads from exam_seating_plan — created by seating-plan-generator)
     // =====================================================
 
-    // GET all seating arrangements
+    // GET all arrangements
     router.get('/arrangements', async (req, res) => {
         try {
-            const { exam_session_id, exam_date, room_id, status } = req.query;
-            let query = `
-                SELECT sa.*, 
-                       es.session_name, es.exam_date as exam_session_date,
-                       r.room_code, r.room_name, r.total_capacity,
-                       b.block_name, b.block_code
-                FROM seating_arrangement sa
-                LEFT JOIN exam_session_master es ON sa.exam_session_id = es.session_id
-                LEFT JOIN room_master r ON sa.room_id = r.room_id
-                LEFT JOIN block_master b ON r.block_id = b.block_id
-                WHERE sa.deleted_at IS NULL
-            `;
-            const params = [];
-
-            if (exam_session_id) {
-                query += ' AND sa.exam_session_id = ?';
-                params.push(exam_session_id);
-            }
-
-            if (exam_date) {
-                query += ' AND sa.exam_date = ?';
-                params.push(exam_date);
-            }
-
-            if (room_id) {
-                query += ' AND sa.room_id = ?';
-                params.push(room_id);
-            }
-
-            if (status) {
-                query += ' AND sa.status = ?';
-                params.push(status);
-            }
-
-            query += ' ORDER BY sa.exam_date DESC, sa.session_type, b.block_code, r.room_code';
-
-            const [arrangements] = await pool.query(query, params);
-            res.json({ status: 'success', data: arrangements });
-        } catch (error) {
-            console.error('Error fetching arrangements:', error);
-            res.status(500).json({ 
-                status: 'error', 
-                message: 'Failed to fetch arrangements',
-                error: error.message 
-            });
+            const [rows] = await pool.query(`
+                SELECT 
+                    esp.plan_id                                                      AS arrangement_id,
+                    CONCAT('Plan #', esp.plan_id, ' — ', 
+                        DATE_FORMAT(esp.exam_date, '%d %b %Y'), ' ',
+                        CASE esp.session_order WHEN 1 THEN 'FN' ELSE 'AN' END)      AS arrangement_name,
+                    NULL                                                             AS session_name,
+                    esp.exam_date,
+                    CASE esp.session_order WHEN 1 THEN 'FN' ELSE 'AN' END           AS session_type,
+                    GROUP_CONCAT(DISTINCT rm.room_number SEPARATOR ', ')             AS room_code,
+                    COALESCE(GROUP_CONCAT(DISTINCT rm.room_name SEPARATOR ', '), '-') AS room_name,
+                    esp.total_students                                               AS total_students_allocated,
+                    COALESCE(SUM(espr.capacity_used), esp.total_students)            AS total_capacity,
+                    esp.status,
+                    esp.generated_by,
+                    esp.created_at
+                FROM exam_seating_plan esp
+                LEFT JOIN exam_seating_plan_rooms espr ON espr.plan_id = esp.plan_id
+                LEFT JOIN room_master rm ON rm.room_id = espr.room_id
+                GROUP BY esp.plan_id
+                ORDER BY esp.exam_date DESC, esp.session_order
+            `);
+            res.json({ status: 'success', data: rows });
+        } catch (err) {
+            // If seating tables don't exist yet — return empty gracefully
+            console.warn('GET /arrangements — tables may not exist yet:', err.message);
+            res.json({ status: 'success', data: [] });
         }
     });
 
-    // GET single arrangement with full details
+    // GET single arrangement
     router.get('/arrangements/:id', async (req, res) => {
         try {
-            const { id } = req.params;
-            const [arrangements] = await pool.query(
-                `SELECT sa.*, 
-                        es.session_name, es.exam_date as exam_session_date,
-                        r.room_code, r.room_name, r.total_capacity, r.total_rows, r.total_columns,
-                        r.students_per_bench, r.layout_data,
-                        b.block_name, b.block_code
-                 FROM seating_arrangement sa
-                 LEFT JOIN exam_session_master es ON sa.exam_session_id = es.session_id
-                 LEFT JOIN room_master r ON sa.room_id = r.room_id
-                 LEFT JOIN block_master b ON r.block_id = b.block_id
-                 WHERE sa.arrangement_id = ? AND sa.deleted_at IS NULL`,
-                [id]
-            );
+            const [[plan]] = await pool.query(`
+                SELECT esp.*,
+                    GROUP_CONCAT(DISTINCT rm.room_number SEPARATOR ', ') AS room_code,
+                    GROUP_CONCAT(DISTINCT rm.room_name SEPARATOR ', ')   AS room_name,
+                    esp.total_students AS total_students_allocated,
+                    esp.total_students AS total_capacity,
+                    CASE esp.session_order WHEN 1 THEN 'FN' ELSE 'AN' END AS session_type,
+                    CONCAT('Plan #', esp.plan_id) AS arrangement_name
+                FROM exam_seating_plan esp
+                LEFT JOIN exam_seating_plan_rooms espr ON espr.plan_id = esp.plan_id
+                LEFT JOIN room_master rm ON rm.room_id = espr.room_id
+                WHERE esp.plan_id = ?
+                GROUP BY esp.plan_id
+            `, [req.params.id]);
 
-            if (arrangements.length === 0) {
-                return res.status(404).json({ 
-                    status: 'error', 
-                    message: 'Arrangement not found' 
-                });
-            }
-
-            res.json({ status: 'success', data: arrangements[0] });
-        } catch (error) {
-            console.error('Error fetching arrangement:', error);
-            res.status(500).json({ 
-                status: 'error', 
-                message: 'Failed to fetch arrangement',
-                error: error.message 
-            });
+            if (!plan) return res.status(404).json({ status: 'error', message: 'Arrangement not found' });
+            res.json({ status: 'success', data: plan });
+        } catch (err) {
+            console.error('GET /arrangements/:id error:', err);
+            res.status(500).json({ status: 'error', message: err.message });
         }
     });
 
-    // POST create new seating arrangement
-    router.post('/arrangements', async (req, res) => {
-        try {
-            const { 
-                exam_session_id, exam_date, session_type, room_id,
-                arrangement_name, seating_data, created_by, remarks
-            } = req.body;
-
-            // Validation
-            if (!exam_session_id || !exam_date || !session_type || !room_id || !arrangement_name) {
-                return res.status(400).json({
-                    status: 'error',
-                    message: 'Exam session, date, session type, room, and arrangement name are required'
-                });
-            }
-
-            // Calculate total students
-            const totalStudents = seating_data?.seats?.length || 0;
-
-            const [result] = await pool.query(
-                `INSERT INTO seating_arrangement 
-                 (exam_session_id, exam_date, session_type, room_id, arrangement_name,
-                  total_students_allocated, seating_data, created_by, remarks) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [
-                    exam_session_id, exam_date, session_type, room_id, arrangement_name,
-                    totalStudents, JSON.stringify(seating_data || {}), created_by, remarks
-                ]
-            );
-
-            res.json({ 
-                status: 'success', 
-                message: 'Seating arrangement created successfully',
-                data: { arrangement_id: result.insertId }
-            });
-        } catch (error) {
-            console.error('Error creating arrangement:', error);
-            res.status(500).json({ 
-                status: 'error', 
-                message: error.code === 'ER_DUP_ENTRY' ? 'Arrangement already exists for this exam, date, session, and room' : 'Failed to create arrangement',
-                error: error.message 
-            });
-        }
-    });
-
-    // PUT update seating arrangement
-    router.put('/arrangements/:id', async (req, res) => {
-        try {
-            const { id } = req.params;
-            const { 
-                arrangement_name, seating_data, status,
-                approved_by, remarks
-            } = req.body;
-
-            // Calculate total students
-            const totalStudents = seating_data?.seats?.length || 0;
-
-            // Set approved_at if status is changing to Confirmed or Published
-            const approved_at = (status === 'Confirmed' || status === 'Published') && approved_by 
-                ? new Date() 
-                : null;
-
-            await pool.query(
-                `UPDATE seating_arrangement 
-                 SET arrangement_name = ?, seating_data = ?, total_students_allocated = ?,
-                     status = ?, approved_by = ?, approved_at = ?, remarks = ?
-                 WHERE arrangement_id = ? AND deleted_at IS NULL`,
-                [
-                    arrangement_name, JSON.stringify(seating_data || {}), totalStudents,
-                    status, approved_by, approved_at, remarks, id
-                ]
-            );
-
-            res.json({ status: 'success', message: 'Seating arrangement updated successfully' });
-        } catch (error) {
-            console.error('Error updating arrangement:', error);
-            res.status(500).json({ 
-                status: 'error', 
-                message: 'Failed to update arrangement',
-                error: error.message 
-            });
-        }
-    });
-
-    // DELETE arrangement (soft delete)
+    // DELETE arrangement
     router.delete('/arrangements/:id', async (req, res) => {
         try {
-            const { id } = req.params;
-            await pool.query(
-                'UPDATE seating_arrangement SET deleted_at = NOW() WHERE arrangement_id = ?',
-                [id]
+            const [[plan]] = await pool.query(
+                `SELECT status FROM exam_seating_plan WHERE plan_id = ?`, [req.params.id]
             );
-            res.json({ status: 'success', message: 'Seating arrangement deleted successfully' });
-        } catch (error) {
-            console.error('Error deleting arrangement:', error);
-            res.status(500).json({ 
-                status: 'error', 
-                message: 'Failed to delete arrangement',
-                error: error.message 
-            });
+            if (!plan) return res.status(404).json({ status: 'error', message: 'Not found' });
+            if (plan.status === 'Published') {
+                return res.status(400).json({ status: 'error', message: 'Cannot delete a Published plan' });
+            }
+            await pool.query(`DELETE FROM exam_seating_plan WHERE plan_id = ?`, [req.params.id]);
+            res.json({ status: 'success', message: 'Arrangement deleted successfully' });
+        } catch (err) {
+            console.error('DELETE /arrangements/:id error:', err);
+            res.status(500).json({ status: 'error', message: err.message });
         }
     });
-
-    // =====================================================
-    // HELPER FUNCTIONS
-    // =====================================================
-
-    /**
-     * Generate default layout data for a room
-     */
-    function generateDefaultLayout(rows, columns) {
-        const benches = [];
-        const rowLabels = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < columns; c++) {
-                benches.push({
-                    row: r + 1,
-                    col: c + 1,
-                    available: true,
-                    label: `${rowLabels[r] || r + 1}${c + 1}`
-                });
-            }
-        }
-        
-        return { benches };
-    }
 
     return router;
 };

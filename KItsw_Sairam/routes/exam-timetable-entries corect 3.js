@@ -1,27 +1,5 @@
 const express = require('express');
 
-// ============================================================
-// HELPER: Convert VARCHAR notification_id → INT hash
-// Same algorithm used everywhere so DB values always match
-// e.g. 'NOTIF_1772246814292' → 474965620
-// ============================================================
-function hashNotificationId(notificationId) {
-    return Math.abs(notificationId.split('').reduce((a, b) => {
-        a = ((a << 5) - a) + b.charCodeAt(0);
-        return a & a;
-    }, 0));
-}
-
-// ============================================================
-// HELPER: Parse JSON field from MySQL (already parsed or string)
-// ============================================================
-function parseJsonField(field) {
-    if (!field) return [];
-    if (Array.isArray(field)) return field.map(Number);
-    if (typeof field === 'string') return JSON.parse(field).map(Number);
-    return [Number(field)];
-}
-
 // Initialize routes function
 function initializeRouter(promisePool) {
     const router = express.Router();
@@ -31,8 +9,12 @@ function initializeRouter(promisePool) {
         try {
             console.log('=== GET TIMETABLE ENTRIES ===');
             const { notificationId } = req.params;
-            const notificationIdNumber = hashNotificationId(notificationId);
-            console.log(`🔍 notification_id: ${notificationId} → hash: ${notificationIdNumber}`);
+            
+            // Convert notification ID to number (same as in PUT)
+            const notificationIdNumber = Math.abs(notificationId.split('').reduce((a, b) => {
+                a = ((a << 5) - a) + b.charCodeAt(0);
+                return a & a;
+            }, 0));
             
             const [entries] = await promisePool.query(
                 `SELECT ete.*, 
@@ -72,52 +54,62 @@ function initializeRouter(promisePool) {
             const { notificationId } = req.params;
             const { entries } = req.body;
             
+            console.log('📋 Request params:', { notificationId });
+            console.log('📋 Request body entries count:', entries ? entries.length : 'undefined');
+            
             if (!entries || !Array.isArray(entries)) {
-                return res.status(400).json({ status: 'error', message: 'Invalid entries data' });
+                console.log('❌ Invalid entries data');
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'Invalid entries data'
+                });
             }
             
-            const notificationIdNumber = hashNotificationId(notificationId);
-            console.log(`🔄 ${entries.length} entries for ${notificationId} → hash: ${notificationIdNumber}`);
-
-            // ✅ Fetch semester_id and regulation_id from exam_notifications
-            // Stored as JSON arrays e.g. ["8"] and ["2"] — resolved once, stamped on every entry
-            const [notifRows] = await promisePool.query(
-                'SELECT semesters, regulations FROM exam_notifications WHERE notification_id = ?',
-                [notificationId]
-            );
-
-            if (notifRows.length === 0) {
-                return res.status(404).json({ status: 'error', message: 'Notification not found' });
-            }
-
-            const semesterId   = parseJsonField(notifRows[0].semesters)[0]   || null;
-            const regulationId = parseJsonField(notifRows[0].regulations)[0] || null;
-
-            console.log(`📌 Stamping all entries: semester_id=${semesterId}, regulation_id=${regulationId}`);
+            console.log(`🔄 Updating ${entries.length} entries for notification ${notificationId}`);
             
+            // Since notification_id in exam_timetable_entries is INT, we need to handle this differently
+            // Option 1: Use a hash of the string ID to generate a number
+            // Option 2: Store the string ID in a different column
+            // Option 3: Update the database schema (better long-term fix)
+            
+            // For now, let's use a simple hash to convert string to number
+            const notificationIdNumber = Math.abs(notificationId.split('').reduce((a, b) => {
+                a = ((a << 5) - a) + b.charCodeAt(0);
+                return a & a;
+            }, 0));
+            
+            console.log('🔄 Converted notification_id to number:', notificationIdNumber);
+            
+            // Start transaction
             const connection = await promisePool.getConnection();
+            console.log('✅ Database connection established');
             await connection.beginTransaction();
+            console.log('✅ Transaction started');
             
             try {
+                // Clear existing entries for this notification first
+                console.log('🗑️ Clearing existing entries for notification:', notificationIdNumber);
                 await connection.query(
                     'DELETE FROM exam_timetable_entries WHERE notification_id = ?',
                     [notificationIdNumber]
                 );
+                console.log('✅ Existing entries cleared');
                 
+                // Insert each entry (since timetable_id is null for new entries)
                 for (const entry of entries) {
-                    await connection.query(`
+                    const insertQuery = `
                         INSERT INTO exam_timetable_entries (
-                            notification_id, exam_date, branch_id, semester_id, regulation_id,
-                            subject_id, session_order, room_id, invigilator_staff_id, 
+                            notification_id, exam_date, branch_id, subject_id, 
+                            session_order, room_id, invigilator_staff_id, 
                             status, notes, batch_id, batch_name,
                             created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                    `, [
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    `;
+                    
+                    await connection.query(insertQuery, [
                         notificationIdNumber,
                         entry.exam_date,
                         entry.branch_id,
-                        semesterId,                       // ✅ from notification
-                        regulationId,                     // ✅ from notification
                         entry.subject_id,
                         entry.session_order || 1,
                         entry.room_id || null,
@@ -129,9 +121,12 @@ function initializeRouter(promisePool) {
                     ]);
                 }
                 
-                await connection.commit();
-                console.log(`✅ Inserted ${entries.length} entries with semester_id=${semesterId}, regulation_id=${regulationId}`);
+                console.log(`✅ Inserted ${entries.length} new entries`);
                 
+                // Commit transaction
+                await connection.commit();
+                
+                // Get updated entries (simplified version - no room/invigilator joins for now)
                 const [updatedEntries] = await promisePool.query(
                     `SELECT ete.*, 
                             bm.branch_name,
@@ -147,9 +142,14 @@ function initializeRouter(promisePool) {
                     [notificationIdNumber]
                 );
                 
-                res.json({ status: 'success', message: 'Timetable entries updated successfully', data: updatedEntries });
+                res.json({
+                    status: 'success',
+                    message: 'Timetable entries updated successfully',
+                    data: updatedEntries
+                });
                 
             } catch (error) {
+                // Rollback transaction
                 await connection.rollback();
                 throw error;
             } finally {
@@ -158,7 +158,11 @@ function initializeRouter(promisePool) {
             
         } catch (error) {
             console.error('Error updating timetable entries:', error);
-            res.status(500).json({ status: 'error', message: 'Failed to update timetable entries', error: error.message });
+            res.status(500).json({
+                status: 'error',
+                message: 'Failed to update timetable entries',
+                error: error.message
+            });
         }
     });
 
@@ -167,59 +171,105 @@ function initializeRouter(promisePool) {
         try {
             console.log('=== UPDATE SINGLE TIMETABLE ENTRY ===');
             const { notificationId, entryId } = req.params;
-            const notificationIdNumber = hashNotificationId(notificationId);
             const updateData = req.body;
             
+            // Build dynamic update query
             const updateFields = [];
             const updateValues = [];
             
-            if (updateData.exam_date !== undefined)            { updateFields.push('exam_date = ?');             updateValues.push(updateData.exam_date); }
-            if (updateData.branch_id !== undefined)            { updateFields.push('branch_id = ?');             updateValues.push(updateData.branch_id); }
-            if (updateData.subject_id !== undefined)           { updateFields.push('subject_id = ?');            updateValues.push(updateData.subject_id); }
-            if (updateData.session_order !== undefined)        { updateFields.push('session_order = ?');         updateValues.push(updateData.session_order); }
-            if (updateData.room_id !== undefined)              { updateFields.push('room_id = ?');               updateValues.push(updateData.room_id); }
-            if (updateData.invigilator_staff_id !== undefined) { updateFields.push('invigilator_staff_id = ?'); updateValues.push(updateData.invigilator_staff_id); }
-            if (updateData.status !== undefined)               { updateFields.push('status = ?');               updateValues.push(updateData.status); }
-            if (updateData.notes !== undefined)                { updateFields.push('notes = ?');                updateValues.push(updateData.notes); }
+            if (updateData.exam_date !== undefined) {
+                updateFields.push('exam_date = ?');
+                updateValues.push(updateData.exam_date);
+            }
+            if (updateData.branch_id !== undefined) {
+                updateFields.push('branch_id = ?');
+                updateValues.push(updateData.branch_id);
+            }
+            if (updateData.subject_id !== undefined) {
+                updateFields.push('subject_id = ?');
+                updateValues.push(updateData.subject_id);
+            }
+            if (updateData.session_order !== undefined) {
+                updateFields.push('session_order = ?');
+                updateValues.push(updateData.session_order);
+            }
+            if (updateData.room_id !== undefined) {
+                updateFields.push('room_id = ?');
+                updateValues.push(updateData.room_id);
+            }
+            if (updateData.invigilator_staff_id !== undefined) {
+                updateFields.push('invigilator_staff_id = ?');
+                updateValues.push(updateData.invigilator_staff_id);
+            }
+            if (updateData.status !== undefined) {
+                updateFields.push('status = ?');
+                updateValues.push(updateData.status);
+            }
+            if (updateData.notes !== undefined) {
+                updateFields.push('notes = ?');
+                updateValues.push(updateData.notes);
+            }
             
             if (updateFields.length === 0) {
-                return res.status(400).json({ status: 'error', message: 'No fields to update' });
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'No fields to update'
+                });
             }
             
             updateFields.push('updated_at = CURRENT_TIMESTAMP');
-            updateValues.push(entryId, notificationIdNumber);
+            updateValues.push(entryId, notificationId);
             
-            const [result] = await promisePool.query(
-                `UPDATE exam_timetable_entries 
-                 SET ${updateFields.join(', ')}
-                 WHERE timetable_id = ? AND notification_id = ?`,
-                updateValues
-            );
+            const updateQuery = `
+                UPDATE exam_timetable_entries 
+                SET ${updateFields.join(', ')}
+                WHERE timetable_id = ? 
+                AND notification_id = ?
+            `;
+            
+            const [result] = await promisePool.query(updateQuery, updateValues);
             
             if (result.affectedRows === 0) {
-                return res.status(404).json({ status: 'error', message: 'Timetable entry not found' });
+                return res.status(404).json({
+                    status: 'error',
+                    message: 'Timetable entry not found'
+                });
             }
             
+            // Get updated entry
             const [updatedEntry] = await promisePool.query(
                 `SELECT ete.*, 
-                        bm.branch_name, bm.branch_code,
-                        sm.subject_name, sm.syllabus_code, sm.subject_type,
-                        rm.room_number, rm.building_name,
+                        bm.branch_name,
+                        bm.branch_code,
+                        sm.subject_name,
+                        sm.syllabus_code,
+                        sm.subject_type,
+                        rm.room_number,
+                        rm.building_name,
                         sf.staff_name as invigilator_name
                  FROM exam_timetable_entries ete
                  LEFT JOIN branch_master bm ON ete.branch_id = bm.branch_id
                  LEFT JOIN subject_master sm ON ete.subject_id = sm.subject_id
                  LEFT JOIN room_master rm ON ete.room_id = rm.room_id
                  LEFT JOIN staff_master sf ON ete.invigilator_staff_id = sf.staff_id
-                 WHERE ete.timetable_id = ? AND ete.notification_id = ?`,
-                [entryId, notificationIdNumber]
+                 WHERE ete.timetable_id = ? 
+                 AND ete.notification_id = ?`,
+                [entryId, notificationId]
             );
             
-            res.json({ status: 'success', message: 'Timetable entry updated successfully', data: updatedEntry[0] });
+            res.json({
+                status: 'success',
+                message: 'Timetable entry updated successfully',
+                data: updatedEntry[0]
+            });
             
         } catch (error) {
             console.error('Error updating timetable entry:', error);
-            res.status(500).json({ status: 'error', message: 'Failed to update timetable entry', error: error.message });
+            res.status(500).json({
+                status: 'error',
+                message: 'Failed to update timetable entry',
+                error: error.message
+            });
         }
     });
 
@@ -228,29 +278,20 @@ function initializeRouter(promisePool) {
         try {
             console.log('=== CREATE TIMETABLE ENTRY ===');
             const { notificationId } = req.params;
-            const notificationIdNumber = hashNotificationId(notificationId);
             const entryData = req.body;
-
-            // ✅ Fetch semester_id and regulation_id from notification
-            const [notifRows] = await promisePool.query(
-                'SELECT semesters, regulations FROM exam_notifications WHERE notification_id = ?',
-                [notificationId]
-            );
-            const semesterId   = notifRows.length ? (parseJsonField(notifRows[0].semesters)[0]   || null) : null;
-            const regulationId = notifRows.length ? (parseJsonField(notifRows[0].regulations)[0] || null) : null;
             
-            const [result] = await promisePool.query(`
+            const insertQuery = `
                 INSERT INTO exam_timetable_entries (
-                    notification_id, exam_date, branch_id, semester_id, regulation_id,
-                    subject_id, session_order, room_id, invigilator_staff_id, 
+                    notification_id, exam_date, branch_id, subject_id, 
+                    session_order, room_id, invigilator_staff_id, 
                     status, notes, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            `, [
-                notificationIdNumber,
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            `;
+            
+            const [result] = await promisePool.query(insertQuery, [
+                notificationId,
                 entryData.exam_date,
                 entryData.branch_id,
-                semesterId,    // ✅ from notification
-                regulationId,  // ✅ from notification
                 entryData.subject_id,
                 entryData.session_order || 1,
                 entryData.room_id || null,
@@ -259,11 +300,16 @@ function initializeRouter(promisePool) {
                 entryData.notes || null
             ]);
             
+            // Get created entry
             const [createdEntry] = await promisePool.query(
                 `SELECT ete.*, 
-                        bm.branch_name, bm.branch_code,
-                        sm.subject_name, sm.syllabus_code, sm.subject_type,
-                        rm.room_number, rm.building_name,
+                        bm.branch_name,
+                        bm.branch_code,
+                        sm.subject_name,
+                        sm.syllabus_code,
+                        sm.subject_type,
+                        rm.room_number,
+                        rm.building_name,
                         sf.staff_name as invigilator_name
                  FROM exam_timetable_entries ete
                  LEFT JOIN branch_master bm ON ete.branch_id = bm.branch_id
@@ -274,11 +320,19 @@ function initializeRouter(promisePool) {
                 [result.insertId]
             );
             
-            res.status(201).json({ status: 'success', message: 'Timetable entry created successfully', data: createdEntry[0] });
+            res.status(201).json({
+                status: 'success',
+                message: 'Timetable entry created successfully',
+                data: createdEntry[0]
+            });
             
         } catch (error) {
             console.error('Error creating timetable entry:', error);
-            res.status(500).json({ status: 'error', message: 'Failed to create timetable entry', error: error.message });
+            res.status(500).json({
+                status: 'error',
+                message: 'Failed to create timetable entry',
+                error: error.message
+            });
         }
     });
 
@@ -287,22 +341,31 @@ function initializeRouter(promisePool) {
         try {
             console.log('=== DELETE TIMETABLE ENTRY ===');
             const { notificationId, entryId } = req.params;
-            const notificationIdNumber = hashNotificationId(notificationId);
             
             const [result] = await promisePool.query(
                 'DELETE FROM exam_timetable_entries WHERE timetable_id = ? AND notification_id = ?',
-                [entryId, notificationIdNumber]
+                [entryId, notificationId]
             );
             
             if (result.affectedRows === 0) {
-                return res.status(404).json({ status: 'error', message: 'Timetable entry not found' });
+                return res.status(404).json({
+                    status: 'error',
+                    message: 'Timetable entry not found'
+                });
             }
             
-            res.json({ status: 'success', message: 'Timetable entry deleted successfully' });
+            res.json({
+                status: 'success',
+                message: 'Timetable entry deleted successfully'
+            });
             
         } catch (error) {
             console.error('Error deleting timetable entry:', error);
-            res.status(500).json({ status: 'error', message: 'Failed to delete timetable entry', error: error.message });
+            res.status(500).json({
+                status: 'error',
+                message: 'Failed to delete timetable entry',
+                error: error.message
+            });
         }
     });
 
@@ -311,18 +374,22 @@ function initializeRouter(promisePool) {
         try {
             console.log('=== CHECK TIMETABLE CONFLICTS ===');
             const { notificationId } = req.params;
-            const notificationIdNumber = hashNotificationId(notificationId);
             const { entries } = req.body;
             
             const conflicts = [];
             
+            // Check for each entry
             for (const entry of entries) {
+                // Check room conflicts
                 const [roomConflicts] = await promisePool.query(
-                    `SELECT timetable_id, exam_date, session_order
+                    `SELECT timetable_id, exam_date, start_time, end_time
                      FROM exam_timetable_entries 
-                     WHERE room_id = ? AND exam_date = ? AND session_order = ?
-                     AND timetable_id != ? AND notification_id = ?`,
-                    [entry.room_id, entry.exam_date, entry.session_order, entry.timetable_id, notificationIdNumber]
+                     WHERE room_id = ? 
+                     AND exam_date = ? 
+                     AND session_order = ?
+                     AND timetable_id != ?
+                     AND notification_id = ?`,
+                    [entry.room_id, entry.exam_date, entry.session_order, entry.timetable_id, notificationId]
                 );
                 
                 if (roomConflicts.length > 0) {
@@ -330,17 +397,21 @@ function initializeRouter(promisePool) {
                         type: 'room_conflict',
                         entryId: entry.timetable_id,
                         conflictWith: roomConflicts[0],
-                        message: 'Room already booked for this session'
+                        message: `Room already booked for this session`
                     });
                 }
                 
+                // Check invigilator conflicts
                 if (entry.invigilator_staff_id) {
                     const [invigilatorConflicts] = await promisePool.query(
-                        `SELECT timetable_id, exam_date, session_order
+                        `SELECT timetable_id, exam_date, start_time, end_time
                          FROM exam_timetable_entries 
-                         WHERE invigilator_staff_id = ? AND exam_date = ? AND session_order = ?
-                         AND timetable_id != ? AND notification_id = ?`,
-                        [entry.invigilator_staff_id, entry.exam_date, entry.session_order, entry.timetable_id, notificationIdNumber]
+                         WHERE invigilator_staff_id = ? 
+                         AND exam_date = ? 
+                         AND session_order = ?
+                         AND timetable_id != ?
+                         AND notification_id = ?`,
+                        [entry.invigilator_staff_id, entry.exam_date, entry.session_order, entry.timetable_id, notificationId]
                     );
                     
                     if (invigilatorConflicts.length > 0) {
@@ -348,7 +419,7 @@ function initializeRouter(promisePool) {
                             type: 'invigilator_conflict',
                             entryId: entry.timetable_id,
                             conflictWith: invigilatorConflicts[0],
-                            message: 'Invigilator already assigned for this session'
+                            message: `Invigilator already assigned for this session`
                         });
                     }
                 }
@@ -357,12 +428,19 @@ function initializeRouter(promisePool) {
             res.json({
                 status: 'success',
                 message: 'Conflict check completed',
-                data: { hasConflicts: conflicts.length > 0, conflicts }
+                data: {
+                    hasConflicts: conflicts.length > 0,
+                    conflicts: conflicts
+                }
             });
             
         } catch (error) {
             console.error('Error checking conflicts:', error);
-            res.status(500).json({ status: 'error', message: 'Failed to check conflicts', error: error.message });
+            res.status(500).json({
+                status: 'error',
+                message: 'Failed to check conflicts',
+                error: error.message
+            });
         }
     });
 
