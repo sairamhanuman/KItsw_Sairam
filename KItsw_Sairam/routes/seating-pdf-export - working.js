@@ -102,18 +102,26 @@ function buildGrid(room) {
 // ─── Draw one [HT box][MK box] seat pair ─────────────────────
 
 function drawSeatPair(doc, startX, boxTop, HT_W, MK_W, BOX_H, student) {
-    // Full-width roll number box only — no attendance mark box
-    const fullW = HT_W + MK_W + 3; // reclaim the space the [-] box used
+    // HT number box
     doc.lineWidth(0.4)
-       .roundedRect(startX, boxTop, fullW, BOX_H, 1.5)
+       .roundedRect(startX, boxTop, HT_W, BOX_H, 1.5)
        .fillAndStroke('white', 'black');
 
     if (student) {
         const lbl = student.register_number || String(student.student_id || '');
-        doc.font('Helvetica-Bold').fontSize(9).fillColor('black')
-           .text(lbl, startX + 2, boxTop + (BOX_H - 9) / 2 + 1,
-                 { width: fullW - 4, align: 'center', lineBreak: false });
+        doc.font('Helvetica').fontSize(8).fillColor('black')
+           .text(lbl, startX + 2, boxTop + (BOX_H - 8) / 2 + 1,
+                 { width: HT_W - 4, align: 'center', lineBreak: false });
     }
+
+    // Attendance mark box
+    const mkX = startX + HT_W + 3;
+    doc.lineWidth(0.4)
+       .roundedRect(mkX, boxTop, MK_W, BOX_H, 1.5)
+       .fillAndStroke('white', 'black');
+    doc.font('Helvetica').fontSize(8).fillColor('black')
+       .text(' - ', mkX, boxTop + (BOX_H - 8) / 2 + 1,
+             { width: MK_W, align: 'center', lineBreak: false });
 }
 
 // ─── PDF Generator ───────────────────────────────────────────
@@ -140,15 +148,6 @@ function generateSeatingPDF(plan, rooms, notifications, collegeInfo = {}) {
             const ML = 28;
             const CW = PW - ML * 2;   // ≈ 786 pts usable width
 
-            // Helper: draw text at absolute position WITHOUT moving doc.y
-            // This is the key fix — prevents PDFKit from auto-adding blank pages
-            function txt(text, x, yPos, opts = {}) {
-                doc.text(text, x, yPos, { ...opts, lineBreak: false });
-                // Immediately move cursor back up so PDFKit never thinks
-                // we've overflowed the page
-                doc.moveTo(x, yPos);
-            }
-
             const collegeName = (collegeInfo.name       || 'KITS, WARANGAL').toUpperCase();
             const deptName    = (collegeInfo.department || 'EXAMINATION BRANCH').toUpperCase();
             const monthYear   = fmtMonthYear(plan.exam_date);
@@ -171,24 +170,24 @@ function generateSeatingPDF(plan, rooms, notifications, collegeInfo = {}) {
                 let y = ML;
 
                 // 1. College header
-                doc.font('Helvetica-Bold').fontSize(16).fillColor('black');
-                txt(`${collegeName} - ${deptName}`, ML, y, { align:'center', width:CW });
+                doc.font('Helvetica-Bold').fontSize(16).fillColor('black')
+                   .text(`${collegeName} - ${deptName}`, ML, y, { align:'center', width:CW });
                 y += 24;
 
                 // 2. Exam title
-                doc.font('Helvetica-Bold').fontSize(12);
-                txt(examTitle, ML, y, { align:'center', width:CW });
+                doc.font('Helvetica-Bold').fontSize(12)
+                   .text(examTitle, ML, y, { align:'center', width:CW });
                 y += 18;
 
                 // 3. Note
-                doc.font('Helvetica').fontSize(9).fillColor('black');
-                txt(noteText, ML, y, { align:'left', width:CW });
-                y += 14;
+                doc.font('Helvetica').fontSize(9).fillColor('black')
+                   .text(noteText, ML, y, { align:'left', width:CW });
+                y = doc.y + 7;
 
                 // 4. Date (left) + Hall No (right)
                 doc.font('Helvetica-Bold').fontSize(12).fillColor('black');
-                txt(`Date: ${fmtDate(plan.exam_date, plan.session_order)}`, ML, y, {});
-                txt(`Hall No.: ${room.room_number || ''}`, ML, y, { align:'right', width:CW });
+                doc.text(`Date: ${fmtDate(plan.exam_date, plan.session_order)}`, ML, y);
+                doc.text(`Hall No.: ${room.room_number || ''}`, ML, y, { align:'right', width:CW });
                 y += 20;
 
                 // 5. Grid ─────────────────────────────────────
@@ -207,10 +206,10 @@ function generateSeatingPDF(plan, rooms, notifications, collegeInfo = {}) {
                 const PAD    = 4;
                 const BOX_H  = Math.min(ROW_H - 4, 17);
 
-                // Each bench cell: full width per seat (no [-] box anymore)
+                // Each bench cell: pairCount pairs of [HT|MK] side by side
                 const pairW  = (COL_W - PAD * 2) / actualStudPerBench;
-                const HT_W   = pairW - 4;   // near full pairW — just a small gap between seats
-                const MK_W   = 0;            // removed
+                const HT_W   = pairW * 0.62;
+                const MK_W   = pairW * 0.28;
 
                 // Outer border
                 doc.lineWidth(1.0).rect(ML, y, CW, GRID_H).stroke();
@@ -220,7 +219,7 @@ function generateSeatingPDF(plan, rooms, notifications, collegeInfo = {}) {
                 for (let c = 1; c <= numCols; c++) {
                     const cx = ML + (c - 1) * COL_W;
                     if (c > 1) doc.lineWidth(0.5).moveTo(cx, y).lineTo(cx, y + GRID_H).stroke();
-                    txt(`Column ${c}`, cx, y + 5, { width:COL_W, align:'center' });
+                    doc.text(`Column ${c}`, cx, y + 5, { width:COL_W, align:'center' });
                 }
                 doc.lineWidth(0.5)
                    .moveTo(ML, y + HDR_H)
@@ -242,17 +241,13 @@ function generateSeatingPDF(plan, rooms, notifications, collegeInfo = {}) {
                                .rect(cx + 0.5, rowTop + 0.5, COL_W - 1, ROW_H - 0.5)
                                .fill();
                             doc.fillOpacity(1);
-                        } else if (!cell.pos1 && !cell.pos2) {
-                            // Available bench but no student assigned — draw empty boxes
-                            const x1 = cx + PAD;
-                            drawSeatPair(doc, x1, boxTop, HT_W, MK_W, BOX_H, null);
                         } else {
-                            // pos1 pair — always draw if bench is available
+                            // pos1 pair
                             const x1 = cx + PAD;
                             drawSeatPair(doc, x1, boxTop, HT_W, MK_W, BOX_H, cell.pos1);
 
-                            // pos2 pair — only draw if 2-per-bench AND pos2 student exists
-                            if (actualStudPerBench === 2 && cell.pos2) {
+                            // pos2 pair (only if 2-per-bench)
+                            if (actualStudPerBench === 2) {
                                 const x2 = cx + PAD + pairW;
                                 drawSeatPair(doc, x2, boxTop, HT_W, MK_W, BOX_H, cell.pos2);
                             }
@@ -304,7 +299,7 @@ function generateSeatingPDF(plan, rooms, notifications, collegeInfo = {}) {
                 let tx = tblX;
                 cw2.forEach((w, i) => {
                     doc.lineWidth(0.5).rect(tx, y, w, TH).stroke();
-                    txt(HDRS[i], tx+2, y+4, { width:w-4, align:'center' });
+                    doc.text(HDRS[i], tx+2, y+4, { width:w-4, align:'center' });
                     tx += w;
                 });
                 y += TH;
@@ -313,37 +308,32 @@ function generateSeatingPDF(plan, rooms, notifications, collegeInfo = {}) {
                 doc.font('Helvetica').fontSize(9.5);
                 summRows.forEach(row => {
                     tx = tblX;
-                    const vals = [row.sem, row.branch, row.course, row.code, String(row.count)];
-                    vals.forEach((v, i) => {
+                    [row.sem, row.branch, row.course, row.code, String(row.count)].forEach((v, i) => {
                         doc.lineWidth(0.4).rect(tx, y, cw2[i], TH).stroke();
-                        const maxChars = Math.floor((cw2[i] - 4) / 5.5);
-                        const t = (v || '').length > maxChars
-                            ? (v || '').substring(0, maxChars - 1) + '…'
-                            : (v || '');
-                        txt(t, tx+2, y+4, { width:cw2[i]-4, align:'center' });
+                        doc.text(v||'', tx+2, y+4, { width:cw2[i]-4, align:'center' });
                         tx += cw2[i];
                     });
                     y += TH;
                 });
 
-                // Grand total row
+                // Grand total
                 doc.font('Helvetica-Bold').fontSize(9.5);
                 tx = tblX;
                 ['','','','Grand Total', String(grandTotal)].forEach((v, i) => {
                     doc.lineWidth(0.5).rect(tx, y, cw2[i], TH).stroke();
-                    txt(v, tx+2, y+4, { width:cw2[i]-4, align:'center' });
+                    doc.text(v, tx+2, y+4, { width:cw2[i]-4, align:'center' });
                     tx += cw2[i];
                 });
-                y += TH + 14;
+                y += TH + 16;
 
-                // 7. Red footer note
-                doc.font('Helvetica-Bold').fontSize(10).fillColor('#cc0000');
-                txt(footerNote, ML, Math.min(y, PH - 40), { align:'center', width:CW });
+                // 7. Red footer
+                doc.font('Helvetica-Bold').fontSize(10).fillColor('#cc0000')
+                   .text(footerNote, ML, Math.min(y, PH - 40), { align:'center', width:CW });
 
-                // Page stamp (bottom right)
-                doc.font('Helvetica').fontSize(8).fillColor('#aaaaaa');
-                txt(`Plan #${plan.plan_id}  ·  ${fmtDate(plan.exam_date, plan.session_order)}`,
-                    ML, PH - 18, { align:'right', width:CW });
+                // Page stamp
+                doc.font('Helvetica').fontSize(8).fillColor('#aaaaaa')
+                   .text(`Plan #${plan.plan_id}  ·  ${fmtDate(plan.exam_date, plan.session_order)}`,
+                         ML, PH - 18, { align:'right', width:CW });
             });
 
             doc.end();

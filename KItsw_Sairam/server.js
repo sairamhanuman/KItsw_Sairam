@@ -297,6 +297,8 @@ const seatingPdfRoutes = require('./routes/seating-pdf-export');
 app.use('/api/seating', seatingRoutes.initializeRouter(promisePool));
 app.use('/api/seating', seatingPdfRoutes.initializeRouter(promisePool));
 
+const roomScheduleRoutes = require('./routes/room-weekly-schedule-routes');
+app.use('/api/room-schedule', roomScheduleRoutes.initializeRouter(pool));
 
 // Photo upload route for students (must be after students routes initialization)
 app.post('/api/students/:id/upload-photo', upload.single('photo'), async (req, res) => {

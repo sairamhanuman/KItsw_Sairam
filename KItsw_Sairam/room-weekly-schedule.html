@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Room Weekly Schedule</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:#f1f5f9; font-family:'Segoe UI',sans-serif; }
+
+/* ═══════════════════════════════════
+   NAVBAR
+═══════════════════════════════════ */
+.navbar {
+    background:linear-gradient(135deg,#2563eb,#7c3aed);
+    padding:0 24px; height:56px;
+    display:flex; align-items:center; gap:14px;
+    position:sticky; top:0; z-index:600;
+    box-shadow:0 4px 20px rgba(37,99,235,.4);
+}
+.nav-title  { color:#fff; font-weight:800; font-size:16px; }
+.nav-sub    { color:rgba(255,255,255,.6); font-size:11px; }
+.nchip {
+    background:rgba(255,255,255,.15);
+    border:1px solid rgba(255,255,255,.25);
+    border-radius:20px; padding:4px 14px;
+    color:#fff; font-size:12px; font-weight:700;
+    display:flex; align-items:center; gap:6px;
+}
+.nchip .n { font-size:18px; font-weight:800; line-height:1; }
+.nc-b .n { color:#93c5fd; }
+.nc-g .n { color:#4ade80; }
+.nc-r .n { color:#f87171; }
+
+/* ═══════════════════════════════════
+   LEGEND BAR
+═══════════════════════════════════ */
+.leg-bar {
+    background:#fff; border-bottom:1px solid #e2e8f0;
+    padding:6px 24px;
+    display:flex; align-items:center; gap:18px;
+    font-size:12px; font-weight:600; color:#475569;
+    position:sticky; top:56px; z-index:590;
+}
+.lsw {
+    width:30px; height:20px; border-radius:5px;
+    display:inline-flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:800;
+}
+.lf { background:#dcfce7; color:#15803d; border:1.5px solid #86efac; }
+.lb { background:#fee2e2; color:#dc2626; border:1.5px solid #fca5a5; }
+
+/* ═══════════════════════════════════
+   GRAND TOTAL BAR  ← NEW
+   Sticky below legend bar
+═══════════════════════════════════ */
+.grand-bar {
+    background:linear-gradient(135deg,#0f172a,#1e293b);
+    border-bottom:2px solid #334155;
+    position:sticky; top:88px; z-index:580;
+    overflow-x:auto;
+    box-shadow:0 3px 12px rgba(0,0,0,.25);
+}
+.grand-bar::-webkit-scrollbar { height:3px; }
+.grand-bar::-webkit-scrollbar-thumb { background:#334155; }
+
+.grand-inner {
+    display:flex; align-items:stretch;
+    min-width:860px;
+}
+.grand-label {
+    min-width:148px; width:148px;
+    background:linear-gradient(135deg,#1e3a5f,#1e40af);
+    color:#fff; padding:8px 14px;
+    display:flex; flex-direction:column; justify-content:center;
+    flex-shrink:0; border-right:2px solid #334155;
+}
+.grand-label .gl-title { font-size:11px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; }
+.grand-label .gl-sub   { font-size:9px; color:rgba(255,255,255,.55); margin-top:1px; }
+
+.grand-cells {
+    display:flex; flex:1;
+}
+.grand-cell {
+    flex:1; min-width:52px;
+    padding:5px 3px; text-align:center;
+    border-left:1px solid #334155;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    gap:1px;
+}
+.grand-cell.dgap { border-left:2px solid #475569; }
+.gc-free    { font-size:10px; font-weight:800; color:#4ade80; line-height:1.2; }
+.gc-blocked { font-size:10px; font-weight:700; color:#f87171; line-height:1.2; }
+.gc-rooms   { font-size:11px; font-weight:700; color:rgba(255,255,255,.85); line-height:1.2; }
+.gc-label   { font-size:12px; color:#f6f7f8; font-weight:600; text-transform:uppercase; letter-spacing:.4px; }
+
+/* Day color bands on grand bar */
+.gb-mon { background:rgba(37,99,235,.35); }
+.gb-tue { background:rgba(124,58,237,.35); }
+.gb-wed { background:rgba(13,148,136,.35); }
+.gb-thu { background:rgba(217,119,6,.35); }
+.gb-fri { background:rgba(219,39,119,.35); }
+.gb-sat { background:rgba(2,132,199,.35); }
+.gb-sun { background:rgba(100,116,139,.25); }
+
+/* ═══════════════════════════════════
+   PAGE
+═══════════════════════════════════ */
+.page { padding:20px 24px; max-width:1500px; margin:0 auto; }
+
+/* ═══════════════════════════════════
+   ACCORDION BLOCK CARD  ← NEW
+═══════════════════════════════════ */
+.bcard {
+    background:#fff; border-radius:14px;
+    box-shadow:0 2px 16px rgba(0,0,0,.07);
+    overflow:hidden; margin-bottom:20px;
+    border:1.5px solid #e2e8f0;
+    transition:box-shadow .2s;
+}
+.bcard:hover { box-shadow:0 4px 24px rgba(0,0,0,.1); }
+
+/* Accordion header — clickable */
+.bhdr {
+    padding:13px 18px;
+    display:flex; align-items:center; justify-content:space-between;
+    cursor:pointer; user-select:none;
+    background:linear-gradient(90deg,#eff6ff,#f5f3ff);
+    border-bottom:2px solid #e2e8f0;
+    transition:background .15s;
+}
+.bhdr:hover { background:linear-gradient(90deg,#dbeafe,#ede9fe); }
+.bhdr-left  { display:flex; align-items:center; gap:10px; }
+.bbadge {
+    background:linear-gradient(135deg,#2563eb,#7c3aed);
+    color:#fff; border-radius:7px;
+    padding:3px 10px; font-size:11px; font-weight:800;
+}
+.bname { font-size:14px; font-weight:800; color:#1e293b; text-transform:uppercase; }
+.bmeta { font-size:11px; color:#94a3b8; }
+.bmeta .bm-blocked { color:#dc2626; font-weight:700; }
+.bmeta .bm-clear   { color:#16a34a; font-weight:700; }
+
+.acc-arrow {
+    font-size:18px; color:#64748b;
+    transition:transform .25s ease;
+}
+.acc-arrow.open { transform:rotate(90deg); }
+
+/* Accordion body */
+.bacc-body {
+    max-height:0; overflow:hidden;
+    transition:max-height .35s ease;
+}
+.bacc-body.open { max-height:9999px; }
+
+/* ═══════════════════════════════════
+   TABLE
+═══════════════════════════════════ */
+.twrap { overflow-x:auto; }
+
+table {
+    width:100%; border-collapse:collapse;
+    min-width:860px; table-layout:fixed;
+}
+
+/* Frozen room column */
+th.rh, td.rc {
+    width:148px; min-width:148px;
+    position:sticky; left:0; z-index:10;
+    border-right:2px solid #e2e8f0;
+}
+th.rh {
+    background:linear-gradient(135deg,#334155,#4f6280);
+    color:#fff; text-align:left; padding:0 12px;
+    font-size:11px; font-weight:700; letter-spacing:.8px;
+    text-transform:uppercase; height:44px;
+}
+td.rc {
+    background:#f8fafc; padding:6px 12px; vertical-align:middle;
+    white-space:nowrap;
+}
+tr:hover td.rc { background:#eff6ff; }
+tr:hover td    { background:#f8faff; }
+
+/* Header row */
+th.sh {
+    height:44px; text-align:center;
+    font-size:10px; font-weight:800;
+    letter-spacing:.5px; text-transform:uppercase;
+    color:#fff; width:54px;
+    white-space:pre-line; line-height:1.3;
+    border-left:1px solid rgba(255,255,255,.15);
+}
+/* Day gap */
+th.dgap, td.dgap { border-left:2px solid #e2e8f0 !important; }
+
+/* Day palette */
+.s-mon { background:#2563eb; } .s-mon-a { background:#3b82f6; }
+.s-tue { background:#7c3aed; } .s-tue-a { background:#8b5cf6; }
+.s-wed { background:#0d9488; } .s-wed-a { background:#14b8a6; }
+.s-thu { background:#d97706; } .s-thu-a { background:#f59e0b; }
+.s-fri { background:#db2777; } .s-fri-a { background:#ec4899; }
+.s-sat { background:#0284c7; } .s-sat-a { background:#0ea5e9; }
+.s-sun { background:#475569; } .s-sun-a { background:#64748b; }
+
+/* ── SUMMARY ROW (top of tbody) ── */
+tr.sumrow td {
+    background:#f0fdf4;
+    border-bottom:2px solid #bbf7d0;
+    padding:5px 2px; text-align:center;
+    font-size:9px; line-height:1.5;
+    vertical-align:middle;
+}
+tr.sumrow td.rc {
+    background:#dcfce7; text-align:left;
+    padding:6px 12px; font-size:10px;
+    font-weight:700; color:#15803d;
+    border-right:2px solid #e2e8f0;
+}
+.sc-free    { color:#15803d; font-weight:800; display:block; font-size:10px; }
+.sc-blocked { color:#dc2626; font-weight:700; display:block; font-size:9px; }
+
+/* Data rows */
+table tbody tr { border-bottom:1px solid #f1f5f9; }
+table tbody tr:last-child { border-bottom:none; }
+
+/* Toggle cells */
+td.tc {
+    text-align:center; padding:5px 2px;
+    border-left:1px solid #f1f5f9; vertical-align:middle;
+}
+.tb {
+    width:46px; height:30px; border-radius:7px;
+    border:none; outline:none; cursor:pointer;
+    font-size:12px; font-weight:700;
+    display:inline-flex; align-items:center; justify-content:center;
+    transition:transform .1s, box-shadow .1s;
+}
+.tb.free    { background:#dcfce7; color:#15803d; border:1.5px solid #86efac; }
+.tb.blocked { background:#fee2e2; color:#dc2626; border:1.5px solid #fca5a5; }
+.tb.saving  { background:#fef9c3; color:#92400e; border:1.5px solid #fde68a; animation:blink .5s infinite; }
+.tb.free:hover    { transform:scale(1.1); box-shadow:0 3px 10px rgba(34,197,94,.3); }
+.tb.blocked:hover { transform:scale(1.1); box-shadow:0 3px 10px rgba(220,38,38,.25); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* Reset col */
+th.rsh {
+    background:linear-gradient(135deg,#334155,#4f6280);
+    width:40px; border-left:2px solid rgba(255,255,255,.2);
+}
+td.rst {
+    text-align:center; padding:0 5px;
+    border-left:2px solid #e2e8f0; background:#fafafa;
+    vertical-align:middle;
+}
+.rbtn {
+    width:26px; height:26px; border-radius:50%;
+    background:#fff; border:1.5px solid #e2e8f0;
+    color:#94a3b8; cursor:pointer; font-size:12px;
+    display:inline-flex; align-items:center; justify-content:center;
+    transition:all .25s;
+}
+.rbtn:hover { background:#fee2e2; border-color:#fca5a5; color:#dc2626; transform:rotate(-180deg); }
+
+/* Room info */
+/* Room info */
+.rname { font-weight:700; font-size:13px; color:#1e293b; display:inline; }
+.rcap  { font-size:11px; color:#94a3b8; display:inline; margin-left:6px; }
+.rtag  {
+    display:inline; margin-left:6px; border-radius:10px;
+    padding:1px 7px; font-size:9px; font-weight:700;
+}
+.tgf { background:#dcfce7; color:#16a34a; }
+.tgb { background:#fee2e2; color:#dc2626; }
+
+/* Shimmer */
+.shimmer {
+    background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);
+    background-size:200% 100%; animation:sh 1.4s infinite; border-radius:8px;
+}
+@keyframes sh { 0%{background-position:200%} 100%{background-position:-200%} }
+
+/* Expand all / collapse all */
+.acc-ctrl {
+    display:flex; gap:8px; margin-bottom:14px; align-items:center;
+}
+.acc-btn {
+    padding:5px 14px; border-radius:8px; font-size:12px; font-weight:700;
+    cursor:pointer; border:1.5px solid #e2e8f0; background:#fff; color:#475569;
+    transition:all .15s;
+}
+.acc-btn:hover { background:#eff6ff; border-color:#93c5fd; color:#2563eb; }
+
+.blk-all-btn {
+    padding:4px 12px; border-radius:7px;
+    font-size:11px; font-weight:700; cursor:pointer;
+    border:none; display:flex; align-items:center;
+    transition:all .15s;
+}
+.blk-red   { background:#fee2e2; color:#dc2626; border:1.5px solid #fca5a5; }
+.blk-red:hover   { background:#dc2626; color:#fff; }
+.blk-green { background:#dcfce7; color:#15803d; border:1.5px solid #86efac; }
+.blk-green:hover { background:#15803d; color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- ══ NAVBAR ══ -->
+<div class="navbar">
+    <i class="bi bi-calendar-week" style="color:#fff;font-size:20px;"></i>
+    <div>
+        <div class="nav-title">Room Weekly Schedule</div>
+        <div class="nav-sub">Click any cell to toggle FREE ↔ BLOCKED</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;margin-left:auto;">
+        <div class="nchip nc-b"><span class="n" id="sTotal">—</span><span>Rooms</span></div>
+        <div class="nchip nc-g"><span class="n" id="sFree">—</span><span>All Free</span></div>
+        <div class="nchip nc-r"><span class="n" id="sBlocked">—</span><span>Blocked</span></div>
+        <button onclick="location.reload()"
+            style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);
+                   color:#fff;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;margin-left:4px;">
+            <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+        </button>
+    </div>
+</div>
+
+<!-- ══ LEGEND ══ -->
+<div class="leg-bar">
+    <span><span class="lsw lf">✓</span> &nbsp;Available for exams</span>
+    <span><span class="lsw lb">✕</span> &nbsp;Class / Lab in use</span>
+    <span style="margin-left:auto;color:#94a3b8;font-size:11px;">
+        <i class="bi bi-lightning-charge-fill" style="color:#f59e0b;"></i> Changes save instantly
+    </span>
+</div>
+
+<!-- ══ GRAND TOTAL BAR ══ -->
+<div class="grand-bar" id="grandBar">
+    <div class="grand-inner" id="grandInner">
+        <div class="grand-label">
+            <div class="gl-title"><i class="bi bi-bar-chart-fill me-1"></i>Grand Total</div>
+            <div class="gl-sub">All blocks combined</div>
+        </div>
+        <div class="grand-cells" id="grandCells">
+            <!-- filled by JS -->
+        </div>
+    </div>
+</div>
+
+<!-- ══ PAGE ══ -->
+<div class="page">
+
+    <!-- Loading -->
+    <div id="loading">
+        <div class="bcard" style="padding:20px;">
+            <div class="shimmer mb-3" style="height:42px;"></div>
+            <div class="shimmer mb-2" style="height:34px;opacity:.7;"></div>
+            <div class="shimmer mb-2" style="height:34px;opacity:.5;"></div>
+            <div class="shimmer"      style="height:34px;opacity:.3;"></div>
+        </div>
+    </div>
+
+    <!-- Accordion controls + grid -->
+    <div id="accCtrl" class="acc-ctrl" style="display:none;">
+        <button class="acc-btn" onclick="expandAll()"><i class="bi bi-chevron-double-down me-1"></i>Expand All</button>
+        <button class="acc-btn" onclick="collapseAll()"><i class="bi bi-chevron-double-up me-1"></i>Collapse All</button>
+        <span style="font-size:12px;color:#94a3b8;margin-left:6px;">Click any block header to toggle</span>
+    </div>
+    <div id="grid"></div>
+</div>
+
+<script>
+/* ═══════ SESSION CONFIG ═══════ */
+const SESSIONS = [
+    { col:'mon_fn', lbl:'MON\nFN', hcls:'s-mon', gb:'gb-mon', day:'mon' },
+    { col:'mon_an', lbl:'MON\nAN', hcls:'s-mon-a', gb:'gb-mon', day:'mon' },
+    { col:'tue_fn', lbl:'TUE\nFN', hcls:'s-tue', gb:'gb-tue', day:'tue' },
+    { col:'tue_an', lbl:'TUE\nAN', hcls:'s-tue-a', gb:'gb-tue', day:'tue' },
+    { col:'wed_fn', lbl:'WED\nFN', hcls:'s-wed', gb:'gb-wed', day:'wed' },
+    { col:'wed_an', lbl:'WED\nAN', hcls:'s-wed-a', gb:'gb-wed', day:'wed' },
+    { col:'thu_fn', lbl:'THU\nFN', hcls:'s-thu', gb:'gb-thu', day:'thu' },
+    { col:'thu_an', lbl:'THU\nAN', hcls:'s-thu-a', gb:'gb-thu', day:'thu' },
+    { col:'fri_fn', lbl:'FRI\nFN', hcls:'s-fri', gb:'gb-fri', day:'fri' },
+    { col:'fri_an', lbl:'FRI\nAN', hcls:'s-fri-a', gb:'gb-fri', day:'fri' },
+    { col:'sat_fn', lbl:'SAT\nFN', hcls:'s-sat', gb:'gb-sat', day:'sat' },
+    { col:'sat_an', lbl:'SAT\nAN', hcls:'s-sat-a', gb:'gb-sat', day:'sat' },
+    { col:'sun_fn', lbl:'SUN\nFN', hcls:'s-sun', gb:'gb-sun', day:'sun' },
+    { col:'sun_an', lbl:'SUN\nAN', hcls:'s-sun-a', gb:'gb-sun', day:'sun' },
+];
+const DAY_FIRSTS = new Set(['mon_fn','tue_fn','wed_fn','thu_fn','fri_fn','sat_fn','sun_fn']);
+
+/* ═══════ STATE ═══════ */
+let sd = {};   // sd[room_id][col] = bool
+let rc = {};   // rc[room_id] = capacity
+let allRoomIds = [];
+
+/* ═══════ LOAD ═══════ */
+async function load() {
+    try {
+        const res  = await fetch('/api/room-schedule');
+        if (!res.ok) throw new Error('Server ' + res.status);
+        const data = await res.json();
+
+        document.getElementById('loading').style.display  = 'none';
+        document.getElementById('accCtrl').style.display  = 'flex';
+
+        (data.grouped||[]).forEach(b => b.rooms.forEach(r => {
+            sd[r.room_id] = { ...r.sessions };
+            rc[r.room_id] = r.total_capacity || 0;
+            allRoomIds.push(r.room_id);
+        }));
+
+        // Render grand total bar
+        renderGrandBar();
+
+        // Render blocks
+        document.getElementById('grid').innerHTML =
+            (data.grouped||[]).map(renderBlock).join('');
+
+        updateStats();
+
+    } catch(e) {
+        document.getElementById('loading').innerHTML =
+            `<div style="background:#fee2e2;color:#dc2626;padding:16px;border-radius:10px;">
+             <b>Error:</b> ${e.message}</div>`;
+    }
+}
+
+/* ═══════ GRAND TOTAL BAR ═══════ */
+function renderGrandBar() {
+    const cells = document.getElementById('grandCells');
+    cells.innerHTML = SESSIONS.map((s,i) => {
+        const isFirst = DAY_FIRSTS.has(s.col) && i > 0;
+        const { freeCap, blockedRooms, freeRooms } = calcGrandTotal(s.col);
+        const gapClass = isFirst ? ' dgap' : '';
+        const cellId   = s.col;
+        const lbl      = s.lbl.replace('\n',' ');
+        return '<div class="grand-cell ' + s.gb + gapClass + '" id="gc_' + cellId + '">'
+             + '<span class="gc-free"    id="gf_' + cellId + '">&#10003; ' + freeCap    + ' seats</span>'
+             + '<span class="gc-rooms"   id="gr_' + cellId + '">&#127968; ' + freeRooms  + ' rooms</span>'
+             + '<span class="gc-blocked" id="gb_' + cellId + '">&#10005; ' + blockedRooms + ' blocked</span>'
+             + '<span class="gc-label">' + lbl + '</span>'
+             + '</div>';
+    }).join('');
+}
+
+function calcGrandTotal(col) {
+    let freeCap = 0, blockedRooms = 0, freeRooms = 0;
+    allRoomIds.forEach(rid => {
+        if (sd[rid]?.[col]) blockedRooms++;
+        else { freeCap += (rc[rid] || 0); freeRooms++; }
+    });
+    return { freeCap, blockedRooms, freeRooms };
+}
+
+function refreshGrandCell(col) {
+    const { freeCap, blockedRooms, freeRooms } = calcGrandTotal(col);
+    const gf = document.getElementById('gf_' + col);
+    const gb = document.getElementById('gb_' + col);
+    const gr = document.getElementById('gr_' + col);
+    if (gf) gf.textContent = '✓ ' + freeCap    + ' seats';
+    if (gr) gr.textContent = '🏠 ' + freeRooms  + ' rooms';
+    if (gb) gb.textContent = '✕ ' + blockedRooms + ' blocked';
+}
+
+/* ═══════ RENDER BLOCK (ACCORDION) ═══════ */
+function renderBlock(blk) {
+    const total  = blk.rooms.length;
+    const nbkd   = blk.rooms.filter(r => Object.values(sd[r.room_id]||{}).some(Boolean)).length;
+    const bkey   = blk.block_code;
+    const rIds   = blk.rooms.map(r => r.room_id);
+
+    /* Column headers */
+    const hdrs = SESSIONS.map((s,i) => {
+        const gap = DAY_FIRSTS.has(s.col) && i>0 ? ' dgap' : '';
+        return `<th class="sh ${s.hcls}${gap}">${s.lbl}</th>`;
+    }).join('');
+
+    /* Summary row (top of tbody) */
+    const sumCells = SESSIONS.map((s,i) => {
+        const gap = DAY_FIRSTS.has(s.col) && i>0 ? ' dgap' : '';
+        const { freeCap, blockedRooms } = calcBlockTotal(s.col, rIds);
+        return `<td class="tc${gap}"
+                    data-bsum="${bkey}" data-col="${s.col}" data-rooms="${rIds.join(',')}">
+            <span class="sc-free">✓ ${freeCap}</span>
+            <span class="sc-blocked">✕ ${blockedRooms}r</span>
+        </td>`;
+    }).join('');
+
+    /* Room rows */
+    const rows = blk.rooms.map(r => renderRow(r)).join('');
+
+    return `
+<div class="bcard" id="bc_${bkey}">
+
+  <!-- Accordion Header -->
+ <div class="bhdr" onclick="toggleAccordion('${bkey}')">
+    <div class="bhdr-left">
+      <span class="bbadge">${bkey}</span>
+      <span class="bname">${blk.block_name || bkey}</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="bmeta">
+        ${total} rooms &nbsp;·&nbsp;
+        ${nbkd > 0
+            ? `<span class="bm-blocked">${nbkd} with blocked slots</span>`
+            : `<span class="bm-clear">all clear</span>`}
+      </div>
+      <button class="blk-all-btn blk-red"
+          onclick="event.stopPropagation(); blockAllInBlock('${bkey}', [${rIds.join(',')}])"
+          title="Block all rooms in this block for all sessions">
+          <i class="bi bi-x-circle me-1"></i>Block All
+      </button>
+      <button class="blk-all-btn blk-green"
+          onclick="event.stopPropagation(); unblockAllInBlock('${bkey}', [${rIds.join(',')}])"
+          title="Unblock all rooms in this block for all sessions">
+          <i class="bi bi-check-circle me-1"></i>Unblock All
+      </button>
+      <i class="bi bi-chevron-right acc-arrow open" id="arr_${bkey}"></i>
+    </div>
+  </div>
+
+  <!-- Accordion Body (open by default) -->
+  <div class="bacc-body open" id="body_${bkey}">
+    <div class="twrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="rh"><i class="bi bi-door-open me-1"></i>ROOM</th>
+          ${hdrs}
+          <th class="rsh"></th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <!-- SUMMARY ROW — top of table -->
+        <tr class="sumrow">
+          <td class="rc">
+            <i class="bi bi-calculator me-1"></i>Block Total
+            <div style="font-size:9px;color:#16a34a;margin-top:1px;">✓ Free seats · ✕ Blocked rooms</div>
+          </td>
+          ${sumCells}
+          <td class="rst"></td>
+        </tr>
+
+        <!-- Room rows -->
+        ${rows}
+
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>`;
+}
+
+function calcBlockTotal(col, roomIds) {
+    let freeCap = 0, blockedRooms = 0;
+    roomIds.forEach(rid => {
+        if (sd[rid]?.[col]) blockedRooms++;
+        else freeCap += (rc[rid] || 0);
+    });
+    return { freeCap, blockedRooms };
+}
+
+/* ═══════ RENDER ROOM ROW ═══════ */
+function renderRow(r) {
+    const s  = sd[r.room_id] || {};
+    const bc = Object.values(s).filter(Boolean).length;
+
+    const cells = SESSIONS.map((ses, i) => {
+        const gap     = DAY_FIRSTS.has(ses.col) && i>0 ? ' dgap' : '';
+        const blocked = !!s[ses.col];
+        return `<td class="tc${gap}">
+            <button class="tb ${blocked?'blocked':'free'}"
+                id="cell_${r.room_id}_${ses.col}"
+                onclick="toggle(${r.room_id},'${ses.col}')"
+                title="${ses.lbl.replace('\n',' ')}"
+            >${blocked?'✕':'✓'}</button>
+        </td>`;
+    }).join('');
+
+    return `
+<tr id="row_${r.room_id}">
+  <td class="rc">
+    <span class="rname">${r.room_number}</span>
+    <span class="rcap"><i class="bi bi-people me-1"></i>${r.total_capacity}</span>
+    <span id="tag_${r.room_id}" class="rtag ${bc>0?'tgb':'tgf'}">${bc>0?'⛔ '+bc+' blocked':'✓ free'}</span>
+  </td>
+  ${cells}
+  <td class="rst">
+    <button class="rbtn" onclick="resetRoom(${r.room_id},'${r.room_number}')"
+        title="Clear all for ${r.room_number}">
+        <i class="bi bi-arrow-counterclockwise"></i>
+    </button>
+  </td>
+</tr>`;
+}
+
+/* ═══════ ACCORDION ═══════ */
+function toggleAccordion(bkey) {
+    const body  = document.getElementById(`body_${bkey}`);
+    const arrow = document.getElementById(`arr_${bkey}`);
+    body.classList.toggle('open');
+    arrow.classList.toggle('open');
+}
+function expandAll() {
+    document.querySelectorAll('.bacc-body').forEach(b => b.classList.add('open'));
+    document.querySelectorAll('.acc-arrow').forEach(a => a.classList.add('open'));
+}
+function collapseAll() {
+    document.querySelectorAll('.bacc-body').forEach(b => b.classList.remove('open'));
+    document.querySelectorAll('.acc-arrow').forEach(a => a.classList.remove('open'));
+}
+
+/* ═══════ TOGGLE ═══════ */
+async function toggle(roomId, col) {
+    const btn = document.getElementById(`cell_${roomId}_${col}`);
+    if (!btn || btn.classList.contains('saving')) return;
+    const prev = btn.classList.contains('blocked');
+    btn.className = 'tb saving'; btn.textContent = '…';
+    try {
+        const res  = await fetch('/api/room-schedule/toggle', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ room_id:roomId, col })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        const now = data.blocked;
+        btn.className = `tb ${now?'blocked':'free'}`;
+        btn.textContent = now ? '✕' : '✓';
+        if (!sd[roomId]) sd[roomId] = {};
+        sd[roomId][col] = now;
+        refreshTag(roomId);
+        refreshBlockSummary(col);
+        refreshGrandCell(col);
+        updateStats();
+    } catch(e) {
+        btn.className = `tb ${prev?'blocked':'free'}`;
+        btn.textContent = prev ? '✕' : '✓';
+        console.error(e);
+    }
+}
+
+/* ═══════ RESET ROW ═══════ */
+async function resetRoom(roomId, name) {
+    if (!confirm(`Clear ALL blocked slots for ${name}?`)) return;
+    try {
+        await fetch(`/api/room-schedule/reset/${roomId}`, { method:'POST' });
+        SESSIONS.forEach(s => {
+            const b = document.getElementById(`cell_${roomId}_${s.col}`);
+            if (b) { b.className='tb free'; b.textContent='✓'; }
+            if (sd[roomId]) sd[roomId][s.col] = false;
+        });
+        refreshTag(roomId);
+        SESSIONS.forEach(s => {
+            refreshBlockSummary(s.col);
+            refreshGrandCell(s.col);
+        });
+        updateStats();
+    } catch(e) { alert('Reset failed: '+e.message); }
+}
+async function blockAllInBlock(bkey, roomIds) {
+    if (!confirm('Block ALL sessions for ALL rooms in this block?')) return;
+    for (const rid of roomIds) {
+        await fetch('/api/room-schedule/reset/' + rid, { method:'POST' });
+        // reset first then block all
+        await fetch('/api/room-schedule/block-all/' + rid, { method:'POST' });
+        SESSIONS.forEach(s => {
+            const b = document.getElementById('cell_' + rid + '_' + s.col);
+            if (b) { b.className='tb blocked'; b.textContent='✕'; }
+            if (sd[rid]) sd[rid][s.col] = true;
+        });
+        refreshTag(rid);
+    }
+    SESSIONS.forEach(s => { refreshBlockSummary(s.col); refreshGrandCell(s.col); });
+    updateStats();
+}
+
+async function unblockAllInBlock(bkey, roomIds) {
+    if (!confirm('Unblock ALL sessions for ALL rooms in this block?')) return;
+    for (const rid of roomIds) {
+        await fetch('/api/room-schedule/reset/' + rid, { method:'POST' });
+        SESSIONS.forEach(s => {
+            const b = document.getElementById('cell_' + rid + '_' + s.col);
+            if (b) { b.className='tb free'; b.textContent='✓'; }
+            if (sd[rid]) sd[rid][s.col] = false;
+        });
+        refreshTag(rid);
+    }
+    SESSIONS.forEach(s => { refreshBlockSummary(s.col); refreshGrandCell(s.col); });
+    updateStats();
+}
+/* ═══════ REFRESH HELPERS ═══════ */
+function refreshTag(roomId) {
+    const el = document.getElementById(`tag_${roomId}`);
+    if (!el) return;
+    const bc = Object.values(sd[roomId]||{}).filter(Boolean).length;
+    el.className = `rtag ${bc>0?'tgb':'tgf'}`;
+    el.textContent = bc>0 ? `⛔ ${bc} blocked` : '✓ all free';
+}
+
+function refreshBlockSummary(col) {
+    document.querySelectorAll(`[data-bsum][data-col="${col}"]`).forEach(cell => {
+        const roomIds = cell.dataset.rooms.split(',').map(Number).filter(Boolean);
+        const { freeCap, blockedRooms } = calcBlockTotal(col, roomIds);
+        cell.innerHTML =
+            `<span class="sc-free">✓ ${freeCap}</span>` +
+            `<span class="sc-blocked">✕ ${blockedRooms}r</span>`;
+    });
+}
+
+function updateStats() {
+    const ids = Object.keys(sd);
+    let bl=0, fr=0;
+    ids.forEach(id => {
+        const bc = Object.values(sd[id]).filter(Boolean).length;
+        bl += bc; if (bc===0) fr++;
+    });
+    document.getElementById('sTotal').textContent   = ids.length;
+    document.getElementById('sFree').textContent    = fr;
+    document.getElementById('sBlocked').textContent = bl;
+}
+
+load();
+</script>
+</body>
+</html>

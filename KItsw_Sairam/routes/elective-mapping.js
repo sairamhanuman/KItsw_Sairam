@@ -186,13 +186,12 @@ router.get('/available-students', async (req, res) => {
         console.log('=== GET AVAILABLE STUDENTS ===');
         console.log('Filters:', { programme_id, batch_id, branch_id, semester_id, subject_id });
         
-        if (!programme_id || !batch_id || !branch_id || !semester_id) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Programme, Batch, Branch, and Semester are required'
-            });
-        }
-        
+    if (!programme_id || !batch_id || !branch_id || !semester_id || !subject_id) {
+    return res.status(400).json({
+        status: 'error',
+        message: 'Programme, Batch, Branch, Semester and Subject are required'
+    });
+}
         // Get students who are NOT already mapped to this elective
         const query = `
             SELECT DISTINCT
@@ -211,28 +210,35 @@ router.get('/available-students', async (req, res) => {
             AND ssh.branch_id = ?
             AND ssh.semester_id = ?
             AND ssh.student_status IN ('In Roll', 'Detained', 'Left', 'Completed', 'Dropout')
-            AND sm.student_id NOT IN (
-                SELECT student_id 
-                FROM student_elective_mapping 
-                WHERE programme_id = ?
-                AND batch_id = ?
-                AND branch_id = ?
-                AND semester_id = ?
-                AND is_active = 1
-            )
+        AND sm.student_id NOT IN (
+    SELECT sem.student_id 
+    FROM student_elective_mapping sem
+    INNER JOIN subject_master subm ON sem.subject_id = subm.subject_id
+    WHERE sem.programme_id = ?
+    AND sem.batch_id = ?
+    AND sem.branch_id = ?
+    AND sem.semester_id = ?
+    AND sem.is_active = 1
+    AND subm.elective_name = (
+        SELECT elective_name 
+        FROM subject_master 
+        WHERE subject_id = ?
+    )
+)
             ORDER BY sm.roll_number
         `;
         
         const [students] = await promisePool.query(query, [
-            programme_id,
-            batch_id,
-            branch_id,
-            semester_id,
-            programme_id,
-            batch_id,
-            branch_id,
-            semester_id
-        ]);
+    programme_id,
+    batch_id,
+    branch_id,
+    semester_id,
+    programme_id,
+    batch_id,
+    branch_id,
+    semester_id,
+    subject_id      // ← NEW: to match elective_name of selected subject
+]);
         
         console.log(`Found ${students.length} available students`);
         
@@ -376,12 +382,14 @@ router.post('/add-students', async (req, res) => {
                     }
                     
                     // Insert mapping
-                    await connection.query(
-                        `INSERT INTO student_elective_mapping 
-                        (student_id, programme_id, batch_id, branch_id, semester_id, subject_id, academic_year, is_active)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
-                        [student_id, programme_id, batch_id, branch_id, semester_id, subject_id, academic_year || null]
-                    );
+               await connection.query(
+    `INSERT INTO student_elective_mapping 
+    (student_id, programme_id, batch_id, branch_id, semester_id, subject_id, elective_name, academic_year, is_active)
+    SELECT ?, ?, ?, ?, ?, ?, elective_name, ?, 1
+    FROM subject_master 
+    WHERE subject_id = ?`,
+    [student_id, programme_id, batch_id, branch_id, semester_id, subject_id, academic_year || null, subject_id]
+);
                     
                     added++;
                     

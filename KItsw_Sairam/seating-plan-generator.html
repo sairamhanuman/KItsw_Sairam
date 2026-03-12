@@ -1,940 +1,1262 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Seating Plan Generator</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"/>
-    <style>
-        body { background: #f0f2f5; font-family: 'Segoe UI', sans-serif; }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Seating Plan Generator</title>
+<link rel="stylesheet" href="css/styles.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',sans-serif;background:#f0f4ff;font-size:14px;color:#1e293b;}
 
-        /* ── Step Wizard ── */
-        .step-wizard { display: flex; align-items: center; justify-content: center; padding: 24px 0 16px; gap: 0; }
-        .step-item { display: flex; flex-direction: column; align-items: center; position: relative; }
-        .step-circle {
-            width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center;
-            justify-content: center; font-weight: 700; font-size: 15px;
-            background: #e2e8f0; color: #94a3b8; border: 2px solid #cbd5e1; transition: all .3s;
-        }
-        .step-circle.active { background: #3b82f6; color: #fff; border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,.2); }
-        .step-circle.done { background: #22c55e; color: #fff; border-color: #22c55e; }
-        .step-label { font-size: 11px; color: #64748b; margin-top: 4px; font-weight: 600; text-align: center; width: 80px; }
-        .step-label.active { color: #3b82f6; }
-        .step-label.done { color: #22c55e; }
-        .step-line { width: 80px; height: 2px; background: #e2e8f0; margin-bottom: 18px; transition: background .3s; }
-        .step-line.done { background: #22c55e; }
+/* ── Layout ── */
+.page-wrap{max-width:1600px;margin:0 auto;padding:20px;}
 
-        /* ── Panel Cards ── */
-        .panel-card { background: #fff; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,.06); margin-bottom: 20px; }
-        .panel-header { padding: 16px 20px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 10px; }
-        .panel-header h6 { margin: 0; font-weight: 700; font-size: 15px; color: #1e293b; }
-        .panel-body { padding: 20px; }
+/* ── Header ── */
+.page-hdr{
+    background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+    color:#fff;padding:22px 30px;border-radius:14px;
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:22px;box-shadow:0 6px 24px rgba(102,126,234,.4);
+}
+.page-hdr h1{font-size:22px;font-weight:800;margin:0;}
+.page-hdr p{font-size:12px;opacity:.8;margin-top:3px;}
 
-        /* ── Room Cards ── */
-        .room-card {
-            border-radius: 10px; padding: 14px; cursor: pointer;
-            border: 2px solid #e2e8f0; background: #fff; transition: all .2s;
-            position: relative; min-height: 110px;
-        }
-        .room-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,.1); }
-        .room-card.status-FREE { border-color: #e2e8f0; }
-        .room-card.status-FREE:hover { border-color: #3b82f6; }
-        .room-card.status-SELECTED { border-color: #3b82f6; background: #eff6ff; }
-        .room-card.status-OCCUPIED { border-color: #fca5a5; background: #fff5f5; cursor: not-allowed; opacity: .8; }
-        .room-card.status-BLOCKED { border-color: #fcd34d; background: #fffbeb; cursor: not-allowed; opacity: .8; }
-        .room-card.status-INACTIVE { border-color: #e2e8f0; background: #f8fafc; cursor: not-allowed; opacity: .5; }
+/* ── Stepper ── */
+.stepper{display:flex;gap:0;margin-bottom:22px;background:#fff;border-radius:12px;
+    overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.07);}
+.step{flex:1;padding:14px 10px;text-align:center;border-right:1px solid #f1f5f9;
+    cursor:pointer;transition:all .25s;position:relative;}
+.step:last-child{border-right:none;}
+.step .snum{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;
+    justify-content:center;font-weight:800;font-size:13px;margin-bottom:4px;
+    background:#e2e8f0;color:#64748b;transition:all .25s;}
+.step .slbl{font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;}
+.step.active .snum{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;
+    box-shadow:0 3px 10px rgba(102,126,234,.4);}
+.step.active .slbl{color:#667eea;}
+.step.done .snum{background:#22c55e;color:#fff;}
+.step.done .slbl{color:#16a34a;}
+.step::after{content:'›';position:absolute;right:-8px;top:50%;transform:translateY(-50%);
+    font-size:18px;color:#cbd5e1;z-index:2;}
+.step:last-child::after{display:none;}
 
-        .room-badge {
-            display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px;
-            font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
-        }
-        .badge-FREE { background: #dcfce7; color: #16a34a; }
-        .badge-SELECTED { background: #dbeafe; color: #2563eb; }
-        .badge-OCCUPIED { background: #fee2e2; color: #dc2626; }
-        .badge-BLOCKED { background: #fef3c7; color: #d97706; }
-        .badge-INACTIVE { background: #f1f5f9; color: #94a3b8; }
+/* ── Step panels ── */
+.step-panel{display:none;}
+.step-panel.active{display:block;}
 
-        .room-number { font-size: 16px; font-weight: 800; color: #1e293b; margin-bottom: 2px; }
-        .room-cap { font-size: 12px; color: #64748b; }
-        .room-note { font-size: 10px; color: #94a3b8; margin-top: 4px; }
+/* ── Card ── */
+.card{background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.07);
+    margin-bottom:18px;overflow:hidden;}
+.card-hdr{padding:14px 20px;border-bottom:1px solid #f1f5f9;
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.card-hdr h3{margin:0;font-size:15px;font-weight:700;color:#1e293b;}
+.card-body{padding:20px;}
 
-        .quick-block-btn {
-            position: absolute; top: 8px; right: 8px; width: 26px; height: 26px;
-            border-radius: 50%; background: #fff; border: 1px solid #e2e8f0;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 13px; color: #94a3b8; cursor: pointer; z-index: 2;
-        }
-        .quick-block-btn:hover { background: #fef3c7; border-color: #fcd34d; color: #d97706; }
+/* ── Buttons ── */
+.btn{padding:10px 22px;border:none;border-radius:8px;cursor:pointer;
+    font-size:13px;font-weight:700;transition:all .2s;display:inline-flex;
+    align-items:center;gap:7px;white-space:nowrap;}
+.btn-primary{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;
+    box-shadow:0 3px 10px rgba(102,126,234,.35);}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 5px 15px rgba(102,126,234,.45);}
+.btn-primary:disabled{opacity:.5;transform:none;cursor:not-allowed;}
+.btn-success{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;
+    box-shadow:0 3px 10px rgba(34,197,94,.3);}
+.btn-success:hover:not(:disabled){transform:translateY(-1px);}
+.btn-success:disabled{opacity:.5;cursor:not-allowed;}
+.btn-danger{background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;}
+.btn-outline{background:#fff;border:1.5px solid #e2e8f0;color:#475569;}
+.btn-outline:hover{border-color:#667eea;color:#667eea;background:#f8faff;}
+.btn-sm{padding:6px 14px;font-size:12px;}
+.btn-xs{padding:4px 10px;font-size:11px;border-radius:6px;}
 
-        /* ── Capacity Bar ── */
-        .cap-bar-wrap { background: #f1f5f9; border-radius: 20px; height: 8px; overflow: hidden; margin-top: 6px; }
-        .cap-bar-fill { height: 100%; border-radius: 20px; transition: width .4s; }
-        .cap-bar-ok { background: linear-gradient(90deg,#22c55e,#16a34a); }
-        .cap-bar-warn { background: linear-gradient(90deg,#f59e0b,#d97706); }
-        .cap-bar-over { background: linear-gradient(90deg,#ef4444,#dc2626); }
+/* ── Form controls ── */
+.fg label{font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;
+    letter-spacing:.5px;margin-bottom:5px;display:block;}
+.fg select,.fg input{width:100%;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:8px;
+    font-size:13px;outline:none;transition:all .2s;background:#fff;}
+.fg select:focus,.fg input:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.12);}
 
-        /* ── Notification Check Cards ── */
-        .notif-check-card {
-            border: 2px solid #e2e8f0; border-radius: 10px; padding: 14px 16px;
-            cursor: pointer; transition: all .2s; margin-bottom: 10px;
-        }
-        .notif-check-card.checked { border-color: #3b82f6; background: #eff6ff; }
-        .notif-check-card:hover { border-color: #93c5fd; }
+/* ── Grid ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+@media(max-width:900px){.g4{grid-template-columns:1fr 1fr;}.g3{grid-template-columns:1fr 1fr;}}
+@media(max-width:600px){.g2,.g3,.g4{grid-template-columns:1fr;}}
 
-        /* ── Preview Table ── */
-        .preview-room-header {
-            background: linear-gradient(135deg,#1e293b,#334155);
-            color: #fff; border-radius: 10px 10px 0 0; padding: 12px 16px;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .preview-table th { background: #f8fafc; font-size: 12px; font-weight: 700; color: #475569; }
-        .preview-table td { font-size: 12px; }
+/* ── Notification card ── */
+.notif-card{border:2px solid #e2e8f0;border-radius:10px;padding:14px 16px;cursor:pointer;
+    transition:all .2s;position:relative;user-select:none;}
+.notif-card:hover{border-color:#667eea;transform:translateY(-1px);
+    box-shadow:0 4px 14px rgba(102,126,234,.15);}
+.notif-card.selected{border-color:#667eea;background:#f0f4ff;
+    box-shadow:0 4px 14px rgba(102,126,234,.2);}
+.notif-card .nc-check{position:absolute;top:10px;right:10px;width:20px;height:20px;
+    border-radius:50%;background:#667eea;color:#fff;display:none;align-items:center;
+    justify-content:center;font-size:11px;font-weight:800;}
+.notif-card.selected .nc-check{display:flex;}
+.notif-card .nc-title{font-weight:700;font-size:14px;color:#1e293b;margin-bottom:5px;}
+.notif-card .nc-meta{font-size:11px;color:#64748b;display:flex;flex-wrap:wrap;gap:6px;}
+.nc-badge{padding:3px 8px;border-radius:12px;font-size:10px;font-weight:700;}
+.nc-ese{background:#fee2e2;color:#991b1b;}
+.nc-cie{background:#dbeafe;color:#1e40af;}
+.nc-other{background:#f1f5f9;color:#475569;}
 
-        /* ── Sticky Summary Bar ── */
-        .summary-bar {
-            position: sticky; top: 0; z-index: 100; background: #fff;
-            border-bottom: 1px solid #e2e8f0; padding: 10px 20px;
-            display: flex; gap: 20px; align-items: center; flex-wrap: wrap;
-        }
-        .summary-stat { display: flex; flex-direction: column; align-items: center; }
-        .summary-stat .val { font-size: 20px; font-weight: 800; color: #1e293b; line-height: 1; }
-        .summary-stat .lbl { font-size: 10px; color: #94a3b8; font-weight: 600; text-transform: uppercase; }
+/* ── Room grid ── */
+.room-block-hdr{
+    background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;
+    padding:10px 16px;border-radius:10px 10px 0 0;font-weight:700;font-size:13px;
+    display:flex;align-items:center;gap:8px;
+}
+.rooms-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;
+    padding:14px;}
+.room-card{border:2px solid #e2e8f0;border-radius:10px;padding:12px 14px;cursor:pointer;
+    transition:all .2s;position:relative;user-select:none;}
+.room-card:hover:not(.blocked):not(.occupied):not(.inactive){
+    border-color:#667eea;transform:translateY(-1px);}
+.room-card.selected{border-color:#667eea;background:#f0f4ff;}
+.room-card.blocked{border-color:#fde68a;background:#fffbeb;cursor:not-allowed;opacity:.7;}
+.room-card.occupied{border-color:#fca5a5;background:#fff5f5;cursor:not-allowed;opacity:.7;}
+.room-card.inactive{border-color:#e2e8f0;background:#f8fafc;cursor:not-allowed;opacity:.5;}
+.room-card .rc-check{position:absolute;top:8px;right:8px;width:18px;height:18px;
+    border-radius:50%;background:#667eea;color:#fff;display:none;
+    align-items:center;justify-content:center;font-size:10px;}
+.room-card.selected .rc-check{display:flex;}
+.rc-num{font-weight:800;font-size:15px;color:#1e293b;}
+.rc-name{font-size:11px;color:#64748b;margin:2px 0 4px;}
+.rc-info{font-size:11px;display:flex;align-items:center;justify-content:space-between;}
+.rc-cap{font-weight:700;color:#16a34a;}
+.status-pill{font-size:9px;font-weight:800;padding:2px 7px;border-radius:10px;
+    text-transform:uppercase;letter-spacing:.3px;}
+.sp-free{background:#d1fae5;color:#065f46;}
+.sp-blocked{background:#fef3c7;color:#92400e;}
+.sp-occupied{background:#fee2e2;color:#991b1b;}
+.sp-inactive{background:#f1f5f9;color:#64748b;}
 
-        /* ── Block Grid for multi-room display ── */
-        .block-section-title {
-            font-size: 11px; font-weight: 800; color: #64748b; letter-spacing: 1px;
-            text-transform: uppercase; padding: 8px 0 4px;
-        }
-    </style>
+/* ── Selection summary bar ── */
+.sel-bar{background:linear-gradient(135deg,#1e293b,#334155);color:#fff;
+    border-radius:10px;padding:12px 20px;display:flex;align-items:center;
+    gap:20px;flex-wrap:wrap;margin-bottom:14px;font-size:13px;}
+.sel-stat{display:flex;align-items:center;gap:6px;}
+.sel-val{font-size:18px;font-weight:800;}
+.sel-lbl{font-size:11px;opacity:.7;text-transform:uppercase;}
+.cap-ok{color:#4ade80;}
+.cap-warn{color:#fb923c;}
+.cap-over{color:#f87171;}
+
+/* ── Validation report ── */
+.vr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;
+    margin-bottom:18px;}
+.vr-card{border-radius:10px;padding:16px;text-align:center;}
+.vr-card.blue{background:#dbeafe;}
+.vr-card.green{background:#d1fae5;}
+.vr-card.yellow{background:#fef9c3;}
+.vr-card.red{background:#fee2e2;}
+.vr-card.purple{background:#ede9fe;}
+.vr-val{font-size:26px;font-weight:900;margin-bottom:3px;}
+.vr-lbl{font-size:10px;font-weight:700;text-transform:uppercase;opacity:.7;}
+
+/* ── Anti-copy score ── */
+.score-ring-wrap{display:flex;align-items:center;gap:20px;
+    background:#f8fafc;border-radius:12px;padding:20px 24px;margin-bottom:18px;}
+.score-ring{width:90px;height:90px;flex-shrink:0;}
+.score-ring svg{width:90px;height:90px;transform:rotate(-90deg);}
+.score-ring circle{fill:none;stroke-width:8;stroke-linecap:round;}
+.score-ring .bg{stroke:#e2e8f0;}
+.score-ring .fg{transition:stroke-dashoffset .8s ease;}
+.score-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    font-weight:900;text-align:center;}
+.score-wrap{position:relative;width:90px;height:90px;}
+.score-overlay{position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;}
+.score-num{font-size:20px;font-weight:900;}
+.score-pct{font-size:10px;font-weight:700;opacity:.7;}
+.score-info{flex:1;}
+.score-title{font-size:18px;font-weight:800;margin-bottom:4px;}
+.score-sub{font-size:12px;color:#64748b;margin-bottom:10px;}
+.grade-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 14px;
+    border-radius:20px;font-size:12px;font-weight:800;}
+.grade-excellent{background:#d1fae5;color:#065f46;}
+.grade-good{background:#dbeafe;color:#1e40af;}
+.grade-acceptable{background:#fef3c7;color:#92400e;}
+.grade-poor{background:#fee2e2;color:#991b1b;}
+
+/* ── Score bar ── */
+.sbar-wrap{background:#f1f5f9;border-radius:20px;height:10px;overflow:hidden;margin:5px 0;}
+.sbar-fill{height:100%;border-radius:20px;transition:width .6s;}
+.sb-excellent{background:linear-gradient(90deg,#22c55e,#16a34a);}
+.sb-good{background:linear-gradient(90deg,#3b82f6,#2563eb);}
+.sb-acceptable{background:linear-gradient(90deg,#f59e0b,#d97706);}
+.sb-poor{background:linear-gradient(90deg,#ef4444,#dc2626);}
+
+/* ── Room preview cards ── */
+.rp-card{border:2px solid #e2e8f0;border-radius:12px;overflow:hidden;transition:all .2s;}
+.rp-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.1);}
+.rp-hdr{padding:10px 14px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;
+    display:flex;align-items:center;justify-content:space-between;}
+.rp-hdr .rph-room{font-weight:800;font-size:14px;}
+.rp-hdr .rph-score{font-size:11px;opacity:.9;}
+.rp-body{padding:14px;}
+.rp-row{display:flex;justify-content:space-between;align-items:center;
+    padding:4px 0;border-bottom:1px solid #f8fafc;font-size:12px;}
+.rp-row:last-child{border-bottom:none;}
+.rp-key{color:#64748b;font-weight:600;}
+.rp-val{font-weight:700;color:#1e293b;text-align:right;max-width:60%;word-break:break-word;}
+.rp-ref-pills{display:flex;flex-wrap:wrap;gap:3px;margin-top:8px;}
+.rp-ref-pill{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;
+    background:#f1f5f9;color:#475569;}
+
+/* ── Ref code color cycling ── */
+.rc0{background:#dbeafe;color:#1e40af;} .rc1{background:#d1fae5;color:#065f46;}
+.rc2{background:#ede9fe;color:#5b21b6;} .rc3{background:#fce7f3;color:#9d174d;}
+.rc4{background:#fef9c3;color:#92400e;} .rc5{background:#ccfbf1;color:#065f46;}
+.rc6{background:#fee2e2;color:#991b1b;} .rc7{background:#e0f2fe;color:#0c4a6e;}
+
+/* ── Ref code legend ── */
+.ref-legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.ref-leg-item{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;}
+.ref-dot{width:10px;height:10px;border-radius:50%;}
+
+/* ── Plan history ── */
+.plan-row{display:flex;align-items:center;gap:12px;padding:12px 16px;
+    border-bottom:1px solid #f1f5f9;transition:background .15s;}
+.plan-row:hover{background:#f8fafc;}
+.plan-row:last-child{border-bottom:none;}
+.pr-date{font-weight:700;color:#1e293b;min-width:100px;}
+.pr-ses{padding:3px 8px;border-radius:8px;font-size:11px;font-weight:700;}
+.pr-fn{background:#dbeafe;color:#1e40af;}
+.pr-an{background:#ede9fe;color:#5b21b6;}
+.pr-name{flex:1;font-size:13px;color:#475569;}
+.pr-status{padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;}
+.prs-draft{background:#f1f5f9;color:#475569;}
+.prs-confirmed{background:#dbeafe;color:#1e40af;}
+.prs-published{background:#d1fae5;color:#065f46;}
+
+/* ── Alert / Toast ── */
+.toast{position:fixed;bottom:24px;right:24px;z-index:9999;
+    padding:14px 20px;border-radius:10px;font-size:13px;font-weight:600;
+    display:none;align-items:center;gap:10px;max-width:400px;
+    box-shadow:0 8px 24px rgba(0,0,0,.15);}
+.toast.show{display:flex;}
+.toast-success{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;}
+.toast-error{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;}
+.toast-warning{background:#fef3c7;color:#92400e;border:1px solid #fde68a;}
+.toast-info{background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;}
+
+/* ── Spinner ── */
+.spinner{display:inline-block;width:20px;height:20px;border:3px solid rgba(255,255,255,.3);
+    border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── Batch mode badge ── */
+.batch-badge{display:inline-flex;align-items:center;gap:5px;
+    padding:5px 14px;border-radius:20px;font-size:12px;font-weight:800;
+    background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;}
+
+/* ── Shimmer ── */
+.shimmer{background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);
+    background-size:200%;animation:sh 1.2s infinite;border-radius:8px;}
+@keyframes sh{0%{background-position:200%}100%{background-position:-200%}}
+
+/* ── Violation list ── */
+.viol-item{display:flex;align-items:flex-start;gap:10px;padding:8px 12px;
+    background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;margin-bottom:6px;
+    font-size:12px;}
+.viol-icon{font-size:16px;margin-top:1px;}
+.viol-type{font-weight:800;color:#92400e;}
+.viol-detail{color:#78350f;}
+
+/* ── Step nav ── */
+.step-nav{display:flex;justify-content:space-between;align-items:center;
+    margin-top:20px;padding-top:16px;border-top:1px solid #f1f5f9;}
+
+/* ── Tab bar for history ── */
+.tab-row{display:flex;gap:4px;background:#fff;border-radius:10px;padding:5px;
+    box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:16px;}
+.trbtn{padding:8px 18px;border-radius:8px;border:none;cursor:pointer;
+    font-size:13px;font-weight:700;color:#64748b;background:transparent;transition:all .2s;}
+.trbtn.active{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;}
+.trbtn:hover:not(.active){background:#f1f5f9;}
+
+/* loading overlay */
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.8);
+    z-index:9000;display:none;align-items:center;justify-content:center;
+    flex-direction:column;gap:16px;}
+.loading-overlay.show{display:flex;}
+.lo-spinner{width:48px;height:48px;border:5px solid #e2e8f0;border-top-color:#667eea;
+    border-radius:50%;animation:spin .8s linear infinite;}
+.lo-text{font-size:14px;font-weight:700;color:#667eea;}
+</style>
 </head>
 <body>
 
-<div class="container-fluid px-3 px-md-4" style="max-width:1200px;">
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="lo-spinner"></div>
+    <div class="lo-text" id="loadingText">Generating seating plan…</div>
+</div>
 
-    <!-- Page Header -->
-    <div class="d-flex align-items-center justify-content-between py-3">
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<div class="page-wrap">
+
+    <!-- Back -->
+    <a href="index.html" style="color:#667eea;font-weight:700;font-size:13px;
+        text-decoration:none;display:inline-flex;align-items:center;gap:5px;margin-bottom:14px;">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+
+    <!-- Header -->
+    <div class="page-hdr">
         <div>
-            <h4 class="mb-0 fw-bold" style="color:#1e293b;"><i class="bi bi-layout-text-window me-2 text-primary"></i>Seating Plan Generator</h4>
-            <small class="text-muted">Anti-copy mixed seating across rooms</small>
+            <h1><i class="bi bi-grid-3x3 me-2"></i>Seating Plan Generator</h1>
+            <p>4-Batch Anti-Copy Engine · ref_code grouping · Smart room distribution</p>
         </div>
-        <a href="seating-plans-list.html" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-list-ul me-1"></i>All Plans
-        </a>
-    </div>
-
-    <!-- Step Wizard -->
-    <div class="step-wizard" id="stepWizard">
-        <div class="step-item">
-            <div class="step-circle active" id="sc1">1</div>
-            <div class="step-label active" id="sl1">Date & Notifications</div>
-        </div>
-        <div class="step-line" id="sl12"></div>
-        <div class="step-item">
-            <div class="step-circle" id="sc2">2</div>
-            <div class="step-label" id="sl2">Select Rooms</div>
-        </div>
-        <div class="step-line" id="sl23"></div>
-        <div class="step-item">
-            <div class="step-circle" id="sc3">3</div>
-            <div class="step-label" id="sl3">Preview</div>
-        </div>
-        <div class="step-line" id="sl34"></div>
-        <div class="step-item">
-            <div class="step-circle" id="sc4">4</div>
-            <div class="step-label" id="sl4">Save & Export</div>
+        <div style="display:flex;gap:10px;">
+            <button class="btn" onclick="showTab('history')"
+                style="background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.5);">
+                <i class="bi bi-clock-history me-1"></i>View Plans
+            </button>
+            <button class="btn" onclick="resetWizard()"
+                style="background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.5);">
+                <i class="bi bi-plus-lg me-1"></i>New Plan
+            </button>
         </div>
     </div>
 
-    <!-- ════════════════════════════════════════════════════════ -->
-    <!-- STEP 1: Date + Session + Notifications                  -->
-    <!-- ════════════════════════════════════════════════════════ -->
-    <div id="step1Panel">
-        <div class="panel-card">
-            <div class="panel-header">
-                <i class="bi bi-calendar3 text-primary fs-5"></i>
-                <h6>Step 1 — Select Date, Session & Notifications</h6>
+    <!-- Tabs -->
+    <div class="tab-row">
+        <button class="trbtn active" id="tab-wizard" onclick="showTab('wizard')">
+            <i class="bi bi-magic me-1"></i>Generate New
+        </button>
+        <button class="trbtn" id="tab-history" onclick="showTab('history')">
+            <i class="bi bi-clock-history me-1"></i>Plan History
+        </button>
+    </div>
+
+    <!-- ══════ WIZARD TAB ══════ -->
+    <div id="tabWizard">
+
+        <!-- Stepper -->
+        <div class="stepper">
+            <div class="step active" id="step1Btn" onclick="goStep(1)">
+                <div class="snum">1</div>
+                <div class="slbl">Date & Session</div>
             </div>
-            <div class="panel-body">
-                <div class="row g-3 mb-4">
-                    <div class="col-md-4">
-                        <label class="form-label fw-600 text-muted small">EXAM DATE</label>
-                        <input type="date" class="form-control" id="examDate" onchange="onDateSessionChange()"/>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-600 text-muted small">SESSION</label>
-                        <select class="form-select" id="sessionOrder" onchange="onDateSessionChange()">
-                            <option value="">-- Select Session --</option>
-                            <option value="1">FN (Fore Noon)</option>
-                            <option value="2">AN (After Noon)</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4 d-flex align-items-end">
-                        <button class="btn btn-primary w-100" onclick="loadNotifications()">
-                            <i class="bi bi-search me-1"></i> Find Notifications
-                        </button>
-                    </div>
+            <div class="step" id="step2Btn" onclick="goStep(2)">
+                <div class="snum">2</div>
+                <div class="slbl">Select Exams</div>
+            </div>
+            <div class="step" id="step3Btn" onclick="goStep(3)">
+                <div class="snum">3</div>
+                <div class="slbl">Select Rooms</div>
+            </div>
+            <div class="step" id="step4Btn" onclick="goStep(4)">
+                <div class="snum">4</div>
+                <div class="slbl">Review & Save</div>
+            </div>
+        </div>
+
+        <!-- ── STEP 1: Date & Session ── -->
+        <div class="step-panel active" id="panel1">
+            <div class="card">
+                <div class="card-hdr">
+                    <i class="bi bi-calendar3" style="color:#667eea;font-size:18px;"></i>
+                    <h3>Select Exam Date & Session</h3>
                 </div>
-
-                <!-- Notifications Checklist -->
-                <div id="notificationsSection" style="display:none;">
-                    <hr class="my-3"/>
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="mb-0 fw-bold"><i class="bi bi-bell me-1 text-primary"></i>Notifications for this slot</h6>
-                        <span class="badge bg-primary rounded-pill" id="notifCountBadge">0</span>
-                    </div>
-                    <div id="notificationsList"></div>
-
-                    <div class="d-flex align-items-center justify-content-between mt-3 p-3 rounded-3" style="background:#f8fafc; border:1px solid #e2e8f0;">
-                        <div>
-                            <span class="fw-bold text-dark" id="totalStudentsLabel">0 students selected</span>
-                            <span class="text-muted small ms-2" id="notifSelectionNote"></span>
+                <div class="card-body">
+                    <div class="g2">
+                        <div class="fg">
+                            <label>Exam Date</label>
+                            <input type="date" id="examDate" onchange="onDateSessionChange()"/>
                         </div>
-                        <button class="btn btn-success" id="btnProceedToRooms" onclick="proceedToStep2()" disabled>
-                            Proceed to Room Selection <i class="bi bi-arrow-right ms-1"></i>
-                        </button>
+                        <div class="fg">
+                            <label>Session</label>
+                            <select id="session" onchange="onDateSessionChange()">
+                                <option value="">-- Select Session --</option>
+                                <option value="1">FN — Forenoon (Morning)</option>
+                                <option value="2">AN — Afternoon</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="step1Summary" style="display:none;margin-top:16px;
+                        background:#f0f4ff;border-radius:10px;padding:14px 18px;">
+                        <div style="font-weight:700;color:#667eea;font-size:13px;margin-bottom:6px;">
+                            <i class="bi bi-check-circle me-1"></i>Selected:
+                        </div>
+                        <div id="step1SummaryText" style="color:#334155;font-size:14px;font-weight:700;"></div>
                     </div>
                 </div>
-
-                <div id="noNotificationsMsg" style="display:none;" class="alert alert-warning mt-3">
-                    <i class="bi bi-exclamation-triangle me-2"></i>No notifications found for this date and session. Make sure timetable entries exist and student data has been generated.
-                </div>
             </div>
-        </div>
-    </div>
-
-    <!-- ════════════════════════════════════════════════════════ -->
-    <!-- STEP 2: Room Selection                                  -->
-    <!-- ════════════════════════════════════════════════════════ -->
-    <div id="step2Panel" style="display:none;">
-
-        <!-- Summary Bar -->
-        <div class="summary-bar rounded-3 mb-3" id="summaryBar">
-            <div class="summary-stat">
-                <span class="val" id="sumStudents">0</span>
-                <span class="lbl">Students</span>
-            </div>
-            <div class="vr"></div>
-            <div class="summary-stat">
-                <span class="val" id="sumRoomsNeeded">0</span>
-                <span class="lbl">Rooms Needed</span>
-            </div>
-            <div class="vr"></div>
-            <div class="summary-stat">
-                <span class="val text-primary" id="sumRoomsSelected">0</span>
-                <span class="lbl">Rooms Selected</span>
-            </div>
-            <div class="vr"></div>
-            <div class="summary-stat">
-                <span class="val" id="sumCapacity">0</span>
-                <span class="lbl">Seats Available</span>
-            </div>
-            <div class="ms-auto">
-                <div id="capacityStatus" class="badge fs-6 px-3 py-2">Select rooms</div>
-            </div>
-        </div>
-
-        <!-- Capacity Bar -->
-        <div class="panel-card mb-3" style="padding:14px 20px;">
-            <div class="d-flex justify-content-between mb-1">
-                <small class="text-muted fw-600">Seat Coverage</small>
-                <small id="capBarLabel" class="text-muted">0 / 0 seats</small>
-            </div>
-            <div class="cap-bar-wrap">
-                <div class="cap-bar-fill cap-bar-ok" id="capBarFill" style="width:0%"></div>
-            </div>
-        </div>
-
-        <div class="panel-card">
-            <div class="panel-header">
-                <i class="bi bi-building text-primary fs-5"></i>
-                <h6>Step 2 — Select Rooms</h6>
-                <div class="ms-auto d-flex gap-2">
-                    <button class="btn btn-outline-secondary btn-sm" onclick="clearAllRooms()">
-                        <i class="bi bi-x-circle me-1"></i>Clear All
-                    </button>
-                    <button class="btn btn-outline-primary btn-sm" onclick="autoSelectRooms()">
-                        <i class="bi bi-magic me-1"></i>Auto Select
-                    </button>
-                </div>
-            </div>
-            <div class="panel-body">
-                <!-- Legend -->
-                <div class="d-flex flex-wrap gap-3 mb-3">
-                    <span><span class="room-badge badge-FREE">FREE</span> <small class="text-muted">Click to select</small></span>
-                    <span><span class="room-badge badge-SELECTED">SELECTED</span> <small class="text-muted">Click to deselect</small></span>
-                    <span><span class="room-badge badge-OCCUPIED">OCCUPIED</span> <small class="text-muted">Another exam</small></span>
-                    <span><span class="room-badge badge-BLOCKED">BLOCKED</span> <small class="text-muted">Admin blocked</small></span>
-                    <span><span class="room-badge badge-INACTIVE">INACTIVE</span> <small class="text-muted">Not available</small></span>
-                </div>
-                <div id="roomsContainer"></div>
-
-                <div class="d-flex justify-content-between mt-4">
-                    <button class="btn btn-outline-secondary" onclick="goToStep(1)">
-                        <i class="bi bi-arrow-left me-1"></i>Back
-                    </button>
-                    <button class="btn btn-success px-4" id="btnGenerateSeating" onclick="generateSeating()" disabled>
-                        <i class="bi bi-cpu me-1"></i>Generate Seating Plan
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ════════════════════════════════════════════════════════ -->
-    <!-- STEP 3: Preview                                         -->
-    <!-- ════════════════════════════════════════════════════════ -->
-    <div id="step3Panel" style="display:none;">
-        <div class="panel-card">
-            <div class="panel-header">
-                <i class="bi bi-eye text-success fs-5"></i>
-                <h6>Step 3 — Room-wise Preview</h6>
-                <div class="ms-auto">
-                    <span class="badge bg-success fs-6 px-3" id="previewTotalBadge">0 students</span>
-                </div>
-            </div>
-            <div class="panel-body p-0">
-                <div id="previewContainer" class="p-3"></div>
-            </div>
-            <div class="d-flex justify-content-between p-3 border-top">
-                <button class="btn btn-outline-secondary" onclick="goToStep(2)">
-                    <i class="bi bi-arrow-left me-1"></i>Back to Rooms
-                </button>
-                <button class="btn btn-primary px-4" onclick="proceedToStep4()">
-                    Save Seating Plan <i class="bi bi-arrow-right ms-1"></i>
+            <div class="step-nav">
+                <div></div>
+                <button class="btn btn-primary" onclick="goStep2()" id="step1Next" disabled>
+                    Next: Select Exams <i class="bi bi-arrow-right ms-1"></i>
                 </button>
             </div>
         </div>
-    </div>
 
-    <!-- ════════════════════════════════════════════════════════ -->
-    <!-- STEP 4: Save & Export                                   -->
-    <!-- ════════════════════════════════════════════════════════ -->
-    <div id="step4Panel" style="display:none;">
-        <div class="panel-card">
-            <div class="panel-header">
-                <i class="bi bi-save text-primary fs-5"></i>
-                <h6>Step 4 — Save & Export</h6>
+        <!-- ── STEP 2: Select Notifications ── -->
+        <div class="step-panel" id="panel2">
+            <div class="card">
+                <div class="card-hdr">
+                    <i class="bi bi-bell" style="color:#667eea;font-size:18px;"></i>
+                    <h3>Select Exam Notifications</h3>
+                    <span style="font-size:12px;color:#64748b;margin-left:4px;">
+                        — scheduled for selected date & session
+                    </span>
+                    <div style="margin-left:auto;font-size:12px;color:#64748b;" id="notifCount"></div>
+                </div>
+                <div class="card-body">
+                    <div id="notifContainer">
+                        <div style="text-align:center;padding:30px;color:#94a3b8;">
+                            <div class="shimmer" style="height:80px;margin-bottom:10px;"></div>
+                            <div class="shimmer" style="height:80px;opacity:.7;"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="panel-body">
-                <div class="row g-3 mb-4">
-                    <div class="col-md-6">
-                        <label class="form-label text-muted small fw-600">GENERATED BY</label>
-                        <input type="text" class="form-control" id="generatedBy" placeholder="Admin name"/>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label text-muted small fw-600">NOTES (optional)</label>
-                        <input type="text" class="form-control" id="planNotes" placeholder="Any notes about this plan"/>
-                    </div>
-                </div>
+            <div class="step-nav">
+                <button class="btn btn-outline" onclick="goStep(1)">
+                    <i class="bi bi-arrow-left me-1"></i>Back
+                </button>
+                <button class="btn btn-primary" onclick="goStep3()" id="step2Next" disabled>
+                    Next: Select Rooms <i class="bi bi-arrow-right ms-1"></i>
+                </button>
+            </div>
+        </div>
 
-                <!-- Summary -->
-                <div class="row g-3 mb-4" id="saveSummary">
-                    <div class="col-6 col-md-3">
-                        <div class="text-center p-3 rounded-3" style="background:#eff6ff;">
-                            <div class="fs-3 fw-bold text-primary" id="saveStudentCount">0</div>
-                            <div class="small text-muted">Total Students</div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <div class="text-center p-3 rounded-3" style="background:#f0fdf4;">
-                            <div class="fs-3 fw-bold text-success" id="saveRoomCount">0</div>
-                            <div class="small text-muted">Total Rooms</div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <div class="text-center p-3 rounded-3" style="background:#fefce8;">
-                            <div class="fs-3 fw-bold text-warning" id="saveDate">—</div>
-                            <div class="small text-muted">Exam Date</div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <div class="text-center p-3 rounded-3" style="background:#fdf4ff;">
-                            <div class="fs-3 fw-bold" style="color:#9333ea;" id="saveSession">—</div>
-                            <div class="small text-muted">Session</div>
-                        </div>
-                    </div>
-                </div>
+        <!-- ── STEP 3: Select Rooms ── -->
+        <div class="step-panel" id="panel3">
 
-                <div class="d-flex gap-3 flex-wrap">
-                    <button class="btn btn-primary px-4" onclick="saveSeatingPlan()" id="btnSavePlan">
+            <!-- Selection summary bar -->
+            <div class="sel-bar" id="selBar" style="display:none;">
+                <div class="sel-stat">
+                    <span class="sel-val" id="sbStudents">0</span>
+                    <span class="sel-lbl">Students</span>
+                </div>
+                <div class="sel-stat">
+                    <span class="sel-val" id="sbRooms">0</span>
+                    <span class="sel-lbl">Rooms Selected</span>
+                </div>
+                <div class="sel-stat">
+                    <span class="sel-val cap-ok" id="sbCapacity">0</span>
+                    <span class="sel-lbl">Seats Available</span>
+                </div>
+                <div class="sel-stat">
+                    <span class="sel-val" id="sbBuffer" style="color:#94a3b8;">—</span>
+                    <span class="sel-lbl">Buffer Seats</span>
+                </div>
+                <div style="margin-left:auto;display:flex;gap:8px;">
+                    <button class="btn btn-sm" onclick="autoSelectRooms()"
+                        style="background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.5);backdrop-filter:blur(4px);">
+                        <i class="bi bi-lightning me-1"></i>Auto-Select
+                    </button>
+                    <button class="btn btn-sm" onclick="clearRooms()"
+                        style="background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.4);">
+                        <i class="bi bi-x me-1"></i>Clear
+                    </button>
+                </div>
+            </div>
+
+            <div id="roomsContainer">
+                <div style="text-align:center;padding:40px;color:#94a3b8;">
+                    <i class="bi bi-building" style="font-size:40px;display:block;margin-bottom:10px;"></i>
+                    Complete Step 2 first
+                </div>
+            </div>
+
+            <div class="step-nav">
+                <button class="btn btn-outline" onclick="goStep(2)">
+                    <i class="bi bi-arrow-left me-1"></i>Back
+                </button>
+                <button class="btn btn-primary" onclick="runGenerate()" id="step3Next" disabled>
+                    <i class="bi bi-cpu me-1"></i>Generate Seating Plan
+                </button>
+            </div>
+        </div>
+
+        <!-- ── STEP 4: Review & Save ── -->
+        <div class="step-panel" id="panel4">
+            <div id="reviewContainer">
+                <div style="text-align:center;padding:40px;color:#94a3b8;">
+                    Complete previous steps first
+                </div>
+            </div>
+            <div class="step-nav">
+                <button class="btn btn-outline" onclick="goStep(3)">
+                    <i class="bi bi-arrow-left me-1"></i>Back
+                </button>
+                <div style="display:flex;gap:10px;">
+                    <button class="btn btn-outline" onclick="runGenerate()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Re-Generate
+                    </button>
+                    <button class="btn btn-success" id="saveBtn" onclick="savePlan()" disabled>
                         <i class="bi bi-save me-1"></i>Save Seating Plan
                     </button>
-                    <button class="btn btn-outline-secondary" onclick="goToStep(3)">
-                        <i class="bi bi-arrow-left me-1"></i>Back
+                </div>
+            </div>
+        </div>
+
+    </div><!-- end tabWizard -->
+
+    <!-- ══════ HISTORY TAB ══════ -->
+    <div id="tabHistory" style="display:none;">
+        <div class="card">
+            <div class="card-hdr">
+                <i class="bi bi-clock-history" style="color:#667eea;font-size:18px;"></i>
+                <h3>Seating Plan History</h3>
+                <div style="margin-left:auto;">
+                    <button class="btn btn-sm btn-outline" onclick="loadPlans()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
                     </button>
                 </div>
-
-                <!-- Post-save actions -->
-                <div id="postSaveActions" style="display:none;" class="mt-4 p-4 rounded-3" style="background:#f0fdf4; border:1px solid #bbf7d0;">
-                    <div class="d-flex align-items-center gap-3 mb-3">
-                        <i class="bi bi-check-circle-fill text-success fs-3"></i>
-                        <div>
-                            <div class="fw-bold text-success">Seating Plan Saved Successfully!</div>
-                            <div class="text-muted small">Plan ID: <span id="savedPlanId" class="fw-bold"></span></div>
-                        </div>
-                    </div>
-                    <div class="d-flex gap-2 flex-wrap">
-                        <button class="btn btn-success btn-sm" onclick="exportPDF()">
-                            <i class="bi bi-file-pdf me-1"></i>Export Room-wise PDF
-                        </button>
-                        <button class="btn btn-outline-primary btn-sm" onclick="viewFullPlan()">
-                            <i class="bi bi-eye me-1"></i>View Full Plan
-                        </button>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="startNew()">
-                            <i class="bi bi-plus-circle me-1"></i>Create Another Plan
-                        </button>
-                    </div>
+            </div>
+            <div id="plansContainer">
+                <div style="padding:30px;text-align:center;color:#94a3b8;">
+                    Loading plans…
                 </div>
             </div>
         </div>
     </div>
 
-</div>
+</div><!-- end page-wrap -->
 
-<!-- Quick Block Modal -->
-<div class="modal fade" id="quickBlockModal" tabindex="-1">
-    <div class="modal-dialog modal-sm">
-        <div class="modal-content">
-            <div class="modal-header bg-warning text-dark py-2">
-                <h6 class="modal-title mb-0"><i class="bi bi-slash-circle me-2"></i>Quick Block Room</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-1"><small class="text-muted fw-600">ROOM</small></div>
-                <div class="fw-bold mb-3" id="qbRoomLabel">—</div>
-                <div class="mb-1"><small class="text-muted fw-600">DATE</small></div>
-                <div class="mb-3" id="qbDateLabel">—</div>
-                <div class="mb-1"><small class="text-muted fw-600">SESSION</small></div>
-                <div class="mb-3" id="qbSessionLabel">—</div>
-                <label class="form-label text-muted small fw-600">REASON</label>
-                <select class="form-select form-select-sm mb-2" id="qbReason">
-                    <option value="Regular Lecture">Regular Lecture</option>
-                    <option value="Lab Session">Lab Session</option>
-                    <option value="Faculty Meeting">Faculty Meeting</option>
-                    <option value="Maintenance">Maintenance</option>
-                    <option value="Other">Other</option>
-                </select>
-                <input type="text" class="form-control form-control-sm" id="qbNote" placeholder="Note (optional)"/>
-                <input type="hidden" id="qbRoomId"/>
-            </div>
-            <div class="modal-footer py-2">
-                <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-warning btn-sm" onclick="confirmQuickBlock()">Block Room</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-// ═══════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
 //  STATE
-// ═══════════════════════════════════════════════════════════
-const state = {
-    step: 1,
-    examDate: '',
-    sessionOrder: '',
-    notifications: [],
-    selectedNotificationIds: [],
-    totalStudents: 0,
-    rooms: [],
-    selectedRoomIds: [],
-    selectedRoomsCapacity: 0,
-    generatedAllocations: [],
-    generatedRoomsPreview: [],
-    savedPlanId: null
+// ════════════════════════════════════════════════════════════
+let STATE = {
+    date:         '',
+    session:      '',
+    notifications:[],   // all available
+    selNotifs:    [],   // selected notification_ids
+    rooms:        [],   // all available
+    selRooms:     [],   // selected room_ids
+    totalStudents:0,
+    lastGenResult:null
 };
 
-// ═══════════════════════════════════════════════════════════
-//  STEP NAVIGATION
-// ═══════════════════════════════════════════════════════════
-function goToStep(n) {
-    for (let i = 1; i <= 4; i++) {
-        document.getElementById(`step${i}Panel`).style.display = i === n ? 'block' : 'none';
-        const circle = document.getElementById(`sc${i}`);
-        const label = document.getElementById(`sl${i}`);
-        circle.className = 'step-circle' + (i === n ? ' active' : i < n ? ' done' : '');
-        label.className = 'step-label' + (i === n ? ' active' : i < n ? ' done' : '');
-        if (i < n) circle.innerHTML = '<i class="bi bi-check-lg"></i>';
-        else circle.textContent = i;
-    }
-    for (let i = 1; i <= 3; i++) {
-        const line = document.getElementById(`sl${i}${i+1}`);
-        if (line) line.className = 'step-line' + (i < n ? ' done' : '');
-    }
-    state.step = n;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+const RC_COLORS = ['rc0','rc1','rc2','rc3','rc4','rc5','rc6','rc7'];
+let rcColorMap  = {};
+let rcColorIdx  = 0;
+
+function getRcColor(rc) {
+    if (!rcColorMap[rc]) rcColorMap[rc] = RC_COLORS[rcColorIdx++ % RC_COLORS.length];
+    return rcColorMap[rc];
 }
 
-// ═══════════════════════════════════════════════════════════
-//  STEP 1 — NOTIFICATIONS
-// ═══════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
+//  TAB
+// ════════════════════════════════════════════════════════════
+function showTab(t) {
+    document.getElementById('tabWizard').style.display  = t==='wizard'  ? 'block' : 'none';
+    document.getElementById('tabHistory').style.display = t==='history' ? 'block' : 'none';
+    document.getElementById('tab-wizard').classList.toggle('active',  t==='wizard');
+    document.getElementById('tab-history').classList.toggle('active', t==='history');
+    if (t==='history') loadPlans();
+}
+
+// ════════════════════════════════════════════════════════════
+//  STEPPER
+// ════════════════════════════════════════════════════════════
+let currentStep = 1;
+
+function goStep(n) {
+    if (n > currentStep) return; // can only go back freely
+    setStep(n);
+}
+
+function setStep(n) {
+    currentStep = n;
+    for (let i=1; i<=4; i++) {
+        document.getElementById(`panel${i}`).classList.toggle('active', i===n);
+        const btn = document.getElementById(`step${i}Btn`);
+        btn.classList.remove('active','done');
+        if (i===n)    btn.classList.add('active');
+        if (i<n)      btn.classList.add('done');
+    }
+}
+
+// ════════════════════════════════════════════════════════════
+//  STEP 1 — DATE & SESSION
+// ════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+    // Default date = today
+    const today = new Date();
+    const iso   = today.toISOString().split('T')[0];
+    document.getElementById('examDate').value = iso;
+    onDateSessionChange();
+    loadPlans();
+});
+
 function onDateSessionChange() {
-    document.getElementById('notificationsSection').style.display = 'none';
-    document.getElementById('noNotificationsMsg').style.display = 'none';
+    const date    = document.getElementById('examDate').value;
+    const session = document.getElementById('session').value;
+    STATE.date    = date;
+    STATE.session = session;
+    const ok = date && session;
+    document.getElementById('step1Next').disabled = !ok;
+    if (ok) {
+        const d   = new Date(date + 'T00:00:00');
+        const lbl = d.toLocaleDateString('en-IN', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+        const ses = session==='1' ? 'FN — Forenoon' : 'AN — Afternoon';
+        document.getElementById('step1SummaryText').textContent = `${lbl}  ·  ${ses}`;
+        document.getElementById('step1Summary').style.display = 'block';
+    } else {
+        document.getElementById('step1Summary').style.display = 'none';
+    }
+}
+
+// ════════════════════════════════════════════════════════════
+//  STEP 2 — NOTIFICATIONS
+// ════════════════════════════════════════════════════════════
+async function goStep2() {
+    setStep(2);
+    await loadNotifications();
 }
 
 async function loadNotifications() {
-    const date = document.getElementById('examDate').value;
-    const session = document.getElementById('sessionOrder').value;
-    if (!date || !session) {
-        Swal.fire('Missing', 'Please select both date and session.', 'warning');
-        return;
-    }
-    state.examDate = date;
-    state.sessionOrder = session;
-
-    const btn = document.querySelector('#step1Panel .btn-primary');
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Searching...';
-    btn.disabled = true;
-
+    document.getElementById('notifContainer').innerHTML = loadingHtml(2, 80);
     try {
-        const res = await fetch(`/api/seating/notifications?date=${date}&session=${session}`);
+        const res  = await fetch(`/api/seating/notifications?date=${STATE.date}&session=${STATE.session}`);
         const data = await res.json();
-        const notifs = data.notifications || [];
+        const list = data.notifications || [];
+        STATE.notifications = list;
+        document.getElementById('notifCount').textContent = `${list.length} exam(s) found`;
 
-        btn.innerHTML = '<i class="bi bi-search me-1"></i> Find Notifications';
-        btn.disabled = false;
-
-        if (notifs.length === 0) {
-            document.getElementById('noNotificationsMsg').style.display = 'block';
-            document.getElementById('notificationsSection').style.display = 'none';
+        if (!list.length) {
+            document.getElementById('notifContainer').innerHTML =
+                `<div style="text-align:center;padding:40px;color:#94a3b8;">
+                    <i class="bi bi-inbox" style="font-size:48px;display:block;margin-bottom:10px;"></i>
+                    No exams scheduled for this date & session
+                 </div>`;
             return;
         }
 
-        state.notifications = notifs;
-        document.getElementById('notifCountBadge').textContent = notifs.length;
-        document.getElementById('notificationsSection').style.display = 'block';
-        document.getElementById('noNotificationsMsg').style.display = 'none';
-        renderNotifications(notifs);
-    } catch (err) {
-        btn.innerHTML = '<i class="bi bi-search me-1"></i> Find Notifications';
-        btn.disabled = false;
-        Swal.fire('Error', err.message, 'error');
+        document.getElementById('notifContainer').innerHTML = list.map(n => {
+            const typeClass = n.exam_type?.toUpperCase().includes('ESE') ? 'nc-ese'
+                : n.exam_type?.toUpperCase().includes('CIE') ? 'nc-cie' : 'nc-other';
+            const rcs = (n.ref_codes || '').split(', ').filter(Boolean);
+            return `
+            <div class="notif-card" id="nc_${n.notification_id}"
+                onclick="toggleNotif('${n.notification_id}')">
+                <div class="nc-check"><i class="bi bi-check"></i></div>
+                <div class="nc-title">${n.exam_name || n.notification_ref || n.notification_id}</div>
+                <div class="nc-meta">
+                    <span class="nc-badge ${typeClass}">${n.exam_type || 'Exam'}</span>
+                    <span>👥 ${n.student_count} students</span>
+                    <span>📚 ${n.subject_count} subject(s)</span>
+                    <span>🏫 ${n.branches || '—'}</span>
+                </div>
+                ${rcs.length ? `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">
+                    ${rcs.map(r=>`<span class="nc-badge" style="background:#f1f5f9;color:#334155;">${r}</span>`).join('')}
+                </div>` : ''}
+            </div>`;
+        }).join('');
+
+        // Auto-select if only 1 notification
+        if (list.length === 1) toggleNotif(list[0].notification_id);
+
+    } catch(e) {
+        document.getElementById('notifContainer').innerHTML =
+            `<div style="padding:20px;color:#dc2626;">Error: ${e.message}</div>`;
     }
 }
 
-function renderNotifications(notifs) {
-    const container = document.getElementById('notificationsList');
-    container.innerHTML = notifs.map((n, i) => {
-        const id = n.hashed_id || n.notification_id;
-        const name = n.exam_name || n.notification_ref || `Notification ${id}`;
-        const sem = n.semester_label || n.branches || '';
-        const count = n.student_count || 0;
-        return `
-        <div class="notif-check-card" id="nc_${id}" onclick="toggleNotification('${id}', ${count})">
-            <div class="d-flex align-items-center gap-3">
-                <div class="form-check mb-0">
-                    <input class="form-check-input" type="checkbox" id="chk_${id}" style="width:18px;height:18px;" onchange="updateTotalStudents()"/>
-                </div>
-                <div class="flex-grow-1">
-                    <div class="fw-bold text-dark">${name}</div>
-                    <div class="small text-muted">${sem}${n.batch_name ? ' · ' + n.batch_name : ''}</div>
-                </div>
-                <div class="text-end">
-                    <div class="fw-bold text-primary fs-5">${count}</div>
-                    <div class="small text-muted">students</div>
-                </div>
-            </div>
-        </div>`;
-    }).join('');
+function toggleNotif(id) {
+    const idx = STATE.selNotifs.indexOf(id);
+    if (idx > -1) STATE.selNotifs.splice(idx, 1);
+    else          STATE.selNotifs.push(id);
+
+    document.querySelectorAll('.notif-card').forEach(c => c.classList.remove('selected'));
+    STATE.selNotifs.forEach(id => document.getElementById(`nc_${id}`)?.classList.add('selected'));
+
+    // Recalculate total students
+    STATE.totalStudents = STATE.selNotifs
+        .reduce((s,id) => s + (STATE.notifications.find(n=>n.notification_id===id)?.student_count||0), 0);
+
+    document.getElementById('step2Next').disabled = !STATE.selNotifs.length;
 }
 
-function toggleNotification(id, count) {
-    const chk = document.getElementById(`chk_${id}`);
-    const card = document.getElementById(`nc_${id}`);
-    chk.checked = !chk.checked;
-    card.classList.toggle('checked', chk.checked);
-    updateTotalStudents();
-}
-
-function updateTotalStudents() {
-    let total = 0;
-    const selected = [];
-    state.notifications.forEach(n => {
-        const id = n.hashed_id || n.notification_id;
-        const chk = document.getElementById(`chk_${id}`);
-        if (chk && chk.checked) {
-            total += (n.student_count || 0);
-            selected.push(id);
-        }
-    });
-    state.selectedNotificationIds = selected;
-    state.totalStudents = total;
-
-    document.getElementById('totalStudentsLabel').textContent = `${total.toLocaleString()} students selected`;
-    document.getElementById('notifSelectionNote').textContent = selected.length > 0 ? `from ${selected.length} notification(s)` : '';
-    document.getElementById('btnProceedToRooms').disabled = selected.length === 0;
-}
-
-async function proceedToStep2() {
-    goToStep(2);
-    document.getElementById('sumStudents').textContent = state.totalStudents.toLocaleString();
-    document.getElementById('sumRoomsNeeded').textContent = Math.ceil(state.totalStudents / 42);
-    document.getElementById('saveDate').textContent = formatDate(state.examDate);
-    document.getElementById('saveSession').textContent = state.sessionOrder === '1' ? 'FN' : 'AN';
+// ════════════════════════════════════════════════════════════
+//  STEP 3 — ROOMS
+// ════════════════════════════════════════════════════════════
+async function goStep3() {
+    if (!STATE.selNotifs.length) { toast('Select at least one exam notification','warning'); return; }
+    setStep(3);
+    STATE.selRooms = [];
     await loadRooms();
 }
 
-// ═══════════════════════════════════════════════════════════
-//  STEP 2 — ROOM SELECTION
-// ═══════════════════════════════════════════════════════════
 async function loadRooms() {
-    const container = document.getElementById('roomsContainer');
-    container.innerHTML = '<div class="text-center py-4"><span class="spinner-border text-primary"></span><div class="mt-2 text-muted">Loading rooms...</div></div>';
-
+    document.getElementById('roomsContainer').innerHTML = loadingHtml(4, 60);
+    document.getElementById('selBar').style.display = 'none';
     try {
-        const res = await fetch(`/api/seating/room-availability?date=${state.examDate}&session=${state.sessionOrder}`);
+        const res  = await fetch(`/api/seating/room-availability?date=${STATE.date}&session=${STATE.session}`);
         const data = await res.json();
-        state.rooms = data.rooms || [];
-        renderRooms(data.grouped || []);
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Failed to load rooms: ${err.message}</div>`;
+        STATE.rooms = data.rooms || [];
+
+        document.getElementById('selBar').style.display = 'flex';
+        updateSelBar();
+        renderRoomGrid(data.grouped || []);
+    } catch(e) {
+        document.getElementById('roomsContainer').innerHTML =
+            `<div style="padding:20px;color:#dc2626;">Error: ${e.message}</div>`;
     }
 }
 
-function renderRooms(grouped) {
-    const container = document.getElementById('roomsContainer');
+function renderRoomGrid(grouped) {
     if (!grouped.length) {
-        container.innerHTML = '<div class="alert alert-warning">No rooms found in the system.</div>';
+        document.getElementById('roomsContainer').innerHTML =
+            '<div style="padding:30px;text-align:center;color:#94a3b8;">No rooms found</div>';
         return;
     }
 
-    container.innerHTML = grouped.map(block => `
-        <div class="block-section-title"><i class="bi bi-building me-1"></i>${block.block_name || block.block_code}</div>
-        <div class="row g-3 mb-4">
-            ${block.rooms.map(r => renderRoomCard(r)).join('')}
-        </div>
-    `).join('');
-}
+    let html = '';
+    for (const blk of grouped) {
+        const freeInBlock = blk.rooms.filter(r=>r.status==='FREE').length;
+        html += `
+        <div class="card" style="margin-bottom:14px;">
+            <div class="room-block-hdr">
+                <i class="bi bi-building me-1"></i>${blk.block_name || blk.block_code}
+                <span style="opacity:.7;font-size:11px;font-weight:400;margin-left:6px;">
+                    ${freeInBlock} free / ${blk.rooms.length} total
+                </span>
+                <div style="margin-left:auto;display:flex;gap:6px;">
+                    <button class="btn btn-xs"
+                        style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.5);"
+                        onclick="selectBlock('${blk.block_code}', true)">Select All Free</button>
+                    <button class="btn btn-xs"
+                        style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.3);"
+                        onclick="selectBlock('${blk.block_code}', false)">Deselect</button>
+                </div>
+            </div>
+            <div class="rooms-grid">`;
 
-function renderRoomCard(r) {
-    const isFree = r.status === 'FREE';
-    const badgeClass = `badge-${r.status === 'SELECTED' ? 'SELECTED' : r.status}`;
-    const badgeLabel = r.status;
-
-    return `
-    <div class="col-6 col-md-4 col-lg-3">
-        <div class="room-card status-${r.status}" id="rc_${r.room_id}" 
-             onclick="${isFree ? `toggleRoom(${r.room_id}, ${r.usable_capacity})` : ''}">
-            ${isFree ? `<div class="quick-block-btn" onclick="event.stopPropagation(); openQuickBlock(${r.room_id}, '${r.room_number}')" title="Block this room">⛔</div>` : ''}
-            <div class="room-badge ${badgeClass} mb-1">${badgeLabel}</div>
-            <div class="room-number">${r.room_number}</div>
-            <div class="room-cap"><i class="bi bi-people me-1"></i>Cap: ${r.usable_capacity}</div>
-            ${r.status_note ? `<div class="room-note text-truncate" title="${r.status_note}">${r.status_note}</div>` : ''}
-        </div>
-    </div>`;
-}
-
-function toggleRoom(roomId, capacity) {
-    const card = document.getElementById(`rc_${roomId}`);
-    const idx = state.selectedRoomIds.indexOf(roomId);
-
-    if (idx === -1) {
-        state.selectedRoomIds.push(roomId);
-        state.selectedRoomsCapacity += capacity;
-        card.classList.remove('status-FREE');
-        card.classList.add('status-SELECTED');
-        card.querySelector('.room-badge').className = 'room-badge badge-SELECTED mb-1';
-        card.querySelector('.room-badge').textContent = 'SELECTED';
-    } else {
-        state.selectedRoomIds.splice(idx, 1);
-        state.selectedRoomsCapacity -= capacity;
-        card.classList.remove('status-SELECTED');
-        card.classList.add('status-FREE');
-        card.querySelector('.room-badge').className = 'room-badge badge-FREE mb-1';
-        card.querySelector('.room-badge').textContent = 'FREE';
-    }
-    updateRoomSummary();
-}
-
-function updateRoomSummary() {
-    const sel = state.selectedRoomIds.length;
-    const cap = state.selectedRoomsCapacity;
-    const students = state.totalStudents;
-
-    document.getElementById('sumRoomsSelected').textContent = sel;
-    document.getElementById('sumCapacity').textContent = cap;
-    document.getElementById('capBarLabel').textContent = `${students} students / ${cap} seats`;
-
-    const pct = cap > 0 ? Math.min((students / cap) * 100, 100) : 0;
-    const fill = document.getElementById('capBarFill');
-    fill.style.width = pct + '%';
-    fill.className = 'cap-bar-fill ' + (pct <= 80 ? 'cap-bar-ok' : pct <= 100 ? 'cap-bar-warn' : 'cap-bar-over');
-
-    const statusEl = document.getElementById('capacityStatus');
-    if (sel === 0) {
-        statusEl.textContent = 'No rooms selected';
-        statusEl.className = 'badge bg-secondary fs-6 px-3 py-2';
-    } else if (cap >= students) {
-        const extra = cap - students;
-        statusEl.textContent = `✓ ${extra} extra seats`;
-        statusEl.className = 'badge bg-success fs-6 px-3 py-2';
-    } else {
-        const need = students - cap;
-        statusEl.textContent = `⚠ Need ${need} more seats`;
-        statusEl.className = 'badge bg-danger fs-6 px-3 py-2';
-    }
-
-    document.getElementById('btnGenerateSeating').disabled = sel === 0 || cap < students;
-}
-
-function clearAllRooms() {
-    state.selectedRoomIds.forEach(id => {
-        const card = document.getElementById(`rc_${id}`);
-        if (card) {
-            card.classList.remove('status-SELECTED');
-            card.classList.add('status-FREE');
-            card.querySelector('.room-badge').className = 'room-badge badge-FREE mb-1';
-            card.querySelector('.room-badge').textContent = 'FREE';
+        for (const r of blk.rooms) {
+            const isFree = r.status === 'FREE';
+            const cls    = isFree ? (STATE.selRooms.includes(r.room_id)?'selected':'')
+                         : r.status.toLowerCase();
+            const spill = r.status === 'BLOCKED'  ? `<i class="bi bi-slash-circle me-1"></i>Blocked`
+                        : r.status === 'OCCUPIED'  ? `<i class="bi bi-person-fill me-1"></i>Occupied`
+                        : r.status === 'INACTIVE'  ? `<i class="bi bi-dash-circle me-1"></i>Inactive`
+                        : `<i class="bi bi-check-circle me-1"></i>Free`;
+            const pillClass = `sp-${r.status.toLowerCase()}`;
+            html += `
+            <div class="room-card ${cls}" id="rc_${r.room_id}"
+                ${isFree ? `onclick="toggleRoom(${r.room_id})"` : ''}>
+                <div class="rc-check"><i class="bi bi-check"></i></div>
+                <div class="rc-num">${r.room_number}</div>
+                <div class="rc-name">${r.room_name}</div>
+                <div class="rc-info">
+                    <span class="rc-cap"><i class="bi bi-people me-1"></i>${r.usable_capacity}</span>
+                    <span class="status-pill ${pillClass}">${spill}</span>
+                </div>
+                ${r.status_note && !isFree ? `<div style="font-size:10px;color:#94a3b8;margin-top:4px;
+                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${r.status_note}">
+                    ${r.status_note}</div>` : ''}
+            </div>`;
         }
+        html += '</div></div>';
+    }
+
+    document.getElementById('roomsContainer').innerHTML = html;
+}
+
+function toggleRoom(roomId) {
+    const idx = STATE.selRooms.indexOf(roomId);
+    if (idx > -1) STATE.selRooms.splice(idx, 1);
+    else          STATE.selRooms.push(roomId);
+    document.getElementById(`rc_${roomId}`)?.classList.toggle('selected', STATE.selRooms.includes(roomId));
+    updateSelBar();
+}
+
+function selectBlock(blockCode, select) {
+    const blockRooms = STATE.rooms.filter(r => r.block_code === blockCode && r.status === 'FREE');
+    blockRooms.forEach(r => {
+        const in_ = STATE.selRooms.includes(r.room_id);
+        if (select && !in_)  { STATE.selRooms.push(r.room_id); }
+        if (!select && in_)  { STATE.selRooms.splice(STATE.selRooms.indexOf(r.room_id), 1); }
+        document.getElementById(`rc_${r.room_id}`)?.classList.toggle('selected', STATE.selRooms.includes(r.room_id));
     });
-    state.selectedRoomIds = [];
-    state.selectedRoomsCapacity = 0;
-    updateRoomSummary();
+    updateSelBar();
+}
+
+function clearRooms() {
+    STATE.selRooms = [];
+    document.querySelectorAll('.room-card.selected').forEach(c => c.classList.remove('selected'));
+    updateSelBar();
 }
 
 function autoSelectRooms() {
-    clearAllRooms();
-    const freeRooms = state.rooms.filter(r => r.status === 'FREE').sort((a, b) => b.usable_capacity - a.usable_capacity);
-    let cap = 0;
-    for (const r of freeRooms) {
-        if (cap >= state.totalStudents) break;
-        toggleRoom(r.room_id, r.usable_capacity);
-        cap += r.usable_capacity;
+    // Recalculate totalStudents from selected notifications (safety check)
+    STATE.totalStudents = STATE.selNotifs
+        .reduce((s, id) => s + (STATE.notifications.find(n => n.notification_id === id)?.student_count || 0), 0);
+
+    const needed = STATE.totalStudents;
+    if (!needed) { toast('No students found — go back and select an exam notification', 'warning'); return; }
+
+    // Sort free rooms: largest capacity first for minimum room count
+    const free = STATE.rooms
+        .filter(r => r.status === 'FREE')
+        .sort((a, b) => b.usable_capacity - a.usable_capacity);
+
+    if (!free.length) { toast('No free rooms available for this date & session', 'warning'); return; }
+
+    STATE.selRooms = [];
+    let seated = 0;
+    for (const r of free) {
+        if (seated >= needed) break;
+        STATE.selRooms.push(r.room_id);
+        seated += r.usable_capacity;
     }
-    if (cap < state.totalStudents) {
-        Swal.fire('Warning', `Only ${cap} seats available across all free rooms. Not enough for ${state.totalStudents} students.`, 'warning');
-    }
+
+    // Always add 1 extra buffer room if available
+    const nextRoom = free.find(r => !STATE.selRooms.includes(r.room_id));
+    if (nextRoom) STATE.selRooms.push(nextRoom.room_id);
+
+    // Refresh visuals
+    document.querySelectorAll('.room-card').forEach(c => c.classList.remove('selected'));
+    STATE.selRooms.forEach(id => document.getElementById(`rc_${id}`)?.classList.add('selected'));
+    updateSelBar();
+
+    const totalCap = STATE.selRooms.reduce((s, id) => {
+        const r = STATE.rooms.find(x => x.room_id === id);
+        return s + (r ? r.usable_capacity : 0);
+    }, 0);
+    toast(`Auto-selected ${STATE.selRooms.length} room(s) — ${totalCap} seats for ${needed} students`, 'success');
 }
 
-// ═══════════════════════════════════════════════════════════
-//  STEP 2 → 3 — GENERATE
-// ═══════════════════════════════════════════════════════════
-async function generateSeating() {
-    const result = await Swal.fire({
-        title: 'Generate Seating Plan?',
-        html: `<div class="text-start">
-            <p><b>${state.totalStudents}</b> students will be seated across <b>${state.selectedRoomIds.length}</b> rooms.</p>
-            <p class="text-muted small">Anti-copy algorithm will mix branches and ensure no two neighbors share the same subject.</p>
-        </div>`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, Generate',
-        confirmButtonColor: '#3b82f6'
-    });
-    if (!result.isConfirmed) return;
+function updateSelBar() {
+    const cap     = STATE.selRooms.reduce((s,id) => {
+        const r = STATE.rooms.find(x => x.room_id === id);
+        return s + (r ? r.usable_capacity : 0);
+    }, 0);
+    const buffer  = cap - STATE.totalStudents;
+    const capEl   = document.getElementById('sbCapacity');
 
-    const btn = document.getElementById('btnGenerateSeating');
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generating...';
-    btn.disabled = true;
+    document.getElementById('sbStudents').textContent = STATE.totalStudents;
+    document.getElementById('sbRooms').textContent    = STATE.selRooms.length;
+    capEl.textContent = cap;
+    capEl.className   = `sel-val ${buffer >= 0 ? 'cap-ok' : 'cap-over'}`;
+    document.getElementById('sbBuffer').textContent  = buffer >= 0 ? `+${buffer}` : buffer;
+
+    document.getElementById('step3Next').disabled = STATE.selRooms.length === 0 || cap < STATE.totalStudents;
+}
+
+// ════════════════════════════════════════════════════════════
+//  STEP 4 — GENERATE & REVIEW
+// ════════════════════════════════════════════════════════════
+async function runGenerate() {
+    setStep(4);
+    showLoading('Running 4-batch anti-copy algorithm…');
+    document.getElementById('saveBtn').disabled = true;
 
     try {
         const res = await fetch('/api/seating/generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({
-                exam_date: state.examDate,
-                session_order: parseInt(state.sessionOrder),
-                notification_ids: state.selectedNotificationIds,
-                room_ids: state.selectedRoomIds
+                exam_date:        STATE.date,
+                session_order:    parseInt(STATE.session),
+                notification_ids: STATE.selNotifs,
+                room_ids:         STATE.selRooms
             })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Generation failed');
+        if (!data.success) throw new Error(data.error || 'Generate failed');
 
-        state.generatedAllocations = data.allocations;
-        state.generatedRoomsPreview = data.rooms_preview;
+        STATE.lastGenResult = data;
+        rcColorMap  = {};
+        rcColorIdx  = 0;
 
-        renderPreview(data);
-        goToStep(3);
-        document.getElementById('previewTotalBadge').textContent = `${data.total_students} students`;
-    } catch (err) {
-        Swal.fire('Error', err.message, 'error');
+        renderReview(data);
+        const canSave = data.validation?.can_save !== false;
+        document.getElementById('saveBtn').disabled = !canSave;
+
+    } catch(e) {
+        document.getElementById('reviewContainer').innerHTML =
+            `<div style="padding:30px;text-align:center;color:#dc2626;">
+                <i class="bi bi-exclamation-circle" style="font-size:40px;display:block;margin-bottom:10px;"></i>
+                <strong>Generation Failed</strong><br><br>${e.message}
+             </div>`;
     } finally {
-        btn.innerHTML = '<i class="bi bi-cpu me-1"></i>Generate Seating Plan';
-        btn.disabled = false;
+        hideLoading();
     }
 }
 
-function renderPreview(data) {
-    const container = document.getElementById('previewContainer');
-    container.innerHTML = data.rooms_preview.map((r, i) => `
-        <div class="mb-4">
-            <div class="preview-room-header">
-                <div>
-                    <span class="fw-bold fs-6">${r.room_number || r.room_name}</span>
-                    <span class="ms-2 opacity-75 small">Room ${i + 1} of ${data.rooms_preview.length}</span>
+function renderReview(d) {
+    const v      = d.validation;
+    const score  = v.score;
+    const grade  = v.grade;
+    const gradeClass = `grade-${grade.toLowerCase()}`;
+    const barClass   = score>=95?'sb-excellent':score>=80?'sb-good':score>=60?'sb-acceptable':'sb-poor';
+    const scoreColor = score>=95?'#16a34a':score>=80?'#2563eb':score>=60?'#d97706':'#dc2626';
+
+    // Ref code legend
+    const refKeys = Object.keys(d.ref_code_groups);
+    refKeys.forEach(k => getRcColor(k));
+    const legendHtml = refKeys.map(k =>
+        `<div class="ref-leg-item">
+            <span class="ref-dot" style="background:var(--dot-${k},#667eea);"></span>
+            <span class="${getRcColor(k)}" style="padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;">
+                ${k}: ${d.ref_code_groups[k]}
+            </span>
+        </div>`
+    ).join('');
+
+    // Circumference for ring
+    const R  = 36;
+    const C  = 2 * Math.PI * R;
+    const offset = C - (score / 100) * C;
+
+    const html = `
+    <!-- Validation summary -->
+    <div class="card">
+        <div class="card-hdr">
+            <i class="bi bi-shield-check" style="color:#22c55e;font-size:18px;"></i>
+            <h3>Validation Report</h3>
+            <span class="batch-badge ms-2">
+                <i class="bi bi-grid-3x2 me-1"></i>${d.batch_mode}
+            </span>
+        </div>
+        <div class="card-body">
+
+            <!-- KPI grid -->
+            <div class="vr-grid">
+                <div class="vr-card blue">
+                    <div class="vr-val" style="color:#1e40af;">${d.total_students_unique}</div>
+                    <div class="vr-lbl">Students Seated</div>
                 </div>
-                <div class="d-flex gap-3 align-items-center">
-                    <span class="badge bg-light text-dark">${r.student_count} / ${r.usable_capacity} seats</span>
+                <div class="vr-card green">
+                    <div class="vr-val" style="color:#065f46;">${d.total_rooms}</div>
+                    <div class="vr-lbl">Rooms Used</div>
+                </div>
+                <div class="vr-card purple">
+                    <div class="vr-val" style="color:#5b21b6;">${d.unique_ref_codes}</div>
+                    <div class="vr-lbl">Exam Groups</div>
+                </div>
+                <div class="vr-card ${d.buffer_seats >= 0 ? 'green' : 'red'}">
+                    <div class="vr-val" style="color:${d.buffer_seats>=0?'#065f46':'#991b1b'};">
+                        ${d.buffer_seats >= 0 ? '+' : ''}${d.buffer_seats}
+                    </div>
+                    <div class="vr-lbl">Buffer Seats</div>
+                </div>
+                <div class="vr-card ${v.violation_count===0?'green':'yellow'}">
+                    <div class="vr-val" style="color:${v.violation_count===0?'#065f46':'#92400e'};">
+                        ${v.violation_count}
+                    </div>
+                    <div class="vr-lbl">Conflicts</div>
+                </div>
+                <div class="vr-card ${d.total_students_raw === d.total_students_unique ? 'green' : 'yellow'}">
+                    <div class="vr-val" style="color:#1e293b;">${d.total_students_raw - d.total_students_unique}</div>
+                    <div class="vr-lbl">Duplicates Removed</div>
                 </div>
             </div>
-            <div class="small text-muted px-2 py-1 border-start border-end" style="background:#f8fafc;">
-                <i class="bi bi-people me-1"></i>${r.branch_summary_display || 'Mixed branches'}
+
+            <!-- Anti-copy score -->
+            <div class="score-ring-wrap">
+                <div class="score-wrap">
+                    <svg viewBox="0 0 90 90">
+                        <circle class="bg" cx="45" cy="45" r="${R}"/>
+                        <circle class="fg" cx="45" cy="45" r="${R}"
+                            stroke="${scoreColor}"
+                            stroke-dasharray="${C}"
+                            stroke-dashoffset="${offset}"/>
+                    </svg>
+                    <div class="score-overlay">
+                        <span class="score-num" style="color:${scoreColor};">${score}</span>
+                        <span class="score-pct">/ 100</span>
+                    </div>
+                </div>
+                <div class="score-info">
+                    <div class="score-title" style="color:${scoreColor};">Anti-Copy Score</div>
+                    <div class="score-sub">
+                        ${v.passed_checks} of ${v.total_checks} adjacency checks passed
+                    </div>
+                    <div>
+                        <span class="grade-pill ${gradeClass}">
+                            ${grade === 'EXCELLENT' ? '🟢' : grade === 'GOOD' ? '🔵' : grade === 'ACCEPTABLE' ? '🟡' : '🔴'}
+                            ${grade}
+                        </span>
+                        ${score < 60 ? `<span style="color:#dc2626;font-size:12px;font-weight:700;margin-left:10px;">
+                            ⛔ Score below 60% — Cannot save</span>` : ''}
+                    </div>
+                    <div class="sbar-wrap" style="margin-top:10px;width:300px;">
+                        <div class="sbar-fill ${barClass}" style="width:${score}%;"></div>
+                    </div>
+                </div>
             </div>
-            <div class="table-responsive" style="max-height:300px; overflow-y:auto;">
-                <table class="table table-sm table-bordered mb-0 preview-table">
-                    <thead>
-                        <tr>
-                            <th>S.No</th><th>Bench</th><th>Register No</th>
-                            <th>Student Name</th><th>Branch</th><th>Subject</th><th>Code</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${r.students.slice(0, 50).map(s => `
-                        <tr>
-                            <td>${s.seat_serial}</td>
-                            <td><span class="badge bg-secondary">${s.bench_label || '—'}</span></td>
-                            <td class="fw-bold">${s.register_number || s.student_id}</td>
-                            <td>${s.student_name || '—'}</td>
-                            <td><span class="badge bg-primary">${s.branch_code || '—'}</span></td>
-                            <td class="text-truncate" style="max-width:140px;" title="${s.subject_name || ''}">${s.subject_name || '—'}</td>
-                            <td><small>${s.syllabus_code || '—'}</small></td>
-                        </tr>`).join('')}
-                        ${r.students.length > 50 ? `<tr><td colspan="7" class="text-center text-muted">... and ${r.students.length - 50} more students</td></tr>` : ''}
-                    </tbody>
-                </table>
+
+            <!-- Ref code legend -->
+            <div style="margin-bottom:8px;font-size:11px;font-weight:700;color:#64748b;
+                text-transform:uppercase;letter-spacing:.5px;">Exam Groups (ref_code)</div>
+            <div class="ref-legend">${legendHtml}</div>
+
+            <!-- Violations -->
+            ${v.violations?.length ? `
+            <div style="margin-top:14px;">
+                <div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:8px;">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    ${v.violation_count} Conflict(s) Detected:
+                </div>
+                ${v.violations.slice(0,5).map(viol => `
+                <div class="viol-item">
+                    <span class="viol-icon">${viol.type==='SAME_BENCH'?'🔴':'🟡'}</span>
+                    <div>
+                        <div class="viol-type">${viol.type.replace(/_/g,' ')}</div>
+                        <div class="viol-detail">
+                            Room ${viol.room_id} · Bench ${viol.bench||''} · Group: ${viol.ref_code}
+                            ${viol.students ? ` · ${viol.students.join(' & ')}` : ''}
+                        </div>
+                    </div>
+                </div>`).join('')}
+                ${v.violation_count > 5 ? `<div style="font-size:12px;color:#94a3b8;">
+                    + ${v.violation_count-5} more…</div>` : ''}
+            </div>` : `
+            <div style="margin-top:10px;padding:10px 14px;background:#d1fae5;border-radius:8px;
+                font-size:13px;font-weight:700;color:#065f46;">
+                <i class="bi bi-check-circle me-1"></i>Zero conflicts detected. Perfect anti-copy seating!
+            </div>`}
+
+        </div>
+    </div>
+
+    <!-- Per-room preview -->
+    <div class="card">
+        <div class="card-hdr">
+            <i class="bi bi-layout-three-columns" style="color:#667eea;font-size:18px;"></i>
+            <h3>Room Allocation Preview</h3>
+            <span style="font-size:12px;color:#64748b;margin-left:4px;">
+                — ${d.rooms_preview.length} room(s)
+            </span>
+        </div>
+        <div class="card-body">
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">
+                ${d.rooms_preview.map(r => {
+                    const rScore  = r.anti_copy_score;
+                    const rScoreC = rScore>=95?'#16a34a':rScore>=80?'#2563eb':rScore>=60?'#d97706':'#dc2626';
+                    const refPills = Object.entries(r.ref_code_summary||{}).map(([k,v]) =>
+                        `<span class="rp-ref-pill ${getRcColor(k)}">${k}: ${v}</span>`
+                    ).join('');
+                    return `
+                    <div class="rp-card">
+                        <div class="rp-hdr">
+                            <div>
+                                <div class="rph-room">${r.room_number} — ${r.room_name}</div>
+                                <div class="rph-score">
+                                    ${r.student_count} students · ${r.stud_per_bench}/bench
+                                </div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:20px;font-weight:900;color:${rScoreC==='#16a34a'?'#4ade80':rScoreC==='#2563eb'?'#93c5fd':rScoreC==='#d97706'?'#fde68a':'#fca5a5'};">
+                                    ${rScore}%
+                                </div>
+                                <div style="font-size:9px;opacity:.7;text-transform:uppercase;">score</div>
+                            </div>
+                        </div>
+                        <div class="rp-body">
+                            <div class="rp-row">
+                                <span class="rp-key">Capacity</span>
+                                <span class="rp-val">${r.student_count} / ${r.usable_capacity}</span>
+                            </div>
+                            <div class="rp-row">
+                                <span class="rp-key">Branches</span>
+                                <span class="rp-val">${r.branch_display || '—'}</span>
+                            </div>
+                            <div class="rp-row">
+                                <span class="rp-key">Per bench</span>
+                                <span class="rp-val">${r.stud_per_bench} student(s)</span>
+                            </div>
+                            <div class="rp-ref-pills">${refPills}</div>
+                        </div>
+                    </div>`;
+                }).join('')}
             </div>
         </div>
-    `).join('');
+    </div>`;
+
+    document.getElementById('reviewContainer').innerHTML = html;
 }
 
-// ═══════════════════════════════════════════════════════════
-//  STEP 3 → 4
-// ═══════════════════════════════════════════════════════════
-function proceedToStep4() {
-    document.getElementById('saveStudentCount').textContent = state.totalStudents.toLocaleString();
-    document.getElementById('saveRoomCount').textContent = state.selectedRoomIds.length;
-    document.getElementById('saveDate').textContent = formatDate(state.examDate);
-    document.getElementById('saveSession').textContent = state.sessionOrder === '1' ? 'FN' : 'AN';
-    goToStep(4);
-}
+// ════════════════════════════════════════════════════════════
+//  SAVE
+// ════════════════════════════════════════════════════════════
+async function savePlan() {
+    if (!STATE.lastGenResult) return;
+    const d = STATE.lastGenResult;
 
-// ═══════════════════════════════════════════════════════════
-//  STEP 4 — SAVE
-// ═══════════════════════════════════════════════════════════
-async function saveSeatingPlan() {
-    const btn = document.getElementById('btnSavePlan');
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
-    btn.disabled = true;
+    if (!d.validation.can_save) {
+        toast('Cannot save — anti-copy score below 60%. Re-generate or add more rooms.', 'error');
+        return;
+    }
+
+    showLoading('Saving seating plan to database…');
+    document.getElementById('saveBtn').disabled = true;
 
     try {
         const res = await fetch('/api/seating/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({
-                exam_date: state.examDate,
-                session_order: parseInt(state.sessionOrder),
-                notification_ids: state.selectedNotificationIds,
-                room_ids: state.selectedRoomIds,
-                allocations: state.generatedAllocations,
-                generated_by: document.getElementById('generatedBy').value || 'Admin',
-                notes: document.getElementById('planNotes').value || null
+                exam_date:        STATE.date,
+                session_order:    parseInt(STATE.session),
+                notification_ids: STATE.selNotifs,
+                room_ids:         STATE.selRooms,
+                allocations:      d.allocations,
+                anti_copy_score:  d.validation.score,
+                generated_by:     'Admin'
             })
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Save failed');
+        const result = await res.json();
+        if (!result.success) throw new Error(result.error || 'Save failed');
 
-        state.savedPlanId = data.plan_id;
-        document.getElementById('savedPlanId').textContent = data.plan_id;
-        document.getElementById('postSaveActions').style.display = 'block';
-        document.getElementById('btnSavePlan').style.display = 'none';
+        toast(result.message, 'success');
 
-        Swal.fire({
-            icon: 'success',
-            title: 'Saved!',
-            text: data.message,
-            timer: 3000,
-            showConfirmButton: false
-        });
-    } catch (err) {
-        Swal.fire('Error', err.message, 'error');
-        btn.innerHTML = '<i class="bi bi-save me-1"></i>Save Seating Plan';
-        btn.disabled = false;
+        // Show success card
+        document.getElementById('reviewContainer').innerHTML = `
+            <div class="card" style="text-align:center;padding:40px;">
+                <div style="font-size:60px;margin-bottom:16px;">✅</div>
+                <h2 style="color:#16a34a;margin-bottom:8px;">Seating Plan Saved!</h2>
+                <div style="color:#64748b;font-size:14px;margin-bottom:20px;">
+                    Plan ID: <strong>#${result.plan_id}</strong> ·
+                    ${result.total_students} students ·
+                    ${result.total_rooms} rooms ·
+                    Anti-copy score: <strong>${d.validation.score}%</strong>
+                </div>
+                <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+                    <button class="btn btn-primary" onclick="window.open('seating-pdf-export.html?plan_id=${result.plan_id}','_blank')">
+                        <i class="bi bi-file-pdf me-1"></i>Export PDF
+                    </button>
+                    <button class="btn btn-outline" onclick="resetWizard()">
+                        <i class="bi bi-plus me-1"></i>New Plan
+                    </button>
+                    <button class="btn btn-outline" onclick="showTab('history')">
+                        <i class="bi bi-clock-history me-1"></i>View All Plans
+                    </button>
+                </div>
+            </div>`;
+
+    } catch(e) {
+        toast('Save failed: ' + e.message, 'error');
+        document.getElementById('saveBtn').disabled = false;
+    } finally {
+        hideLoading();
     }
 }
 
-function exportPDF() {
-    if (!state.savedPlanId) return;
-    window.open(`/api/seating/pdf/${state.savedPlanId}`, '_blank');
-}
-
-function viewFullPlan() {
-    if (!state.savedPlanId) return;
-    window.open(`seating-plan-view.html?planId=${state.savedPlanId}`, '_blank');
-}
-
-function startNew() {
-    location.reload();
-}
-
-// ═══════════════════════════════════════════════════════════
-//  QUICK BLOCK
-// ═══════════════════════════════════════════════════════════
-function openQuickBlock(roomId, roomNumber) {
-    document.getElementById('qbRoomId').value = roomId;
-    document.getElementById('qbRoomLabel').textContent = roomNumber;
-    document.getElementById('qbDateLabel').textContent = formatDate(state.examDate);
-    document.getElementById('qbSessionLabel').textContent = state.sessionOrder === '1' ? 'FN (Fore Noon)' : 'AN (After Noon)';
-    new bootstrap.Modal(document.getElementById('quickBlockModal')).show();
-}
-
-async function confirmQuickBlock() {
-    const roomId = document.getElementById('qbRoomId').value;
-    const reason = document.getElementById('qbReason').value;
-    const note = document.getElementById('qbNote').value;
-
+// ════════════════════════════════════════════════════════════
+//  PLAN HISTORY
+// ════════════════════════════════════════════════════════════
+async function loadPlans() {
+    document.getElementById('plansContainer').innerHTML =
+        '<div style="padding:20px;">' + loadingHtml(3, 50) + '</div>';
     try {
-        const res = await fetch('/api/seating/block-room', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                room_id: roomId,
-                from_date: state.examDate,
-                sessions: [parseInt(state.sessionOrder)],
-                reason,
-                reason_note: note || null,
-                blocked_by: document.getElementById('generatedBy').value || 'Admin'
-            })
-        });
+        const res  = await fetch('/api/seating/plans');
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
+        const plans = data.plans || [];
 
-        bootstrap.Modal.getInstance(document.getElementById('quickBlockModal')).hide();
-
-        // Update card to BLOCKED state
-        const room = state.rooms.find(r => r.room_id == roomId);
-        if (room) {
-            room.status = 'BLOCKED';
-            room.status_note = reason;
-            const card = document.getElementById(`rc_${roomId}`);
-            if (card) {
-                card.className = 'room-card status-BLOCKED';
-                card.innerHTML = `
-                    <div class="room-badge badge-BLOCKED mb-1">BLOCKED</div>
-                    <div class="room-number">${room.room_number}</div>
-                    <div class="room-cap"><i class="bi bi-people me-1"></i>Cap: ${room.usable_capacity}</div>
-                    <div class="room-note">${reason}</div>`;
-            }
+        if (!plans.length) {
+            document.getElementById('plansContainer').innerHTML =
+                '<div style="padding:30px;text-align:center;color:#94a3b8;">No seating plans generated yet</div>';
+            return;
         }
 
-        Swal.fire({ icon: 'success', title: 'Blocked!', text: `${document.getElementById('qbRoomLabel').textContent} blocked for this session.`, timer: 2000, showConfirmButton: false });
-    } catch (err) {
-        Swal.fire('Error', err.message, 'error');
+        document.getElementById('plansContainer').innerHTML =
+            plans.map(p => `
+            <div class="plan-row">
+                <div class="pr-date">${p.exam_date_display || p.exam_date}</div>
+                <span class="pr-ses ${p.session_order===1?'pr-fn':'pr-an'}">${p.session_label}</span>
+                <div class="pr-name">${p.exam_names || p.notif_refs || '—'}</div>
+                <div style="font-size:12px;color:#94a3b8;">${p.total_students} students · ${p.room_count} rooms</div>
+                <div style="font-size:11px;color:#94a3b8;">${p.rooms_list || ''}</div>
+                <span class="pr-status prs-${(p.status||'draft').toLowerCase()}">${p.status || 'Draft'}</span>
+                <div style="display:flex;gap:6px;margin-left:auto;">
+                    <button class="btn btn-xs btn-outline"
+                        onclick="window.open('seating-pdf-export.html?plan_id=${p.plan_id}','_blank')">
+                        <i class="bi bi-file-pdf me-1"></i>PDF
+                    </button>
+                    ${p.status==='Draft' ? `
+                    <button class="btn btn-xs btn-success"
+                        onclick="updateStatus(${p.plan_id},'Confirmed')">Confirm</button>
+                    <button class="btn btn-xs btn-danger"
+                        onclick="deletePlan(${p.plan_id})">Delete</button>` : ''}
+                    ${p.status==='Confirmed' ? `
+                    <button class="btn btn-xs btn-primary"
+                        onclick="updateStatus(${p.plan_id},'Published')">Publish</button>` : ''}
+                </div>
+            </div>`).join('');
+    } catch(e) {
+        document.getElementById('plansContainer').innerHTML =
+            `<div style="padding:20px;color:#dc2626;">Error: ${e.message}</div>`;
     }
 }
 
-// ═══════════════════════════════════════════════════════════
-//  UTILITIES
-// ═══════════════════════════════════════════════════════════
-function formatDate(dateStr) {
-    if (!dateStr) return '—';
-    const d = new Date(dateStr + 'T00:00:00');
-    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+async function updateStatus(planId, status) {
+    try {
+        const res = await fetch(`/api/seating/plan/${planId}/status`, {
+            method:'PATCH', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ status })
+        });
+        const d = await res.json();
+        if (!d.success) throw new Error(d.error);
+        toast(`Plan ${status}`, 'success');
+        loadPlans();
+    } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deletePlan(planId) {
+    if (!confirm('Delete this Draft plan? This cannot be undone.')) return;
+    try {
+        const res = await fetch(`/api/seating/plan/${planId}`, { method:'DELETE' });
+        const d   = await res.json();
+        if (!d.success) throw new Error(d.error);
+        toast('Plan deleted', 'success');
+        loadPlans();
+    } catch(e) { toast(e.message, 'error'); }
+}
+
+// ════════════════════════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════════════════════════
+function resetWizard() {
+    STATE = { date:'', session:'', notifications:[], selNotifs:[], rooms:[], selRooms:[], totalStudents:0, lastGenResult:null };
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('examDate').value = today;
+    document.getElementById('session').value  = '';
+    document.getElementById('step1Next').disabled = true;
+    document.getElementById('step1Summary').style.display = 'none';
+    document.getElementById('notifContainer').innerHTML   = '';
+    document.getElementById('roomsContainer').innerHTML   = '';
+    document.getElementById('reviewContainer').innerHTML  = '';
+    document.getElementById('selBar').style.display = 'none';
+    onDateSessionChange();
+    setStep(1);
+    showTab('wizard');
+}
+
+function loadingHtml(count=3, h=70) {
+    return Array(count).fill(`<div class="shimmer" style="height:${h}px;margin-bottom:10px;"></div>`).join('');
+}
+
+function showLoading(text='Loading…') {
+    document.getElementById('loadingText').textContent = text;
+    document.getElementById('loadingOverlay').classList.add('show');
+}
+function hideLoading() {
+    document.getElementById('loadingOverlay').classList.remove('show');
+}
+
+let _toastTimer;
+function toast(msg, type='success') {
+    const el = document.getElementById('toast');
+    const icon = type==='success'?'check-circle':type==='error'?'x-circle':type==='warning'?'exclamation-triangle':'info-circle';
+    el.className = `toast toast-${type} show`;
+    el.innerHTML = `<i class="bi bi-${icon}"></i> ${msg}`;
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), 5000);
 }
 </script>
 </body>

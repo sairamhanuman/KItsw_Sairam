@@ -128,52 +128,38 @@ module.exports = function(pool) {
         try {
             const {
                 block_id, room_code, room_name, room_type,
-                floor_number, has_projector, has_ac,
-                description
+                floor_number, total_rows, total_columns,
+                students_per_bench, has_projector, has_ac,
+                description, layout_data
             } = req.body;
 
-            // Parse numeric fields explicitly to avoid NaN
-            const total_rows       = parseInt(req.body.total_rows, 10);
-            const total_columns    = parseInt(req.body.total_columns, 10);
-            const students_per_bench = parseInt(req.body.students_per_bench, 10);
-
-            // Validate required fields
             if (!block_id || !room_code || !room_name) {
                 return res.status(400).json({ status: 'error', message: 'block_id, room_code, room_name are required' });
             }
-            if (isNaN(total_rows) || isNaN(total_columns) || isNaN(students_per_bench)) {
-                return res.status(400).json({ status: 'error', message: 'total_rows, total_columns, and students_per_bench must be valid numbers' });
-            }
 
             const totalCapacity = (total_rows * total_columns) * students_per_bench;
-
-            // Guard against double-stringify: accept both object and pre-stringified JSON
-            let layout_data = req.body.layout_data;
-            if (typeof layout_data === 'string') {
-                try { layout_data = JSON.parse(layout_data); } catch { layout_data = null; }
-            }
             const layoutJson = layout_data ? JSON.stringify(layout_data) : null;
 
             // Calculate usable capacity from selected benches in layout_data
             let usableCapacity = totalCapacity;
-            if (layout_data && Array.isArray(layout_data.benches)) {
+            if (layout_data && layout_data.benches) {
                 const available = layout_data.benches.filter(b => b.available).length;
                 usableCapacity = available * students_per_bench;
             }
 
             const [result] = await pool.query(`
                 INSERT INTO room_master 
-                    (block_id, room_code, room_name, room_type, floor_number,
+                    (block_id, room_number, room_name, room_type, floor_number,
                      total_rows, total_columns, students_per_bench,
-                     total_capacity,
+                     total_capacity, usable_capacity,
                      has_projector, has_ac, description, layout_data,
                      exam_status, is_active)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available', 1)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available', 1)
             `, [
                 block_id, room_code, room_name,
-                room_type || 'Classroom', parseInt(floor_number, 10) || 1,
+                room_type || 'Classroom', floor_number || 1,
                 total_rows, total_columns, students_per_bench,
-                totalCapacity,
+                totalCapacity, usableCapacity,
                 has_projector ? 1 : 0, has_ac ? 1 : 0,
                 description || null, layoutJson
             ]);
@@ -207,7 +193,7 @@ module.exports = function(pool) {
             await pool.query(`
                 UPDATE room_master SET
                     block_id          = ?,
-                    room_code         = ?,
+                    room_number       = ?,
                     room_name         = ?,
                     room_type         = ?,
                     floor_number      = ?,
@@ -215,6 +201,7 @@ module.exports = function(pool) {
                     total_columns     = ?,
                     students_per_bench = ?,
                     total_capacity    = ?,
+                    usable_capacity   = ?,
                     has_projector     = ?,
                     has_ac            = ?,
                     description       = ?,
@@ -223,9 +210,9 @@ module.exports = function(pool) {
                 WHERE room_id = ?
             `, [
                 block_id, room_code, room_name,
-                room_type, parseInt(floor_number, 10) || 1,
+                room_type, floor_number,
                 total_rows, total_columns, students_per_bench,
-                totalCapacity,
+                totalCapacity, usableCapacity,
                 has_projector ? 1 : 0, has_ac ? 1 : 0,
                 description || null, layoutJson,
                 exam_status || null,
@@ -281,7 +268,7 @@ module.exports = function(pool) {
                     NULL                                                             AS session_name,
                     esp.exam_date,
                     CASE esp.session_order WHEN 1 THEN 'FN' ELSE 'AN' END           AS session_type,
-                    GROUP_CONCAT(DISTINCT rm.room_code SEPARATOR ', ')             AS room_code,
+                    GROUP_CONCAT(DISTINCT rm.room_number SEPARATOR ', ')             AS room_code,
                     COALESCE(GROUP_CONCAT(DISTINCT rm.room_name SEPARATOR ', '), '-') AS room_name,
                     esp.total_students                                               AS total_students_allocated,
                     COALESCE(SUM(espr.capacity_used), esp.total_students)            AS total_capacity,
@@ -307,7 +294,7 @@ module.exports = function(pool) {
         try {
             const [[plan]] = await pool.query(`
                 SELECT esp.*,
-                    GROUP_CONCAT(DISTINCT rm.room_code SEPARATOR ', ') AS room_code,
+                    GROUP_CONCAT(DISTINCT rm.room_number SEPARATOR ', ') AS room_code,
                     GROUP_CONCAT(DISTINCT rm.room_name SEPARATOR ', ')   AS room_name,
                     esp.total_students AS total_students_allocated,
                     esp.total_students AS total_capacity,

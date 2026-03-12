@@ -1275,28 +1275,41 @@ await connection.query(
     [to_semester_id, to_regulation_id || student.regulation_id, student.student_id]
 );
 
-            // ✅ Insert semester history record for old semester
-            await connection.query(
-                `INSERT INTO student_semester_history 
-                 (student_id, academic_year, semester_id, programme_id, branch_id, batch_id, 
-                  regulation_id, section_id, roll_number, student_status, status_date, 
-                  is_promoted, promotion_date, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Promoted', CURRENT_DATE, 1, CURRENT_DATE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-                [
-                    student.student_id,
-                    academic_year,
-                    from_semester_id,  // Old semester
-                    student.programme_id,
-                    student.branch_id,
-                    student.batch_id,
-                    student.regulation_id,
-                    student.section_id,
-                    student.roll_number
-                ]
-            );
+           // STEP 1: Mark existing sem 1 record as 'Promoted'
+        await connection.query(
+            `UPDATE student_semester_history
+             SET student_status = 'Promoted',
+                 is_promoted = 1,
+                 promotion_date = CURRENT_DATE,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE student_id = ?
+               AND semester_id = ?
+               AND student_status = 'In Roll'`,
+            [student.student_id, from_semester_id]
+        );
 
-            promotedCount++;
-        }
+        // STEP 2: Insert NEW record for next semester (sem 2)
+        await connection.query(
+            `INSERT INTO student_semester_history 
+             (student_id, academic_year, semester_id, programme_id, branch_id, batch_id, 
+              regulation_id, section_id, roll_number, student_status, status_date, 
+              is_promoted, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'In Roll', CURRENT_DATE, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+            [
+                student.student_id,
+                academic_year,
+                to_semester_id,          // ✅ NEW semester (2), not old (1)
+                student.programme_id,
+                student.branch_id,
+                student.batch_id,
+                to_regulation_id || student.regulation_id,
+                to_section_id || student.section_id,
+                student.roll_number
+            ]
+        );
+
+        promotedCount++;
+    }
             // 3️⃣ Log the promotion
             await connection.query(
                 `INSERT INTO promotion_batch_log 

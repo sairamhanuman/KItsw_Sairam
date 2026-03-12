@@ -362,6 +362,74 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+
+.empty-slot {
+    background: #f8f9fa !important;
+    border-left: 3px solid #adb5bd !important;
+}
+.empty-slot td {
+    color: #adb5bd;
+}
+.empty-slot .drop-hint {
+    letter-spacing: 0.5px;
+}
+.drag-over {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7) !important;
+    border: 2px dashed #ffc107 !important;
+    box-shadow: 0 0 12px rgba(255,193,7,.4) !important;
+}
+.drag-over-blocked {
+    background: #fff5f5 !important;
+    border: 2px dashed #dc3545 !important;
+    cursor: not-allowed;
+}
+.dragging {
+    opacity: 0.6;
+    transform: scale(1.01) rotate(0.5deg);
+    box-shadow: 0 6px 20px rgba(0,123,255,.35) !important;
+    border: 2px solid #007bff !important;
+}
+
+
+.unassigned-row {
+    background: #fffbf0 !important;
+    border-left: 4px solid #ffc107 !important;
+}
+.unassigned-row:hover {
+    background: #fff8dc !important;
+}
+.assign-date-btn {
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+.assign-date-select select {
+    font-size: 0.8rem;
+}
+.empty-slot {
+    background: #f4f6f9 !important;
+    border-left: 3px dashed #adb5bd !important;
+}
+.empty-slot td {
+    color: #adb5bd !important;
+}
+.drag-over {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7) !important;
+    border: 2px dashed #ffc107 !important;
+    box-shadow: 0 0 12px rgba(255,193,7,.4) !important;
+}
+.drag-over-blocked {
+    background: #fff5f5 !important;
+    border: 2px dashed #dc3545 !important;
+    cursor: not-allowed !important;
+}
+.dragging {
+    opacity: 0.55;
+    transform: scale(1.01) rotate(0.5deg);
+    box-shadow: 0 6px 20px rgba(0,123,255,.35) !important;
+    border: 2px solid #007bff !important;
+}
+
     </style>
 </head>
 <body>
@@ -1239,514 +1307,864 @@ dateObj.branches[branch.id].push({
             };
         }
 
-        // Display time table with branch sorting
-        function displayTimeTable() {
-            const displayDiv = document.getElementById('timeTableDisplay');
-            displayDiv.style.display = 'block';
-            
-            console.log('🎨 Displaying time table with data:', timeTableData);
-            console.log('🎨 Global timeTableDataGlobal:', timeTableDataGlobal);
-            
-            // Use the global variable that was set in generateTimetable
-            const dataToUse = timeTableDataGlobal || timeTableData;
-            console.log('🎨 Using data:', dataToUse);
-            
-            if (!dataToUse || !dataToUse.dates) {
-                console.error('❌ Invalid time table data:', dataToUse);
-                showAlert('danger', 'Invalid time table data structure');
-                return;
-            }
-            
-            // Set global notification details for display function
-            if (!window.notificationDetails && dataToUse.notificationDetails) {
-                window.notificationDetails = dataToUse.notificationDetails;
-            }
-            
-            let html = '';
-            
-            // Combined timetable table with branch sorting
-            html += `
-                <div class="timetable-section">
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <h4><i class="bi bi-calendar3"></i> Timetable Management</h4>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="input-group">
-                                <span class="input-group-text">
-                                    <i class="bi bi-funnel"></i> Filter by Branch:
-                                </span>
-                                <select id="branchSortSelector" class="form-select" onchange="sortTableByBranch()">
-                                    <option value="all">📋 All Branches</option>
-                                    ${dataToUse.branches.map(branch => 
-                                        `<option value="${branch.id}">🏛️ ${branch.name} (${branch.code})</option>`
-                                    ).join('')}
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-striped timetable-table" id="combinedTimetable">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Session</th>
-                                    <th>Branch</th>
-                                    <th>Syllabus Code</th>
-                                    <th>Subject</th>
-                                    <th>Type</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-            `;
-            
-            // Add allocated subjects to table
-            let rowIndex = 0;
-            dataToUse.dates.forEach(dateEntry => {
-                dataToUse.branches.forEach(branch => {
-                    const subjects = dateEntry.branches[branch.id] || [];
-                    subjects.forEach(subject => {
-                        if (subject.is_group_member) {
-                            // Display group member as individual row with clean display
-                            html += `
-                                <tr class="draggable-row group-member-row" data-row-id="${rowIndex}" data-date="${dateEntry.date}" data-branch-id="${branch.id}" data-subject-id="${subject.subject_id}" data-status="assigned" data-group="${subject.group_name}" draggable="true">
-                                    <td>${formatDate(dateEntry.date)}</td>
-                                    <td>${window.notificationDetails?.session_name || 'FN'}</td>
-                                    <td class="branch-cell" data-branch-id="${branch.id}">${branch.code}</td>
-                                    <td class="subject-field syllabus-code">
-                                        <span class="drag-indicator">⋮⋮</span>
-                                        ${subject.syllabus_code}
-                                    </td>
-                                    <td class="subject-field subject-name">
-                                        <span class="drag-indicator">⋮⋮</span>
-                                        ${subject.subject_name}
-                                    </td>
-                                    <td class="subject-field type">
-                                        <span class="drag-indicator">⋮⋮</span>
-                                        ${subject.is_elective ? '<span class="badge bg-info">ELECTIVE</span>' : ''}
-                                        ${subject.is_under_group ? '<span class="badge bg-warning">GROUP</span>' : ''}
-                                        ${!subject.is_elective && !subject.is_under_group ? '<span class="badge bg-success">REGULAR</span>' : ''}
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-success">ASSIGNED</span>
-                                    </td>
-                                </tr>
-                            `;
-                        } else {
-                            // Display individual subjects
-                            html += `
-                                <tr class="draggable-row" data-row-id="${rowIndex}" data-date="${dateEntry.date}" data-branch-id="${branch.id}" data-subject-id="${subject.subject_id}" data-status="assigned" draggable="true">
-                                    <td>${formatDate(dateEntry.date)}</td>
-                                    <td>${window.notificationDetails?.session_name || 'FN'}</td>
-                                    <td class="branch-cell" data-branch-id="${branch.id}">${branch.code}</td>
-                                    <td class="subject-field syllabus-code">
-                                        <span class="drag-indicator">⋮⋮</span>
-                                        ${subject.syllabus_code}
-                                    </td>
-                                    <td class="subject-field subject-name">
-                                        <span class="drag-indicator">⋮⋮</span>
-                                        ${subject.subject_name}
-                                    </td>
-                                    <td class="subject-field type">
-                                        <span class="drag-indicator">⋮⋮</span>
-                                        ${subject.is_elective ? '<span class="badge bg-info">ELECTIVE</span>' : ''}
-                                        ${subject.is_under_group ? '<span class="badge bg-warning">GROUP</span>' : ''}
-                                        ${!subject.is_elective && !subject.is_under_group ? '<span class="badge bg-success">REGULAR</span>' : ''}
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-success">ASSIGNED</span>
-                                    </td>
-                                </tr>
-                            `;
-                        }
-                        rowIndex++;
-                    });
-                });
-            });
-            
-            // Add unallocated subjects to the same table
-            dataToUse.unallocated.forEach(subject => {
-                const branch = dataToUse.branchesMap[subject.branch_id];
-                html += `
-                    <tr class="draggable-row" data-branch-id="${subject.branch_id}" data-subject-id="${subject.subject_id}" data-status="unassigned" draggable="true">
-                        <td>-</td>
-                        <td>-</td>
-                        <td class="branch-cell" data-branch-id="${subject.branch_id}">${branch ? branch.code : `Branch ${subject.branch_id}`}</td>
-                        <td class="subject-field syllabus-code">
-                            <span class="drag-indicator">⋮⋮</span>
-                            ${subject.syllabus_code}
-                        </td>
-                        <td class="subject-field subject-name">
-                            <span class="drag-indicator">⋮⋮</span>
-                            ${subject.subject_name}
-                        </td>
-                        <td class="subject-field type">
-                            <span class="drag-indicator">⋮⋮</span>
-                            ${subject.is_elective ? '<span class="badge bg-info">ELECTIVE</span>' : ''}
-                            ${subject.is_under_group ? '<span class="badge bg-warning">GROUP</span>' : ''}
-                            ${!subject.is_elective && !subject.is_under_group ? '<span class="badge bg-success">REGULAR</span>' : ''}
-                        </td>
-                        <td>
-                            <span class="badge bg-warning">UNASSIGNED</span>
-                        </td>
-                    </tr>
-                `;
-            });
-            
-            html += `
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-            
-            // Summary statistics
-            const totalSubjects = dataToUse.dates.reduce((total, dateEntry) => {
-                return total + dataToUse.branches.reduce((branchTotal, branch) => {
-                    return branchTotal + (dateEntry.branches[branch.id] || []).length;
-                }, 0);
-            }, 0);
-            
-            html += `
-                <div class="summary-section mt-4">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="card bg-primary text-white">
-                                <div class="card-body">
-                                    <h5 class="card-title">Total Subjects</h5>
-                                    <h3>${totalSubjects + dataToUse.unallocated.length}</h3>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-success text-white">
-                                <div class="card-body">
-                                    <h5 class="card-title">Assigned</h5>
-                                    <h3>${totalSubjects}</h3>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-warning text-white">
-                                <div class="card-body">
-                                    <h5 class="card-title">Unassigned</h5>
-                                    <h3>${dataToUse.unallocated.length}</h3>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-info text-white">
-                                <div class="card-body">
-                                    <h5 class="card-title">Total Dates</h5>
-                                    <h3>${dataToUse.dates.length}</h3>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            displayDiv.innerHTML = html;
-            
-            // Initialize drag and drop
-            initializeDragAndDrop();
-        }
+      
+// ─── Global state ────────────────────────────────────────────────────────────
+let draggedRow = null;
+let draggedRowData = null;
+let timeTableDataGlobal = null; // set this when you call generateTimetable()
 
-        // Sort table by branch
-        function sortTableByBranch() {
-            const selector = document.getElementById('branchSortSelector');
-            const selectedBranchId = selector.value;
-            const tbody = document.querySelector('#combinedTimetable tbody');
-            const allRows = Array.from(tbody.querySelectorAll('tr'));
-            
-            console.log('🔍 Sorting by branch:', selectedBranchId);
-            
-            if (selectedBranchId === 'all') {
-                // Show all rows
-                allRows.forEach(row => row.style.display = '');
-                console.log('📋 Showing all branches - Total rows:', allRows.length);
+// ─── displayTimeTable ────────────────────────────────────────────────────────
+function displayTimeTable() {
+    const displayDiv = document.getElementById('timeTableDisplay');
+    displayDiv.style.display = 'block';
+
+    const data = timeTableDataGlobal;
+    if (!data || !data.dates) {
+        showAlert('danger', 'Invalid time table data');
+        return;
+    }
+
+    // Store subject-to-date mapping so we can track current state
+    // Format: { subjectId_branchId : { date, rowEl } }
+    window._subjectDateMap = {};
+
+    let html = `
+        <div class="timetable-section">
+            <!-- Branch filter -->
+            <div class="row mb-3 align-items-center">
+                <div class="col-md-6">
+                    <h4><i class="bi bi-calendar3"></i> Timetable Management</h4>
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle"></i>
+                        Drag subjects to swap dates. Empty rows = No Exam day for that branch.
+                        Right-click an assigned row to clear it.
+                    </small>
+                </div>
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="bi bi-funnel"></i> Filter by Branch:
+                        </span>
+                        <select id="branchSortSelector" class="form-select" onchange="sortTableByBranch()">
+                            <option value="all">📋 All Branches</option>
+                            ${data.branches.map(b =>
+                                `<option value="${b.id}">🏛️ ${b.name} (${b.code})</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="d-flex gap-3 mb-2 flex-wrap">
+                <span><span class="badge bg-success">ASSIGNED</span> Subject scheduled</span>
+                <span><span class="badge bg-secondary">NO EXAM</span> Date left blank (drag a subject here)</span>
+                <span><span class="badge bg-warning text-dark">UNASSIGNED</span> Not yet placed</span>
+                <span class="text-muted fst-italic">⋮⋮ = drag handle</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered timetable-table" id="combinedTimetable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width:200px">Date</th>
+                            <th style="width:80px">Session</th>
+                            <th style="width:80px">Branch</th>
+                            <th style="width:140px">Syllabus Code</th>
+                            <th>Subject</th>
+                            <th style="width:120px">Type</th>
+                            <th style="width:120px">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="timetableTbody">`;
+
+    // ── Render every date × branch combination ──────────────────────────────
+    data.dates.forEach(dateEntry => {
+        data.branches.forEach(branch => {
+            const subjects = dateEntry.branches[branch.id] || [];
+
+            if (subjects.length === 0) {
+                // ── EMPTY row (No Exam / blank slot) ────────────────────────
+                html += buildEmptyRow(dateEntry.date, branch);
             } else {
-                // Show only selected branch rows
-                let visibleCount = 0;
-                allRows.forEach(row => {
-                    const branchId = row.getAttribute('data-branch-id');
-                    if (branchId === selectedBranchId) {
-                        row.style.display = '';
-                        visibleCount++;
-                    } else {
-                        row.style.display = 'none';
-                    }
+                // ── ASSIGNED row(s) ─────────────────────────────────────────
+                subjects.forEach(subject => {
+                    html += buildAssignedRow(dateEntry.date, branch, subject);
                 });
-                console.log(`📋 Showing branch ${selectedBranchId} - Visible rows: ${visibleCount}`);
-                
-                // Show branch info
-                const selectedBranch = timeTableDataGlobal?.branches.find(b => b.id == selectedBranchId);
-                if (selectedBranch) {
-                    showAlert('info', `Showing ${visibleCount} subjects for ${selectedBranch.name}`);
-                }
             }
-        }
+        });
+    });
 
-        // Initialize drag and drop functionality
-        function initializeDragAndDrop() {
-            // Make all draggable rows draggable
-            const draggableRows = document.querySelectorAll('.draggable-row');
-            draggableRows.forEach(row => {
-                row.addEventListener('dragstart', handleDragStart);
-                row.addEventListener('dragend', handleDragEnd);
-                row.addEventListener('dragover', handleDragOver);
-                row.addEventListener('drop', handleDrop);
-            });
-            
-            // Add visual feedback
-            draggableRows.forEach(row => {
-                row.addEventListener('dragenter', handleDragEnter);
-                row.addEventListener('dragleave', handleDragLeave);
-            });
-        }
+    // ── Unassigned subjects at the bottom ───────────────────────────────────
+    if (data.unallocated && data.unallocated.length > 0) {
+        html += `
+            <tr class="table-secondary">
+                <td colspan="7" class="fw-bold text-center text-muted py-2">
+                    <i class="bi bi-arrow-down-circle"></i>
+                    UNASSIGNED SUBJECTS — Drag these up to any empty (No Exam) row
+                </td>
+            </tr>`;
+        data.unallocated.forEach(subject => {
+            const branch = data.branchesMap[subject.branch_id];
+            html += buildUnassignedRow(branch, subject);
+        });
+    }
 
-        let draggedRow = null;
-        let draggedRowData = null;
+    html += `
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
 
-        function handleDragStart(e) {
-            draggedRow = e.target.closest('.draggable-row');
-            draggedRowData = {
-                subjectId: draggedRow.dataset.subjectId,
-                branchId: draggedRow.dataset.branchId,
-                date: draggedRow.dataset.date,
-                rowId: draggedRow.dataset.rowId,
-                sourceTable: draggedRow.closest('table').id,
-                html: draggedRow.outerHTML,
-                status: draggedRow.dataset.status || 'unassigned' // Default to unassigned if not set
-            };
-            
-            console.log('🎯 Drag Start Data:', draggedRowData);
-            
-            draggedRow.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/html', draggedRow.outerHTML);
-        }
+    // ── Summary stats ────────────────────────────────────────────────────────
+    const totalAssigned = data.dates.reduce((t, d) =>
+        t + data.branches.reduce((b, br) => b + (d.branches[br.id] || []).length, 0), 0);
+    const totalUnassigned = (data.unallocated || []).length;
 
-        function handleDragEnd(e) {
-            const draggableRows = document.querySelectorAll('.draggable-row');
-            draggableRows.forEach(row => {
-                row.classList.remove('dragging', 'drag-over');
-            });
-        }
+    html += `
+        <div class="summary-section mt-4">
+            <div class="row g-3">
+                <div class="col-6 col-md-3">
+                    <div class="card bg-primary text-white text-center p-3">
+                        <div class="fs-2 fw-bold">${totalAssigned + totalUnassigned}</div>
+                        <div class="small">Total Subjects</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card bg-success text-white text-center p-3">
+                        <div class="fs-2 fw-bold">${totalAssigned}</div>
+                        <div class="small">Assigned</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card bg-warning text-dark text-center p-3">
+                        <div class="fs-2 fw-bold">${totalUnassigned}</div>
+                        <div class="small">Unassigned</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card bg-info text-white text-center p-3">
+                        <div class="fs-2 fw-bold">${data.dates.length}</div>
+                        <div class="small">Total Dates</div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
 
-        function handleDragOver(e) {
-            if (e.preventDefault) {
-                e.preventDefault();
+    displayDiv.innerHTML = html;
+
+    // Wire up drag-and-drop and right-click menu
+    initializeDragAndDrop();
+    initializeContextMenu();
+}
+
+// ─── Row builders ─────────────────────────────────────────────────────────────
+
+function buildEmptyRow(dateStr, branch) {
+    return `
+        <tr class="draggable-row empty-slot"
+            data-date="${dateStr}"
+            data-branch-id="${branch.id}"
+            data-subject-id=""
+            data-status="empty"
+            draggable="false">
+            <td class="text-muted">${formatDate(dateStr)}</td>
+            <td class="text-muted text-center">—</td>
+            <td class="text-center"><span class="badge bg-light text-dark border">${branch.code}</span></td>
+            <td colspan="2" class="text-center text-muted fst-italic drop-hint">
+                <i class="bi bi-arrow-left-right"></i>
+                Drop a subject here
+            </td>
+            <td>—</td>
+            <td><span class="badge bg-secondary">NO EXAM</span></td>
+        </tr>`;
+}
+
+function buildAssignedRow(dateStr, branch, subject) {
+    const typeBadge = buildTypeBadge(subject);
+    const groupMark = subject.is_group_member ? 'group-member-row' : '';
+    return `
+        <tr class="draggable-row ${groupMark}"
+            data-date="${dateStr}"
+            data-branch-id="${branch.id}"
+            data-subject-id="${subject.subject_id}"
+            data-syllabus="${escHtml(subject.syllabus_code)}"
+            data-subject-name="${escHtml(subject.subject_name)}"
+            data-status="assigned"
+            data-group="${subject.group_name || ''}"
+            data-is-group="${subject.is_group_member ? '1' : '0'}"
+            draggable="true"
+            title="Right-click to clear this date">
+            <td>${formatDate(dateStr)}</td>
+            <td class="text-center">${window.notificationDetails?.session_name || 'FN'}</td>
+            <td class="text-center"><span class="badge bg-light text-dark border">${branch.code}</span></td>
+            <td class="subject-field syllabus-code">
+                <span class="drag-indicator">⋮⋮</span> ${escHtml(subject.syllabus_code)}
+            </td>
+            <td class="subject-field subject-name">
+                <span class="drag-indicator">⋮⋮</span> ${escHtml(subject.subject_name)}
+            </td>
+            <td class="subject-field type">${typeBadge}</td>
+            <td><span class="badge bg-success">ASSIGNED</span></td>
+        </tr>`;
+}
+
+function buildUnassignedRow(branch, subject) {
+    const typeBadge = buildTypeBadge(subject);
+    const branchCode = branch ? branch.code : subject.branch_id;
+
+    return `
+        <tr class="draggable-row unassigned-row"
+            data-date=""
+            data-branch-id="${subject.branch_id}"
+            data-subject-id="${subject.subject_id}"
+            data-syllabus="${escHtml(subject.syllabus_code)}"
+            data-subject-name="${escHtml(subject.subject_name)}"
+            data-status="unassigned"
+            draggable="true">
+            <td class="text-center" style="vertical-align:middle;">
+                <!-- Assign Date Button -->
+                <button class="btn btn-sm btn-outline-primary assign-date-btn px-2 py-1"
+                        onclick="openAssignDatePicker(this)"
+                        title="Click to assign a date to this subject">
+                    <i class="bi bi-calendar-plus"></i> Pick Date
+                </button>
+                <!-- Hidden date select (shown on click) -->
+                <div class="assign-date-select" style="display:none; margin-top:4px;">
+                    <select class="form-select form-select-sm date-picker-select"
+                            onchange="assignDateToRow(this)"
+                            style="min-width:180px; font-size:0.8rem;">
+                        <option value="">— Select a date —</option>
+                    </select>
+                    <button class="btn btn-xs btn-outline-secondary mt-1"
+                            style="font-size:0.7rem; padding:1px 6px;"
+                            onclick="closeAssignDatePicker(this)">Cancel</button>
+                </div>
+            </td>
+            <td class="text-center text-muted">—</td>
+            <td class="text-center">
+                <span class="badge bg-light text-dark border">${branchCode}</span>
+            </td>
+            <td class="subject-field syllabus-code">
+                <span class="drag-indicator">⋮⋮</span> ${escHtml(subject.syllabus_code)}
+            </td>
+            <td class="subject-field subject-name">
+                <span class="drag-indicator">⋮⋮</span> ${escHtml(subject.subject_name)}
+            </td>
+            <td class="subject-field type">${typeBadge}</td>
+            <td>
+                <span class="badge bg-warning text-dark">UNASSIGNED</span>
+                <div class="text-muted" style="font-size:0.7rem; margin-top:2px;">
+                    drag to swap or pick date →
+                </div>
+            </td>
+        </tr>`;
+}
+function openAssignDatePicker(btn) {
+    const row      = btn.closest('tr');
+    const branchId = row.dataset.branchId;
+
+    // Get all dates from timetable data
+    const allDates = timeTableDataGlobal?.dates || [];
+
+    // Build options: show all dates for same branch
+    // Mark dates already occupied vs empty
+    const select = row.querySelector('.date-picker-select');
+    select.innerHTML = '<option value="">— Select a date —</option>';
+
+    allDates.forEach(dateEntry => {
+        const subjects    = dateEntry.branches[branchId] || [];
+        const isOccupied  = subjects.length > 0;
+        const label       = formatDateShort(dateEntry.date);
+        const opt         = document.createElement('option');
+        opt.value         = dateEntry.date;
+        opt.textContent   = isOccupied
+            ? `📋 ${label} — ${subjects[0].subject_name} (SWAP)`
+            : `✅ ${label} — Empty (assign here)`;
+        opt.dataset.occupied = isOccupied ? '1' : '0';
+        select.appendChild(opt);
+    });
+
+    // Also offer "Keep unassigned but mark for later" 
+    // Hide the button, show the dropdown
+    btn.style.display = 'none';
+    row.querySelector('.assign-date-select').style.display = 'block';
+}
+
+// ─── 3. Close date picker without picking ────────────────────────────────────
+function closeAssignDatePicker(cancelBtn) {
+    const row   = cancelBtn.closest('tr');
+    const picker = row.querySelector('.assign-date-select');
+    const btn    = row.querySelector('.assign-date-btn');
+    picker.style.display = 'none';
+    btn.style.display    = '';
+    // Reset select
+    row.querySelector('.date-picker-select').value = '';
+}
+
+// ─── 4. Assign date when user picks from dropdown ────────────────────────────
+function assignDateToRow(select) {
+    const chosenDate = select.value;
+    if (!chosenDate) return;
+
+    const row      = select.closest('tr');
+    const branchId = row.dataset.branchId;
+    const branch   = timeTableDataGlobal?.branchesMap[branchId] || { code: branchId, id: branchId };
+
+    // Check if that date is occupied for this branch
+    const dateEntry = timeTableDataGlobal?.dates.find(d => d.date === chosenDate);
+    const subjects  = dateEntry ? (dateEntry.branches[branchId] || []) : [];
+    const isOccupied = subjects.length > 0;
+
+    if (isOccupied) {
+        // ── SWAP: unassigned takes the date, assigned becomes unassigned ────
+        Swal.fire({
+            title: 'Swap Dates?',
+            html: `
+                <p>Date <strong>${formatDateShort(chosenDate)}</strong> already has:</p>
+                <p class="text-primary fw-bold">${subjects[0].subject_name}</p>
+                <hr>
+                <p>Swapping will:</p>
+                <ul class="text-start">
+                    <li><strong>${row.dataset.subjectName}</strong> → assigned to ${formatDateShort(chosenDate)}</li>
+                    <li><strong>${subjects[0].subject_name}</strong> → becomes UNASSIGNED</li>
+                </ul>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: '✅ Yes, Swap',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#0d6efd'
+        }).then(result => {
+            if (result.isConfirmed) {
+                performAssignWithSwap(row, chosenDate, branch, subjects[0]);
+            } else {
+                closeAssignDatePicker(row.querySelector('.assign-date-select button'));
             }
-            e.dataTransfer.dropEffect = 'move';
-            return false;
+        });
+    } else {
+        // ── ASSIGN: date is empty, just assign ──────────────────────────────
+        performDirectAssign(row, chosenDate, branch);
+    }
+}
+
+// ─── 5. Assign to empty date slot ────────────────────────────────────────────
+function performDirectAssign(unassignedRow, targetDate, branch) {
+    // Find the NO EXAM row for that date+branch and replace it
+    const emptyRow = findEmptyRow(targetDate, branch.id);
+
+    const subjectData = {
+        subject_id:    unassignedRow.dataset.subjectId,
+        syllabus_code: unassignedRow.dataset.syllabus,
+        subject_name:  unassignedRow.dataset.subjectName,
+        is_elective:   false,
+        is_under_group: unassignedRow.dataset.isGroup === '1',
+        is_group_member: unassignedRow.dataset.isGroup === '1',
+        group_name:    unassignedRow.dataset.group || '',
+    };
+
+    if (emptyRow) {
+        // Replace empty row with assigned row
+        emptyRow.outerHTML = buildAssignedRow(targetDate, branch, subjectData);
+    } else {
+        // No visible empty row — insert a new assigned row in date order
+        insertAssignedRowAtDate(targetDate, branch, subjectData);
+    }
+
+    // Remove the unassigned row
+    unassignedRow.remove();
+
+    // Update global data
+    updateGlobalData_assign(targetDate, branch.id, subjectData);
+
+    initializeDragAndDrop();
+    initializeContextMenu();
+    showAlert('success', `✅ <strong>${subjectData.subject_name}</strong> assigned to ${formatDateShort(targetDate)}!`);
+}
+
+// ─── 6. Swap: unassigned gets date, assigned loses it ────────────────────────
+function performAssignWithSwap(unassignedRow, targetDate, branch, displacedSubject) {
+    // Find the assigned row for targetDate + branch
+    const assignedRow = findAssignedRow(targetDate, branch.id);
+
+    const incomingData = {
+        subject_id:    unassignedRow.dataset.subjectId,
+        syllabus_code: unassignedRow.dataset.syllabus,
+        subject_name:  unassignedRow.dataset.subjectName,
+        is_elective:   false,
+        is_under_group: unassignedRow.dataset.isGroup === '1',
+        is_group_member: unassignedRow.dataset.isGroup === '1',
+        group_name:    unassignedRow.dataset.group || '',
+    };
+
+    if (assignedRow) {
+        // Replace assigned row with new subject
+        assignedRow.outerHTML = buildAssignedRow(targetDate, branch, incomingData);
+    } else {
+        insertAssignedRowAtDate(targetDate, branch, incomingData);
+    }
+
+    // Turn unassigned row into an unassigned row for the displaced subject
+    unassignedRow.outerHTML = buildUnassignedRow(branch, {
+        branch_id:     branch.id,
+        subject_id:    displacedSubject.subject_id,
+        syllabus_code: displacedSubject.syllabus_code,
+        subject_name:  displacedSubject.subject_name,
+        is_elective:   displacedSubject.is_elective,
+        is_under_group: displacedSubject.is_under_group,
+    });
+
+    initializeDragAndDrop();
+    initializeContextMenu();
+    showAlert('success', `✅ Swap done! <strong>${incomingData.subject_name}</strong> → ${formatDateShort(targetDate)}`);
+}
+
+
+function buildTypeBadge(subject) {
+    if (subject.is_elective)    return '<span class="badge bg-info">ELECTIVE</span>';
+    if (subject.is_under_group) return '<span class="badge bg-warning text-dark">GROUP</span>';
+    return '<span class="badge bg-success">REGULAR</span>';
+}
+
+function escHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+// ─── Drag and Drop ───────────────────────────────────────────────────────────
+
+function initializeDragAndDrop() {
+    document.querySelectorAll('#combinedTimetable .draggable-row').forEach(row => {
+        const status = row.dataset.status;
+
+        // Assigned and unassigned rows are draggable
+        if (status === 'assigned' || status === 'unassigned') {
+            row.setAttribute('draggable', 'true');
+            row.removeEventListener('dragstart', onDragStart);
+            row.addEventListener('dragstart', onDragStart);
+            row.removeEventListener('dragend', onDragEnd);
+            row.addEventListener('dragend', onDragEnd);
+        } else {
+            row.setAttribute('draggable', 'false');
         }
 
-        function handleDragEnter(e) {
-            const targetRow = e.target.closest('.draggable-row');
-            if (targetRow && targetRow !== draggedRow) {
-                targetRow.classList.add('drag-over');
-            }
-        }
+        // All rows accept drops
+        row.removeEventListener('dragover',  onDragOver);
+        row.removeEventListener('dragenter', onDragEnter);
+        row.removeEventListener('dragleave', onDragLeave);
+        row.removeEventListener('drop',      onDrop);
+        row.addEventListener('dragover',  onDragOver);
+        row.addEventListener('dragenter', onDragEnter);
+        row.addEventListener('dragleave', onDragLeave);
+        row.addEventListener('drop',      onDrop);
+    });
+}
 
-        function handleDragLeave(e) {
-            const targetRow = e.target.closest('.draggable-row');
-            if (targetRow) {
-                targetRow.classList.remove('drag-over');
-            }
-        }
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-        function handleDrop(e) {
-            if (e.stopPropagation) {
-                e.stopPropagation();
-            }
+function findEmptyRow(date, branchId) {
+    return document.querySelector(
+        `#combinedTimetable tbody tr[data-status="empty"][data-date="${date}"][data-branch-id="${branchId}"]`
+    );
+}
+
+function findAssignedRow(date, branchId) {
+    return document.querySelector(
+        `#combinedTimetable tbody tr[data-status="assigned"][data-date="${date}"][data-branch-id="${branchId}"]`
+    );
+}
+
+function insertAssignedRowAtDate(targetDate, branch, subjectData) {
+    // Find where to insert (find the empty row or insert before next date)
+    const tbody = document.querySelector('#combinedTimetable tbody');
+    const rows  = Array.from(tbody.querySelectorAll(`tr[data-branch-id="${branch.id}"]`));
+
+    // Try to find insertion point by date order
+    let insertBefore = null;
+    for (const row of rows) {
+        const rowDate = row.dataset.date;
+        if (rowDate && rowDate > targetDate) {
+            insertBefore = row;
+            break;
+        }
+    }
+
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = buildAssignedRow(targetDate, branch, subjectData);
+    const newRow = tempDiv.firstElementChild;
+
+    if (insertBefore) {
+        tbody.insertBefore(newRow, insertBefore);
+    } else {
+        // Insert before unassigned section
+        const firstUnassigned = tbody.querySelector('tr[data-status="unassigned"]');
+        if (firstUnassigned) {
+            tbody.insertBefore(newRow, firstUnassigned);
+        } else {
+            tbody.appendChild(newRow);
+        }
+    }
+}
+
+function updateGlobalData_assign(date, branchId, subjectData) {
+    if (!timeTableDataGlobal) return;
+    const dateEntry = timeTableDataGlobal.dates.find(d => d.date === date);
+    if (dateEntry) {
+        if (!dateEntry.branches[branchId]) dateEntry.branches[branchId] = [];
+        dateEntry.branches[branchId].push(subjectData);
+    }
+    // Remove from unallocated
+    timeTableDataGlobal.unallocated = (timeTableDataGlobal.unallocated || [])
+        .filter(s => s.subject_id !== subjectData.subject_id);
+}
+
+function formatDateShort(dateStr) {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', weekday: 'short' });
+}
+
+
+function onDragStart(e) {
+    draggedRow = e.currentTarget;
+    draggedRowData = {
+        date:        draggedRow.dataset.date,
+        branchId:    draggedRow.dataset.branchId,
+        subjectId:   draggedRow.dataset.subjectId,
+        syllabus:    draggedRow.dataset.syllabus,
+        subjectName: draggedRow.dataset.subjectName,
+        status:      draggedRow.dataset.status,
+    };
+    draggedRow.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function onDragEnd() {
+    document.querySelectorAll('.draggable-row').forEach(r => {
+        r.classList.remove('dragging', 'drag-over');
+    });
+}
+
+function onDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+}
+
+function onDragEnter(e) {
+    const target = e.currentTarget;
+    if (target !== draggedRow) {
+        // Only highlight if same branch
+        if (target.dataset.branchId === draggedRow?.dataset.branchId) {
+            target.classList.add('drag-over');
+        } else {
+            target.classList.add('drag-over-blocked');
+        }
+    }
+}
+
+function onDragLeave(e) {
+    e.currentTarget.classList.remove('drag-over', 'drag-over-blocked');
+}
+
+function onDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const targetRow = e.currentTarget;
+    targetRow.classList.remove('drag-over', 'drag-over-blocked');
+
+    if (!draggedRow || targetRow === draggedRow) return;
+
+    // Branch guard
+    if (targetRow.dataset.branchId !== draggedRow.dataset.branchId) {
+        showAlert('warning', '⚠️ You can only move subjects within the same branch!');
+        return;
+    }
+
+    const src  = draggedRow.dataset.status;
+    const dest = targetRow.dataset.status;
+
+    if (dest === 'empty') {
+        // Any subject → empty slot: assign
+        moveSubjectToEmptySlot(draggedRow, targetRow);
+
+    } else if (src === 'assigned' && dest === 'assigned') {
+        // Assigned ↔ Assigned: swap dates
+        swapAssignedRows(draggedRow, targetRow);
+        showAlert('success', '✅ Dates swapped!');
+
+    } else if (src === 'unassigned' && dest === 'assigned') {
+        // ── KEY FIX: Unassigned gets the assigned row's date ─────────────
+        const targetDate  = targetRow.dataset.date;
+        const branchId    = targetRow.dataset.branchId;
+        const branch      = timeTableDataGlobal?.branchesMap[branchId] || { code: branchId, id: branchId };
+
+        // The previously assigned subject becomes unassigned
+        const displacedData = {
+            branch_id:     branchId,
+            subject_id:    targetRow.dataset.subjectId,
+            syllabus_code: targetRow.dataset.syllabus,
+            subject_name:  targetRow.dataset.subjectName,
+        };
+
+        // Replace assigned row with incoming unassigned subject
+        targetRow.outerHTML = buildAssignedRow(targetDate, branch, {
+            subject_id:    draggedRow.dataset.subjectId,
+            syllabus_code: draggedRow.dataset.syllabus,
+            subject_name:  draggedRow.dataset.subjectName,
+            is_elective:   false,
+            is_under_group: draggedRow.dataset.isGroup === '1',
+            is_group_member: draggedRow.dataset.isGroup === '1',
+        });
+
+        // Replace unassigned dragged row with the displaced subject
+        draggedRow.outerHTML = buildUnassignedRow(branch, displacedData);
+
+        initializeDragAndDrop();
+        initializeContextMenu();
+        showAlert('success', `✅ <strong>${draggedRow?.dataset?.subjectName || 'Subject'}</strong> → assigned to ${formatDateShort(targetDate)}. Previous subject is now unassigned.`);
+
+    } else if (src === 'assigned' && dest === 'unassigned') {
+        // Mirror: assigned loses date, unassigned gains it
+        const srcDate  = draggedRow.dataset.date;
+        const branchId = draggedRow.dataset.branchId;
+        const branch   = timeTableDataGlobal?.branchesMap[branchId] || { code: branchId, id: branchId };
+
+        const displacedData = {
+            branch_id:     branchId,
+            subject_id:    draggedRow.dataset.subjectId,
+            syllabus_code: draggedRow.dataset.syllabus,
+            subject_name:  draggedRow.dataset.subjectName,
+        };
+
+        draggedRow.outerHTML = buildAssignedRow(srcDate, branch, {
+            subject_id:    targetRow.dataset.subjectId,
+            syllabus_code: targetRow.dataset.syllabus,
+            subject_name:  targetRow.dataset.subjectName,
+            is_elective:   false,
+            is_under_group: targetRow.dataset.isGroup === '1',
+            is_group_member: targetRow.dataset.isGroup === '1',
+        });
+
+        targetRow.outerHTML = buildUnassignedRow(branch, displacedData);
+
+        initializeDragAndDrop();
+        initializeContextMenu();
+        showAlert('success', `✅ Dates swapped!`);
+    }
+}
+// ── Move a subject row into an empty slot ────────────────────────────────────
+function moveSubjectToEmptySlot(srcRow, emptyRow) {
+    const newDate   = emptyRow.dataset.date;
+    const oldDate   = srcRow.dataset.date;
+    const branchId  = srcRow.dataset.branchId;
+
+    // Build the new assigned row in place of the empty row
+    const newAssignedHtml = buildAssignedRow(newDate,
+        timeTableDataGlobal.branchesMap[branchId] || { code: branchId, id: branchId },
+        {
+            subject_id:    srcRow.dataset.subjectId,
+            syllabus_code: srcRow.dataset.syllabus,
+            subject_name:  srcRow.dataset.subjectName,
+            is_group_member: srcRow.dataset.isGroup === '1',
+            group_name:    srcRow.dataset.group,
+            is_elective:   false,
+            is_under_group: srcRow.dataset.isGroup === '1',
+        }
+    );
+
+    // Replace empty row with the assigned row
+    emptyRow.outerHTML = newAssignedHtml;
+
+    // Turn the source row into an empty slot (if it was assigned)
+    if (srcRow.dataset.status === 'assigned') {
+        const branch = timeTableDataGlobal.branchesMap[branchId] || { code: branchId, id: branchId };
+        srcRow.outerHTML = buildEmptyRow(oldDate, branch);
+    } else {
+        // Source was unassigned — just remove it (it's now in the timetable)
+        srcRow.remove();
+    }
+
+    // Re-wire drag events after DOM change
+    initializeDragAndDrop();
+    initializeContextMenu();
+}
+
+// ── Swap subject content between two assigned rows ───────────────────────────
+function swapAssignedRows(rowA, rowB) {
+    // Swap the subject fields only; keep the date cells fixed
+    const fieldsToSwap = ['subjectId', 'syllabus', 'subjectName'];
+    fieldsToSwap.forEach(field => {
+        const tmp = rowA.dataset[field];
+        rowA.dataset[field] = rowB.dataset[field];
+        rowB.dataset[field] = tmp;
+    });
+
+    // Also swap the visible cells (syllabus, subject name, type)
+    swapCell(rowA, rowB, '.syllabus-code');
+    swapCell(rowA, rowB, '.subject-name');
+    swapCell(rowA, rowB, '.type');
+}
+
+function swapCell(rowA, rowB, selector) {
+    const cellA = rowA.querySelector(selector);
+    const cellB = rowB.querySelector(selector);
+    if (!cellA || !cellB) return;
+    const tmp = cellA.innerHTML;
+    cellA.innerHTML = cellB.innerHTML;
+    cellB.innerHTML = tmp;
+}
+
+function swapSubjectData(rowA, rowB) {
+    ['subjectId', 'syllabus', 'subjectName'].forEach(f => {
+        const t = rowA.dataset[f]; rowA.dataset[f] = rowB.dataset[f]; rowB.dataset[f] = t;
+    });
+    swapCell(rowA, rowB, '.syllabus-code');
+    swapCell(rowA, rowB, '.subject-name');
+    swapCell(rowA, rowB, '.type');
+}
+
+function setRowDate(row, dateStr) {
+    row.dataset.date = dateStr || '';
+    row.querySelector('td:first-child').textContent = dateStr ? formatDate(dateStr) : '—';
+    row.querySelector('td:nth-child(2)').textContent = dateStr
+        ? (window.notificationDetails?.session_name || 'FN')
+        : '—';
+}
+
+function setRowStatus(row, status) {
+    row.dataset.status = status;
+    const badge = row.querySelector('td:last-child');
+    if (status === 'assigned') {
+        badge.innerHTML = '<span class="badge bg-success">ASSIGNED</span>';
+        row.setAttribute('draggable', 'true');
+    } else {
+        badge.innerHTML = '<span class="badge bg-warning text-dark">UNASSIGNED</span>';
+    }
+}
+
+// ─── Right-click context menu: "Clear Date" ──────────────────────────────────
+
+function initializeContextMenu() {
+    // Remove old menu if exists
+    const old = document.getElementById('ttContextMenu');
+    if (old) old.remove();
+
+    const menu = document.createElement('div');
+    menu.id = 'ttContextMenu';
+    menu.style.cssText = `
+        display:none; position:fixed; z-index:9999;
+        background:#fff; border:1px solid #dee2e6; border-radius:6px;
+        box-shadow:0 4px 16px rgba(0,0,0,.15); min-width:180px;
+    `;
+    menu.innerHTML = `
+        <div id="ctxClearDate" style="padding:10px 16px;cursor:pointer;color:#dc3545;"
+             onmouseenter="this.style.background='#fff5f5'"
+             onmouseleave="this.style.background='#fff'">
+            <i class="bi bi-calendar-x"></i> Clear Date (make blank)
+        </div>
+        <div id="ctxMoveUp" style="padding:10px 16px;cursor:pointer;"
+             onmouseenter="this.style.background='#f8f9fa'"
+             onmouseleave="this.style.background='#fff'">
+            <i class="bi bi-arrow-up-circle"></i> Move to previous blank date
+        </div>
+        <div id="ctxMoveDown" style="padding:10px 16px;cursor:pointer;"
+             onmouseenter="this.style.background='#f8f9fa'"
+             onmouseleave="this.style.background='#fff'">
+            <i class="bi bi-arrow-down-circle"></i> Move to next blank date
+        </div>`;
+    document.body.appendChild(menu);
+
+    let ctxTargetRow = null;
+
+    document.querySelectorAll('#combinedTimetable .draggable-row[data-status="assigned"]').forEach(row => {
+        row.addEventListener('contextmenu', e => {
             e.preventDefault();
+            ctxTargetRow = row;
+            menu.style.display = 'block';
+            menu.style.left = e.clientX + 'px';
+            menu.style.top  = e.clientY + 'px';
+        });
+    });
 
-            const targetRow = e.target.closest('.draggable-row');
-            if (!targetRow || targetRow === draggedRow) {
-                console.log('❌ Invalid drop target or same row');
-                return false;
-            }
+    document.getElementById('ctxClearDate').onclick = () => {
+        if (!ctxTargetRow) return;
+        clearRowDate(ctxTargetRow);
+        menu.style.display = 'none';
+    };
 
-            const targetBranchId = targetRow.dataset.branchId;
-            const sourceBranchId = draggedRowData.branchId;
-            const targetStatus = targetRow.dataset.status;
-            const sourceStatus = draggedRowData.status;
+    document.getElementById('ctxMoveUp').onclick = () => {
+        if (!ctxTargetRow) return;
+        moveToAdjacentBlank(ctxTargetRow, 'prev');
+        menu.style.display = 'none';
+    };
 
-            console.log('🎯 Single Table Drop Info:', {
-                targetStatus,
-                sourceStatus,
-                targetBranchId,
-                sourceBranchId,
-                draggedRowData
-            });
+    document.getElementById('ctxMoveDown').onclick = () => {
+        if (!ctxTargetRow) return;
+        moveToAdjacentBlank(ctxTargetRow, 'next');
+        menu.style.display = 'none';
+    };
 
-            // Check if swap is allowed (same branch only)
-            if (targetBranchId !== sourceBranchId) {
-                showAlert('warning', 'Swapping is only allowed within the same branch!');
-                return false;
-            }
+    document.addEventListener('click', () => { menu.style.display = 'none'; });
+}
 
-            // Handle different swap scenarios
-            if (sourceStatus === 'unassigned' && targetStatus === 'assigned') {
-                console.log('🔄 Unassigned -> Assigned swap');
-                // Unassigned -> Assigned: Unassigned gets date, Assigned becomes unassigned
-                handleUnassignedToAssignedSwap(targetRow, draggedRow);
-            } else if (sourceStatus === 'assigned' && targetStatus === 'unassigned') {
-                console.log('🔄 Assigned -> Unassigned swap');
-                // Assigned -> Unassigned: Same as above (reverse)
-                handleUnassignedToAssignedSwap(draggedRow, targetRow);
-            } else if (sourceStatus === 'assigned' && targetStatus === 'assigned') {
-                console.log('🔄 Assigned -> Assigned swap');
-                // Assigned -> Assigned: Normal swap
-                updateRowSwap(targetRow, draggedRow);
-            } else {
-                console.log('❌ Unknown swap scenario:', { sourceStatus, targetStatus });
-                showAlert('warning', 'Invalid swap operation!');
-                return false;
-            }
+// Clear a date row → turns it into a "No Exam" empty slot
+function clearRowDate(row) {
+    const branchId = row.dataset.branchId;
+    const date     = row.dataset.date;
+    const branch   = timeTableDataGlobal?.branchesMap[branchId] || { code: branchId, id: branchId };
 
-            // Show success message
-            showAlert('success', 'Subjects swapped successfully!');
+    // Build unassigned row to append at bottom
+    const unassignedHtml = buildUnassignedRow(branch, {
+        branch_id:    branchId,
+        subject_id:   row.dataset.subjectId,
+        syllabus_code: row.dataset.syllabus,
+        subject_name:  row.dataset.subjectName,
+        is_elective:  false,
+        is_under_group: row.dataset.isGroup === '1',
+    });
 
-            return false;
+    // Replace assigned row with empty slot
+    row.outerHTML = buildEmptyRow(date, branch);
+
+    // Append unassigned row at end of tbody
+    document.getElementById('timetableTbody').insertAdjacentHTML('beforeend', unassignedHtml);
+
+    initializeDragAndDrop();
+    initializeContextMenu();
+    showAlert('success', `✅ Date cleared → subject moved to Unassigned.`);
+}
+
+// Move subject to the nearest blank slot in same branch (prev or next)
+function moveToAdjacentBlank(row, direction) {
+    const branchId = row.dataset.branchId;
+    const allRows  = Array.from(document.querySelectorAll(
+        `#combinedTimetable tbody tr[data-branch-id="${branchId}"]`
+    ));
+    const idx   = allRows.indexOf(row);
+    const step  = direction === 'prev' ? -1 : 1;
+
+    for (let i = idx + step; i >= 0 && i < allRows.length; i += step) {
+        if (allRows[i].dataset.status === 'empty') {
+            moveSubjectToEmptySlot(row, allRows[i]);
+            showAlert('success', `✅ Subject moved ${direction === 'prev' ? 'up' : 'down'}.`);
+            return;
         }
+    }
+    showAlert('info', `No blank slot found ${direction === 'prev' ? 'above' : 'below'} in this branch.`);
+}
 
-        function handleUnassignedToAssignedSwap(assignedRow, unassignedRow) {
-            console.log('🔄 Handling unassigned to assigned swap');
-            
-            // Get data from both rows
-            const assignedFields = {
-                syllabusCode: assignedRow.querySelector('.syllabus-code').textContent,
-                subjectName: assignedRow.querySelector('.subject-name').textContent,
-                type: assignedRow.querySelector('.type').innerHTML,
-                subjectId: assignedRow.dataset.subjectId,
-                date: assignedRow.dataset.date
-            };
-
-            const unassignedFields = {
-                syllabusCode: unassignedRow.querySelector('.syllabus-code').textContent,
-                subjectName: unassignedRow.querySelector('.subject-name').textContent,
-                type: unassignedRow.querySelector('.type').innerHTML,
-                subjectId: unassignedRow.dataset.subjectId
-            };
-
-            // Unassigned subject gets the date and becomes assigned
-            assignedRow.querySelector('.syllabus-code').textContent = unassignedFields.syllabusCode;
-            assignedRow.querySelector('.subject-name').textContent = unassignedFields.subjectName;
-            assignedRow.querySelector('.type').innerHTML = unassignedFields.type;
-            assignedRow.dataset.subjectId = unassignedFields.subjectId;
-            assignedRow.dataset.status = 'assigned';
-            // Keep the existing date from assignedRow
-
-            // Assigned subject becomes unassigned
-            unassignedRow.querySelector('.syllabus-code').textContent = assignedFields.syllabusCode;
-            unassignedRow.querySelector('.subject-name').textContent = assignedFields.subjectName;
-            unassignedRow.querySelector('.type').innerHTML = assignedFields.type;
-            unassignedRow.dataset.subjectId = assignedFields.subjectId;
-            unassignedRow.dataset.status = 'unassigned';
-            unassignedRow.dataset.date = '';
-
-            // Update status badges
-            assignedRow.querySelector('td:last-child').innerHTML = '<span class="badge bg-success">ASSIGNED</span>';
-            unassignedRow.querySelector('td:last-child').innerHTML = '<span class="badge bg-warning">UNASSIGNED</span>';
-
-            // Update date cells
-            unassignedRow.querySelector('td:first-child').textContent = '-';
-            unassignedRow.querySelector('td:nth-child(2)').textContent = '-';
-        }
-
-        function updateRowSwap(targetRow, sourceRow) {
-            // Get all subject fields from both rows
-            const targetFields = {
-                syllabusCode: targetRow.querySelector('.syllabus-code').textContent,
-                subjectName: targetRow.querySelector('.subject-name').textContent,
-                type: targetRow.querySelector('.type').innerHTML,
-                subjectId: targetRow.dataset.subjectId,
-                status: targetRow.dataset.status,
-                date: targetRow.dataset.date
-            };
-
-            const sourceFields = {
-                syllabusCode: sourceRow.querySelector('.syllabus-code').textContent,
-                subjectName: sourceRow.querySelector('.subject-name').textContent,
-                type: sourceRow.querySelector('.type').innerHTML,
-                subjectId: sourceRow.dataset.subjectId,
-                status: sourceRow.dataset.status,
-                date: sourceRow.dataset.date
-            };
-
-            // Swap all subject fields
-            targetRow.querySelector('.syllabus-code').textContent = sourceFields.syllabusCode;
-            targetRow.querySelector('.subject-name').textContent = sourceFields.subjectName;
-            targetRow.querySelector('.type').innerHTML = sourceFields.type;
-            targetRow.dataset.subjectId = sourceFields.subjectId;
-            targetRow.dataset.status = sourceFields.status;
-            targetRow.dataset.date = sourceFields.date;
-
-            sourceRow.querySelector('.syllabus-code').textContent = targetFields.syllabusCode;
-            sourceRow.querySelector('.subject-name').textContent = targetFields.subjectName;
-            sourceRow.querySelector('.type').innerHTML = targetFields.type;
-            sourceRow.dataset.subjectId = targetFields.subjectId;
-            sourceRow.dataset.status = targetFields.status;
-            sourceRow.dataset.date = targetFields.date;
-        }
-
-        function updateRowStatus(targetRow, sourceRow) {
-            // Update status badges based on date assignment
-            const targetDate = targetRow.dataset.date;
-            const sourceDate = sourceRow.dataset.date;
-
-            // Update target row status
-            const targetStatusCell = targetRow.querySelector('td:last-child');
-            if (targetDate && targetDate !== '-') {
-                targetStatusCell.innerHTML = '<span class="badge bg-success">ASSIGNED</span>';
-                targetRow.dataset.status = 'assigned';
-            } else {
-                targetStatusCell.innerHTML = '<span class="badge bg-warning">UNASSIGNED</span>';
-                targetRow.dataset.status = 'unassigned';
-            }
-
-            // Update source row status
-            const sourceStatusCell = sourceRow.querySelector('td:last-child');
-            if (sourceDate && sourceDate !== '-') {
-                sourceStatusCell.innerHTML = '<span class="badge bg-success">ASSIGNED</span>';
-                sourceRow.dataset.status = 'assigned';
-            } else {
-                sourceStatusCell.innerHTML = '<span class="badge bg-warning">UNASSIGNED</span>';
-                sourceRow.dataset.status = 'unassigned';
-            }
-
-            // Update date cells
-            const targetDateCell = targetRow.querySelector('td:first-child');
-            const sourceDateCell = sourceRow.querySelector('td:first-child');
-            
-            targetDateCell.textContent = targetDate || '-';
-            sourceDateCell.textContent = sourceDate || '-';
-        }
-
-        // Format date
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-            });
-        }
-
-        // Show loading spinner
-        function showLoadingSpinner() {
-            document.querySelector('.loading-spinner').style.display = 'block';
-        }
-
-        // Hide loading spinner
-        function hideLoadingSpinner() {
-            document.querySelector('.loading-spinner').style.display = 'none';
-        }
+// ─── sortTableByBranch (keep your existing one or use this) ──────────────────
+function sortTableByBranch() {
+    const val   = document.getElementById('branchSortSelector').value;
+    const rows  = document.querySelectorAll('#combinedTimetable tbody tr');
+    rows.forEach(row => {
+        row.style.display = (val === 'all' || row.dataset.branchId == val) ? '' : 'none';
+    });
+}
 
         // Show alert message
         function showAlert(type, message) {

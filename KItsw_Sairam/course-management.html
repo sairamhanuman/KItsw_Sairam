@@ -1,1413 +1,1312 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Course/Subject Management - Engineering College</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Course/Subject Management</title>
+    <link rel="stylesheet" href="css/styles.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
     <style>
-        * {
-            box-sizing: border-box;
-        }
+* { box-sizing: border-box; }
+body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f5f7fa; font-size: 14px; }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            background: #f5f7fa;
-        }
+.course-container { max-width: 1700px; margin: 20px auto; padding: 20px; }
 
-        .course-container {
-            max-width: 1600px;
-            margin: 20px auto;
-            padding: 20px;
-        }
-        
-        .course-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 25px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
+/* ── Header ── */
+.course-header {
+    background: linear-gradient(135deg,#667eea,#764ba2);
+    color: #fff; padding: 22px 28px; border-radius: 12px;
+    margin-bottom: 20px; box-shadow: 0 4px 20px rgba(102,126,234,.35);
+    display: flex; align-items: center; justify-content: space-between;
+}
+.course-header h1 { margin: 0; font-size: 24px; }
+.course-header p  { margin: 4px 0 0; opacity: .85; font-size: 13px; }
 
-        .course-header h1 {
-            margin: 0 0 10px 0;
-            font-size: 28px;
-        }
+/* ── Tabs ── */
+.tab-bar {
+    display: flex; gap: 4px; background: #fff;
+    border-radius: 10px; padding: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.07); margin-bottom: 20px;
+}
+.tab-btn {
+    padding: 9px 20px; border-radius: 8px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 600; color: #64748b; background: transparent;
+    transition: all .2s; display: flex; align-items: center; gap: 6px;
+}
+.tab-btn.active { background: linear-gradient(135deg,#667eea,#764ba2); color: #fff; }
+.tab-btn:hover:not(.active) { background: #f1f5f9; color: #334155; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
 
-        .course-header p {
-            margin: 0;
-            opacity: 0.9;
-        }
+/* ── Stats bar ── */
+.stats-bar {
+    background: linear-gradient(135deg,#667eea,#764ba2); color: #fff;
+    padding: 12px 20px; border-radius: 10px; margin-bottom: 16px;
+    display: flex; gap: 24px; flex-wrap: wrap; align-items: center;
+}
+.stat-item { display: flex; align-items: center; gap: 6px; }
+.stat-val { font-size: 20px; font-weight: 800; }
+.stat-lbl { font-size: 11px; opacity: .8; font-weight: 600; text-transform: uppercase; }
 
-        /* Filter Section */
-        .filter-section {
-            background: white;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
+/* ── Panel card ── */
+.panel { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.07); margin-bottom: 20px; }
+.panel-hdr {
+    padding: 14px 20px; border-bottom: 1px solid #f1f5f9;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.panel-hdr h3 { margin: 0; font-size: 15px; font-weight: 700; color: #1e293b; }
+.panel-body { padding: 20px; }
 
-        .filter-section h3 {
-            margin: 0 0 20px 0;
-            color: #333;
-            font-size: 18px;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 10px;
-        }
+/* ── Filter row ── */
+.filter-row { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 12px; margin-bottom: 14px; }
+.fg label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; display: block; }
+.fg select, .fg input { width: 100%; padding: 9px 12px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 13px; outline: none; transition: border .2s; }
+.fg select:focus, .fg input:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,.12); }
 
-        .filter-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
+/* ── Buttons ── */
+.btn { padding: 9px 18px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .2s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary   { background: #667eea; color: #fff; }
+.btn-primary:hover   { background: #5568d3; }
+.btn-success   { background: #22c55e; color: #fff; }
+.btn-success:hover   { background: #16a34a; }
+.btn-warning   { background: #f59e0b; color: #fff; }
+.btn-warning:hover   { background: #d97706; }
+.btn-danger    { background: #ef4444; color: #fff; }
+.btn-danger:hover    { background: #dc2626; }
+.btn-info      { background: #06b6d4; color: #fff; }
+.btn-info:hover      { background: #0891b2; }
+.btn-secondary { background: #94a3b8; color: #fff; }
+.btn-secondary:hover { background: #64748b; }
+.btn-outline   { background: #fff; border: 1.5px solid #e2e8f0; color: #475569; }
+.btn-outline:hover   { background: #f8fafc; border-color: #667eea; color: #667eea; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-xs { padding: 3px 8px; font-size: 11px; border-radius: 6px; }
 
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-        }
+/* ── Subject table ── */
+.subjects-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.subjects-table thead { background: #667eea; color: #fff; }
+.subjects-table th, .subjects-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f1f5f9; }
+.subjects-table th { font-size: 12px; font-weight: 700; white-space: nowrap; }
+.subjects-table tbody tr:hover { background: #f8fafc; }
+.subjects-table tbody tr:hover .rc { background: #eff6ff; }
 
-        .filter-group label {
-            margin-bottom: 5px;
-            font-weight: 600;
-            color: #333;
-            font-size: 18px;
-        }
+/* ── Group badge ── */
+.gbadge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+    border: 1.5px solid;
+}
+.gbadge.assigned { background: #eff6ff; color: #2563eb; border-color: #93c5fd; }
+.gbadge.unassigned { background: #fef9c3; color: #92400e; border-color: #fde68a; cursor: pointer; }
+.gbadge.unassigned:hover { background: #fef3c7; }
 
-        .filter-group select {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 18px;
-        }
+/* ── Inline group editor ── */
+.group-edit-wrap { position: relative; display: inline-block; }
+.group-input {
+    width: 90px; padding: 4px 8px; border-radius: 6px;
+    border: 1.5px solid #667eea; font-size: 12px; font-weight: 700;
+    text-transform: uppercase; outline: none;
+}
+.group-suggestions {
+    position: absolute; top: 100%; left: 0; min-width: 160px;
+    background: #fff; border: 1.5px solid #e2e8f0; border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.12); z-index: 200;
+    max-height: 200px; overflow-y: auto;
+}
+.gs-item {
+    padding: 8px 12px; cursor: pointer; font-size: 12px;
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid #f1f5f9;
+}
+.gs-item:hover { background: #eff6ff; }
+.gs-item .gs-code { font-weight: 700; color: #2563eb; }
+.gs-item .gs-name { color: #94a3b8; font-size: 11px; max-width: 120px; text-overflow: ellipsis; overflow: hidden; }
 
-        .filter-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            font-size: 22px;
-        }
+/* ── Group panel ── */
+.group-card {
+    border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px; transition: all .2s;
+    cursor: pointer;
+}
+.group-card:hover { border-color: #667eea; box-shadow: 0 4px 12px rgba(102,126,234,.15); transform: translateY(-1px); }
+.group-card.selected { border-color: #2563eb; background: #eff6ff; }
+.gc-code { font-size: 20px; font-weight: 800; color: #2563eb; min-width: 60px; }
+.gc-count { font-size: 13px; color: #64748b; }
+.gc-names { font-size: 11px; color: #94a3b8; margin-top: 2px; }
 
-        /* Form Section */
-        .form-section {
-            background: rgb(255, 255, 255);
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(54, 48, 48, 0.1);
-            margin-top: 20px;
-        }
+/* ── Anti-copy health bar ── */
+.health-bar-wrap { background: #f1f5f9; border-radius: 20px; height: 10px; overflow: hidden; }
+.health-bar-fill { height: 100%; border-radius: 20px; transition: width .5s; }
+.hb-excellent { background: linear-gradient(90deg,#22c55e,#16a34a); }
+.hb-good      { background: linear-gradient(90deg,#f59e0b,#d97706); }
+.hb-poor      { background: linear-gradient(90deg,#ef4444,#dc2626); }
 
-        .form-section h3 {
-            color: #667eea;
-            margin-bottom: 20px;
-            font-size: 18px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+/* ── Bulk assign panel ── */
+.bulk-panel {
+    background: #eff6ff; border: 1.5px solid #93c5fd; border-radius: 10px;
+    padding: 16px; margin-bottom: 16px; display: none;
+}
+.bulk-panel.show { display: block; }
 
-        /* Hide Add/Edit Subject section initially */
-        #subjectEntrySection {
-            display: none;
-        }
+/* ── Alert ── */
+.alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 14px; display: none; font-size: 13px; }
+.alert.show { display: flex; align-items: center; gap: 8px; }
+.alert-success { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+.alert-error   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.alert-warning { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.alert-info    { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
 
-        #subjectEntrySection.show {
-            display: block;
-        }
+/* ── Badge ── */
+.badge { padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.badge-success { background: #d1fae5; color: #065f46; }
+.badge-danger  { background: #fee2e2; color: #991b1b; }
+.badge-warning { background: #fef3c7; color: #92400e; }
+.badge-info    { background: #dbeafe; color: #1e40af; }
+.badge-grey    { background: #f1f5f9; color: #475569; }
 
-        /* Edit Mode Toggle Button */
-        #editModeToggle {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            border: none;
-            color: white;
-            font-size: 18px;
-            font-weight: 600;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 15px;
-        }
+/* ── Conflict warning ── */
+.conflict-row { background: #fff7ed !important; }
+.conflict-row td { border-left: 3px solid #f59e0b; }
 
-        #editModeToggle:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(10, 141, 41, 0.3);
-        }
+/* ── Form ── */
+#subjectEntrySection { display: none; }
+#subjectEntrySection.show { display: block; }
+.form-row { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 12px; margin-bottom: 12px; }
+.form-group { display: flex; flex-direction: column; }
+.form-group label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+.form-group input, .form-group select { padding: 9px 12px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 13px; }
+.form-group input:focus, .form-group select:focus { border-color: #667eea; outline: none; }
+.checkbox-group { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
 
-        #editModeToggle.active {
-            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .form-group label {
-            margin-bottom: 5px;
-            font-weight: 600;
-            color: #333;
-            font-size: 18px;
-        }
-
-        .form-group input,
-        .form-group select {
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 15px;
-            transition: border-color 0.3s ease;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus {
-            border-color: #667eea;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .form-group input[type="checkbox"] {
-            width: auto;
-            margin-right: 5px;
-        }
-
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            margin-top: 10px;
-        }
-
-        .checkbox-group label {
-            margin: 0 0 0 5px;
-            font-weight: normal;
-        }
-
-        .form-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        /* Button Styles */
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 18px;
-            font-weight: 600;
-            transition: all 0.3s;
-        }
-
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #5568d3;
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #5a6268;
-        }
-
-        .btn-success {
-            background: #28a745;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #218838;
-        }
-
-        .btn-warning {
-            background: #ffc107;
-            color: #333;
-        }
-
-        .btn-warning:hover {
-            background: #e0a800;
-        }
-
-        .btn-danger {
-            background: #dc3545;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #c82333;
-        }
-
-        .btn-info {
-            background: #17a2b8;
-            color: white;
-        }
-
-        .btn-info:hover {
-            background: #138496;
-        }
-
-        .btn-sm {
-            padding: 5px 10px;
-            font-size: 12px;
-        }
-
-        /* Table Section */
-        .table-section {
-            background: rgb(243, 235, 235);
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            overflow-x: auto;
-        }
-
-        .table-section h3 {
-            margin: 0 0 20px 0;
-            color: #333;
-            font-size: 18px;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 10px;
-        }
-
-        .subjects-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
-
-        .subjects-table thead {
-            background: #667eea;
-            color: white;
-        }
-
-        .subjects-table th,
-        .subjects-table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-            font-size: 18px;
-                line-height: 0.1;
-                
-        }
-
-        .subjects-table th {
-            font-weight: 600;
-            white-space: nowrap;
-            font-size: 18px;
-              line-height: 1.1;
+/* ── Ungrouped warning banner ── */
+.ungroup-banner {
+    background: linear-gradient(135deg,#fef3c7,#fde68a);
+    border: 1.5px solid #f59e0b; border-radius: 10px;
+    padding: 14px 18px; margin-bottom: 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
 }
 
+/* ── Loading ── */
+.shimmer { background: linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%); background-size: 200%; animation: sh 1.4s infinite; border-radius: 8px; }
+@keyframes sh { 0%{background-position:200%} 100%{background-position:-200%} }
 
-        .subjects-table tbody tr:hover {
-            background: #f8f9fa;
-        }
-
-        .badge {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 18px;
-            font-weight: 600;
-            display: inline-block;
-        }
-
-        .badge-success {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .badge-danger {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .badge-warning {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .badge-info {
-            background: #d1ecf1;
-            color: #0c5460;
-        }
-
-        /* Alert Messages */
-        .alert {
-            padding: 15px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-            display: none;
-        }
-
-        .alert.show {
-            display: block;
-        }
-
-        .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .alert-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .alert-info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-
-        /* Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(174, 65, 65, 0.5);
-        }
-
-        .modal.show {
-            display: block;
-        }
-
-        .modal-content {
-            background-color: #fefefe;
-            margin: 5% auto;
-            padding: 20px;
-            border: 1px solid #888;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 600px;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #667eea;
-        }
-
-        .modal-header h2 {
-            margin: 0;
-            color: #333;
-        }
-
-        .close {
-            color: #aaa;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .close:hover {
-            color: #000;
-        }
-
-        /* Loading Spinner */
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-        }
-
-        .loading.show {
-            display: block;
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Statistics Bar */
-        .stats-bar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-
-        .stats-bar .stat-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .stats-bar .stat-label {
-            font-weight: 600;
-        }
-
-        .stats-bar .stat-value {
-            font-weight: bold;
-            font-size: 1.1em;
-        }
-
-        .empty-message {
-            text-align: center;
-            padding: 40px;
-            color: #6c757d;
-        }
-          .back-link {
-  display: inline-block;
-  text-decoration: none;
-  color: #007bff; /* Link text color */
-  font-weight: 500;
-  font-size: 16px;
-  padding: 8px 12px 8px 36px; /* extra left padding for the arrow box */
-  border: 1px solid #007bff;
-  border-radius: 4px;
-  position: relative;
-  transition: all 0.3s ease;
+.edit-mode-btn {
+    padding: 9px 20px; border-radius: 8px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 700; transition: all .2s;
+    background: linear-gradient(135deg,#22c55e,#16a34a); color: #fff;
 }
+.edit-mode-btn.active { background: linear-gradient(135deg,#ef4444,#dc2626); }
 
-.back-link::before {
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  background-color: #007bff; /* Arrow box color */
-  color: #ad0a0a;               /* Arrow color */
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: bold;
-}
-
-.back-link:hover {
-  background-color: #007bff;
-  color: #fff;
-  text-decoration: none;
-}
     </style>
 </head>
 <body>
-    <div class="course-container">
-         <a href="index.html" class="back-link">← Back to Dashboard</a>
-        <!-- Tabs --><!-- Header -->
-        <div class="course-header">
-            <h1>📚 Course/Subject Management</h1>
-            <p>Manage curriculum subjects by programme, branch, semester, and regulation</p>
+<div class="course-container">
+
+    <a href="index.html" style="color:#667eea;font-weight:600;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:12px;">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+
+    <!-- Header -->
+    <div class="course-header">
+        <div>
+            <h1><i class="bi bi-book me-2"></i>Course / Subject Management</h1>
+            <p>Manage curriculum subjects · Assign anti-copy groups · Track seating readiness</p>
         </div>
-
-        <!-- Alert Messages -->
-        <div id="alertMessage" class="alert"></div>
-
-        <!-- Statistics Bar -->
-        <div class="stats-bar">
-            <div class="stat-item">
-                <span class="stat-label">Total Subjects:</span>
-                <span class="stat-value" id="totalSubjects">0</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Locked:</span>
-                <span class="stat-value" id="lockedSubjects">0</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Running:</span>
-                <span class="stat-value" id="runningSubjects">0</span>
-            </div>
+        <div style="text-align:right;">
+            <div style="font-size:22px;font-weight:800;" id="hdrTotal">—</div>
+            <div style="font-size:11px;opacity:.7;">Total Subjects Loaded</div>
         </div>
+    </div>
 
-        <!-- Filter Section -->
-        <div class="filter-section">
-            <h3>🔍 Filter Subjects</h3>
-            <div class="filter-row">
-                <div class="filter-group">
-                    <label for="filterProgramme">Programme</label>
-                    <select id="filterProgramme">
-                        <option value="">Select Programme</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="filterBranch">Branch</label>
-                    <select id="filterBranch">
-                        <option value="">Select Branch</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="filterSemester">Semester</label>
-                    <select id="filterSemester">
-                        <option value="">Select Semester</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="filterRegulation">Regulation</label>
-                    <select id="filterRegulation">
-                        <option value="">Select Regulation</option>
-                    </select>
-                </div>
+    <!-- Alert -->
+    <div id="alertMsg" class="alert"></div>
+
+    <!-- Stats bar -->
+    <div class="stats-bar" id="statsBar" style="display:none;">
+        <div class="stat-item"><span class="stat-val" id="stTotal">0</span>&nbsp;<span class="stat-lbl">Total</span></div>
+        <div class="stat-item" style="color:#4ade80;"><span class="stat-val" id="stGrouped">0</span>&nbsp;<span class="stat-lbl">Grouped ✓</span></div>
+        <div class="stat-item" style="color:#fbbf24;"><span class="stat-val" id="stUngrouped">0</span>&nbsp;<span class="stat-lbl">No Group ⚠</span></div>
+        <div class="stat-item" style="color:#f87171;"><span class="stat-val" id="stConflicts">0</span>&nbsp;<span class="stat-lbl">Conflicts ✕</span></div>
+        <div style="margin-left:auto;min-width:200px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <span style="font-size:11px;opacity:.8;">Anti-copy Readiness</span>
+                <span style="font-size:11px;font-weight:800;" id="stScore">0%</span>
             </div>
-            <div class="filter-actions">
-                <button class="btn btn-primary" onclick="applyFilters()">Apply Filters</button>
-                <button class="btn btn-secondary" onclick="clearFilters()">Clear Filters</button>
-                <button class="btn btn-success" onclick="exportToExcel()">📥 Export to Excel</button>
-                <button class="btn btn-info" onclick="generateSampleExcel()">📄 Download Sample Excel</button>
-                <button class="btn btn-warning" onclick="showImportModal()">📤 Import from Excel</button>
-                
+            <div class="health-bar-wrap">
+                <div class="health-bar-fill hb-poor" id="stScoreBar" style="width:0%"></div>
             </div>
         </div>
+    </div>
 
-        <!-- Edit Mode Toggle -->
-        <button id="editModeToggle" onclick="toggleEditMode()">
-            📝 Enable Edit Mode
+    <!-- Tab Bar -->
+    <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('subjects')" id="tab-subjects">
+            <i class="bi bi-table"></i> Subjects
         </button>
-        
-        <!-- Keyboard Shortcut Hint -->
-        <div style="margin: 10px 0; color: #666; font-size: 14px;">
-            💡 <kbd>Ctrl+E</kbd> to toggle edit mode
-        </div>
+        <button class="tab-btn" onclick="switchTab('groups')" id="tab-groups">
+            <i class="bi bi-tag"></i> Subject Groups
+        </button>
+        <button class="tab-btn" onclick="switchTab('health')" id="tab-health">
+            <i class="bi bi-shield-check"></i> Anti-Copy Health
+        </button>
+    </div>
 
-        <!-- Subject Entry Form -->
-        <div id="subjectEntrySection" class="form-section">
-            <h3>➕ Add/Edit Subject</h3>
-            <form id="subjectForm">
-                <input type="hidden" id="subjectId">
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="subjectOrder">Subject Order *</label>
-                        <input type="number" id="subjectOrder" required min="1" value="1">
-                    </div>
-                    <div class="form-group">
-                        <label for="syllabusCode">Syllabus Code *</label>
-                        <input type="text" id="syllabusCode" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="refCode">Ref Code</label>
-                        <input type="text" id="refCode">
-                    </div>
-                </div>
+    <!-- ═══════════════════════════════════════ -->
+    <!-- TAB 1 — SUBJECTS                       -->
+    <!-- ═══════════════════════════════════════ -->
+    <div id="panel-subjects" class="tab-panel active">
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="internalExamCode">Internal Exam Code</label>
-                        <input type="text" id="internalExamCode">
+        <!-- Filters -->
+        <div class="panel">
+            <div class="panel-hdr">
+                <i class="bi bi-funnel text-primary"></i>
+                <h3>Filter Subjects</h3>
+            </div>
+            <div class="panel-body">
+                <div class="filter-row">
+                    <div class="fg"><label>Programme</label>
+                        <select id="filterProgramme"><option value="">All Programmes</option></select>
                     </div>
-                    <div class="form-group">
-                        <label for="externalExamCode">External Exam Code</label>
-                        <input type="text" id="externalExamCode">
+                    <div class="fg"><label>Branch</label>
+                        <select id="filterBranch"><option value="">All Branches</option></select>
                     </div>
-                    <div class="form-group">
-                        <label for="subjectType">Subject Type *</label>
-                        <select id="subjectType" required>
-                            <option value="Theory">Theory</option>
-                            <option value="Practical">Practical</option>
-                            <option value="Drawing">Drawing</option>
-                            <option value="Project">Project</option>
-                            <option value="Others">Others</option>
+                    <div class="fg"><label>Semester</label>
+                        <select id="filterSemester"><option value="">All Semesters</option></select>
+                    </div>
+                    <div class="fg"><label>Regulation</label>
+                        <select id="filterRegulation"><option value="">All Regulations</option></select>
+                    </div>
+                    <div class="fg"><label>Group Status</label>
+                        <select id="filterGroupStatus">
+                            <option value="">All</option>
+                            <option value="grouped">Grouped ✓</option>
+                            <option value="ungrouped">No Group ⚠</option>
                         </select>
                     </div>
                 </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="subjectName">Subject Name *</label>
-                        <input type="text" id="subjectName" required>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                    <button class="btn btn-primary" onclick="applyFilters()"><i class="bi bi-search me-1"></i>Apply Filters</button>
+                    <button class="btn btn-outline" onclick="clearFilters()"><i class="bi bi-x me-1"></i>Clear</button>
+                    <button class="btn btn-success" onclick="exportToExcel()"><i class="bi bi-download me-1"></i>Export Excel</button>
+                    <button class="btn btn-info" onclick="generateSampleExcel()"><i class="bi bi-file-earmark-excel me-1"></i>Sample Template</button>
+                    <button class="btn btn-warning" onclick="showImportModal()"><i class="bi bi-upload me-1"></i>Import Excel</button>
+                    <div style="margin-left:auto;">
+                        <button class="edit-mode-btn" id="editModeBtn" onclick="toggleEditMode()">
+                            <i class="bi bi-pencil me-1"></i>Enable Edit Mode
+                        </button>
                     </div>
                 </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="internalMaxMarks">Internal Max Marks</label>
-                        <input type="number" id="internalMaxMarks" min="0" value="0">
-                    </div>
-                    <div class="form-group">
-                        <label for="externalMaxMarks">External Max Marks</label>
-                        <input type="number" id="externalMaxMarks" min="0" value="0">
-                    </div>
-                    <div class="form-group">
-                        <label for="taMaxMarks">TA Max Marks</label>
-                        <input type="number" id="taMaxMarks" min="0" value="0">
-                    </div>
-                    <div class="form-group">
-                        <label for="credits">Credits</label>
-                        <input type="number" id="credits" step="0.1" min="0" value="0">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="replacementGroupOrder">Replacement Group Order</label>
-                        <input type="number" id="replacementGroupOrder" min="1">
-                    </div>
-                    <div class="form-group">
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="isElective">
-                            <label for="isElective">Is Elective</label>
-                        </div>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="isUnderGroup">
-                            <label for="isUnderGroup">Is Under Group</label>
-                        </div>
-                        <div class="checkbox-group">
-                       <input type="checkbox" id="isReplacement">
-                            <label for="isReplacement">🔄 Is Replacement Subject</label>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="electiveName">Elective Name</label>
-                        <select id="electiveName" class="form-control">
-                            <option value="">Select Elective Type</option>
-                            <option value="Open Elective">Open Elective</option>
-                            <option value="Professional Elective">Professional Elective</option>
-                            <option value="Open Elective-1">Open Elective-1</option>
-                            <option value="Professional Elective-1">Professional Elective-1</option>
-                            <option value="Open Elective-2">Open Elective-2</option>
-                            <option value="Professional Elective-2">Professional Elective-2</option>
-                            <option value="Open Elective-3">Open Elective-3</option>
-                            <option value="Professional Elective-3">Professional Elective-3</option>
-                            <option value="Open Elective-4">Open Elective-4</option>
-                            <option value="Professional Elective-4">Professional Elective-4</option>
-                        </select>
-                    </div>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="isExemptExamFee">
-                            <label for="isExemptExamFee">Exempt Exam Fee</label>
-                        </div>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="isRunningCurriculum" checked>
-                            <label for="isRunningCurriculum">Running Curriculum</label>
-                        </div>
-                    </div>
-                </div>
-
-               <div class="form-actions">
-    <button type="submit" class="btn btn-primary">💾 Save Subject</button>
-    <button type="button" class="btn btn-secondary" onclick="resetForm()">Clear Form</button>
-</div>
-         
-            </form>
+            </div>
         </div>
 
-        <!-- Loading Spinner -->
-        <div id="loading" class="loading">
-            <div class="spinner"></div>
-            <p>Loading subjects...</p>
+        <!-- Ungrouped warning banner -->
+        <div class="ungroup-banner" id="ungroupedBanner" style="display:none;">
+            <div>
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <strong id="ungroupedCount">0</strong> subjects have no group code assigned.
+                <span style="font-size:12px;color:#78350f;"> Group codes are required for anti-copy seating.</span>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-warning btn-sm" onclick="openAutoGroup()"><i class="bi bi-magic me-1"></i>Auto-Suggest Groups</button>
+                <button class="btn btn-outline btn-sm" onclick="openBulkAssign()"><i class="bi bi-tags me-1"></i>Bulk Assign</button>
+            </div>
+        </div>
+
+        <!-- Bulk assign panel -->
+        <div class="bulk-panel" id="bulkPanel">
+            <div style="font-weight:700;color:#1e40af;margin-bottom:10px;"><i class="bi bi-tags me-1"></i>Bulk Assign Group Code</div>
+            <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+                <div class="fg" style="min-width:200px;">
+                    <label>Match Subject Name (contains)</label>
+                    <input type="text" id="bulkMatchName" placeholder='e.g. "Data Structures"'/>
+                </div>
+                <div class="fg" style="min-width:120px;">
+                    <label>Assign Group Code</label>
+                    <input type="text" id="bulkGroupCode" placeholder="e.g. DS" style="text-transform:uppercase;"/>
+                </div>
+                <button class="btn btn-primary" onclick="doBulkAssign()"><i class="bi bi-check me-1"></i>Apply to All Matching</button>
+                <button class="btn btn-outline" onclick="closeBulkAssign()"><i class="bi bi-x"></i></button>
+            </div>
+            <div style="margin-top:10px;font-size:11px;color:#1e40af;">
+                <i class="bi bi-info-circle me-1"></i>
+                This will assign the group code to ALL subjects whose name contains the text above, across all branches/semesters.
+            </div>
+        </div>
+
+        <!-- Edit mode form -->
+        <div id="subjectEntrySection" class="panel" style="display:none;">
+            <div class="panel-hdr">
+                <i class="bi bi-plus-circle text-success"></i>
+                <h3 id="formTitle">Add New Subject</h3>
+                <button class="btn btn-outline btn-sm ms-auto" onclick="resetForm()"><i class="bi bi-x me-1"></i>Clear Form</button>
+            </div>
+            <div class="panel-body">
+                <form id="subjectForm">
+                    <input type="hidden" id="subjectId"/>
+                    <div class="form-row">
+                        <div class="form-group"><label>Order *</label><input type="number" id="subjectOrder" min="1" value="1" required/></div>
+                        <div class="form-group"><label>Syllabus Code *</label><input type="text" id="syllabusCode" required/></div>
+                        <div class="form-group"><label>Ref Code</label><input type="text" id="refCode"/></div>
+                        <div class="form-group"><label>Subject Type *</label>
+                            <select id="subjectType" required>
+                                <option value="Theory">Theory</option>
+                                <option value="Practical">Practical</option>
+                                <option value="Drawing">Drawing</option>
+                                <option value="Project">Project</option>
+                                <option value="Others">Others</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="grid-column:span 2;"><label>Subject Name *</label><input type="text" id="subjectName" required/></div>
+                        <div class="form-group"><label>Internal</label><input type="number" id="internalMaxMarks" min="0" value="0"/></div>
+                        <div class="form-group"><label>External</label><input type="number" id="externalMaxMarks" min="0" value="0"/></div>
+                        <div class="form-group"><label>TA</label><input type="number" id="taMaxMarks" min="0" value="0"/></div>
+                        <div class="form-group"><label>Credits</label><input type="number" id="credits" step="0.1" min="0" value="0"/></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Internal Exam Code</label><input type="text" id="internalExamCode"/></div>
+                        <div class="form-group"><label>External Exam Code</label><input type="text" id="externalExamCode"/></div>
+                        <div class="form-group"><label>Replacement Group Order</label><input type="number" id="replacementGroupOrder" min="1"/></div>
+                        <div class="form-group"><label>Elective Name</label>
+                            <select id="electiveName">
+                                <option value="">—</option>
+                                <option>Open Elective</option><option>Professional Elective</option>
+                                <option>Open Elective-1</option><option>Professional Elective-1</option>
+                                <option>Open Elective-2</option><option>Professional Elective-2</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px;">
+                        <label class="checkbox-group"><input type="checkbox" id="isElective"/> Is Elective</label>
+                        <label class="checkbox-group"><input type="checkbox" id="isUnderGroup"/> Is Under Group</label>
+                        <label class="checkbox-group"><input type="checkbox" id="isReplacement"/> Is Replacement</label>
+                        <label class="checkbox-group"><input type="checkbox" id="isExemptExamFee"/> Exempt Exam Fee</label>
+                        <label class="checkbox-group"><input type="checkbox" id="isRunningCurriculum" checked/> Running Curriculum</label>
+                    </div>
+                    <div style="display:flex;gap:10px;">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Save Subject</button>
+                        <button type="button" class="btn btn-secondary" onclick="resetForm()">Clear</button>
+                    </div>
+                </form>
+            </div>
         </div>
 
         <!-- Subjects Table -->
-        <div class="table-section">
-            <h3>📋 Subjects List</h3>
-            <div id="subjectsTableContainer">
-                <p class="empty-message">Select filters and click "Apply Filters" to load subjects</p>
+        <div class="panel">
+            <div class="panel-hdr">
+                <i class="bi bi-table text-primary"></i>
+                <h3>Subjects List</h3>
+                <span class="badge badge-info ms-2" id="tableCount" style="display:none;"></span>
+                <div style="margin-left:auto;display:flex;gap:8px;">
+                    <button class="btn btn-outline btn-sm" onclick="applyFilters()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+                </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Import Modal -->
-    <div id="importModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Import Subjects from Excel</h2>
-                <span class="close" onclick="closeImportModal()">&times;</span>
-            </div>
-            <div>
-                <p>Upload an Excel file with subject data. Download the sample template to see the required format.</p>
-                <input type="file" id="excelFile" accept=".xlsx,.xls" style="margin-bottom: 20px;">
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-primary" onclick="importFromExcel()">Import</button>
-                    <button class="btn btn-secondary" onclick="closeImportModal()">Cancel</button>
+            <div style="overflow-x:auto;">
+                <div id="subjectsTableContainer" style="padding:30px;text-align:center;color:#94a3b8;">
+                    <i class="bi bi-funnel" style="font-size:32px;display:block;margin-bottom:8px;"></i>
+                    Select filters and click Apply Filters to load subjects
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- ═══════════════════════════════════════ -->
+    <!-- TAB 2 — SUBJECT GROUPS                 -->
+    <!-- ═══════════════════════════════════════ -->
+    <div id="panel-groups" class="tab-panel">
+        <div class="panel">
+            <div class="panel-hdr">
+                <i class="bi bi-tag text-primary"></i>
+                <h3>Subject Groups</h3>
+                <span class="badge badge-grey ms-2" id="groupCount">—</span>
+                <div style="margin-left:auto;">
+                    <button class="btn btn-primary btn-sm" onclick="loadGroups()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div style="color:#64748b;font-size:13px;margin-bottom:16px;">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Subject groups link subjects with same content across different branches.
+                    The seating algorithm uses these groups to ensure no two adjacent students sit the same exam.
+                </div>
+                <div id="groupsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
+                    <div style="padding:20px;text-align:center;color:#94a3b8;grid-column:1/-1;">
+                        <i class="bi bi-tag" style="font-size:32px;display:block;margin-bottom:8px;"></i>
+                        Click Refresh to load groups
+                    </div>
+                </div>
+            </div>
+        </div>
 
+        <!-- Create new group shortcut -->
+        <div class="panel">
+            <div class="panel-hdr">
+                <i class="bi bi-plus-circle text-success"></i>
+                <h3>Quick Assign Group</h3>
+            </div>
+            <div class="panel-body">
+                <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+                    <div class="fg" style="min-width:220px;">
+                        <label>Subject Name Contains</label>
+                        <input type="text" id="qaMatchName" placeholder='e.g. "Data Structures"'/>
+                    </div>
+                    <div class="fg" style="min-width:120px;">
+                        <label>Group Code</label>
+                        <input type="text" id="qaGroupCode" placeholder="DS" style="text-transform:uppercase;font-weight:700;font-size:15px;"/>
+                    </div>
+                    <button class="btn btn-success" onclick="doQuickAssign()"><i class="bi bi-check-circle me-1"></i>Assign to All Matching</button>
+                </div>
+                <div id="qaResult" style="margin-top:12px;font-size:13px;display:none;"></div>
+            </div>
+        </div>
+    </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" 
-        integrity="sha512-r22gChDnGvBylk90+2e/ycr3RVrDi8DIOkIGNhJlKfuyQM4tIRAI062MaV8sfjQKYVGjOBaZBOA87z+IhZE9DA==" 
-        crossorigin="anonymous"></script>
-    <script>
-        // State
-        let subjects = [];
-        let currentFilters = {
-            programme_id: '',
-            branch_id: '',
-            semester_id: '',
-            regulation_id: ''
+    <!-- ═══════════════════════════════════════ -->
+    <!-- TAB 3 — ANTI-COPY HEALTH               -->
+    <!-- ═══════════════════════════════════════ -->
+    <div id="panel-health" class="tab-panel">
+        <div class="panel">
+            <div class="panel-hdr">
+                <i class="bi bi-shield-check text-success"></i>
+                <h3>Anti-Copy Health Check</h3>
+                <div style="margin-left:auto;">
+                    <button class="btn btn-primary btn-sm" onclick="runHealthCheck()"><i class="bi bi-play-fill me-1"></i>Run Health Check</button>
+                </div>
+            </div>
+            <div class="panel-body">
+
+                <!-- Filter for health check -->
+                <div class="filter-row" style="margin-bottom:16px;">
+                    <div class="fg"><label>Programme</label><select id="hcProgramme"><option value="">All</option></select></div>
+                    <div class="fg"><label>Branch</label><select id="hcBranch"><option value="">All</option></select></div>
+                    <div class="fg"><label>Semester</label><select id="hcSemester"><option value="">All</option></select></div>
+                    <div class="fg"><label>Regulation</label><select id="hcRegulation"><option value="">All</option></select></div>
+                </div>
+
+                <div id="healthResult">
+                    <div style="text-align:center;color:#94a3b8;padding:40px;">
+                        <i class="bi bi-shield" style="font-size:48px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
+                        Run Health Check to see anti-copy readiness
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div><!-- end course-container -->
+
+<!-- Auto-suggest modal -->
+<div id="autoGroupModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;overflow:auto;">
+    <div style="background:#fff;max-width:800px;margin:40px auto;border-radius:14px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+        <div style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-weight:700;font-size:16px;"><i class="bi bi-magic me-2"></i>Auto-Suggest Group Codes</div>
+            <button onclick="closeAutoGroup()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+        </div>
+        <div style="padding:20px;">
+            <div style="color:#64748b;font-size:13px;margin-bottom:14px;">
+                The system detected the following ungrouped subjects and suggests group codes based on name similarity.
+                Review and apply the ones that are correct.
+            </div>
+            <div id="autoGroupList" style="max-height:400px;overflow-y:auto;"></div>
+            <div style="margin-top:16px;display:flex;gap:10px;">
+                <button class="btn btn-success" onclick="applyAllSuggestions()"><i class="bi bi-check-all me-1"></i>Apply All Suggestions</button>
+                <button class="btn btn-outline" onclick="closeAutoGroup()">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import modal -->
+<div id="importModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;">
+    <div style="background:#fff;max-width:500px;margin:80px auto;border-radius:14px;overflow:hidden;">
+        <div style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-weight:700;"><i class="bi bi-upload me-2"></i>Import Subjects from Excel</div>
+            <button onclick="closeImportModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+        </div>
+        <div style="padding:20px;">
+            <p style="color:#64748b;font-size:13px;">Upload an Excel file. Download the sample template to see the required format.</p>
+            <input type="file" id="excelFile" accept=".xlsx,.xls" style="margin-bottom:16px;width:100%;"/>
+            <div style="display:flex;gap:10px;">
+                <button class="btn btn-primary" onclick="importFromExcel()"><i class="bi bi-upload me-1"></i>Import</button>
+                <button class="btn btn-secondary" onclick="closeImportModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════
+let subjects = [];
+let allGroupCodes = [];
+let isEditMode = false;
+let autoSuggestions = [];
+window.currentFilters = {};
+
+// ═══════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadDropdowns();
+    setupFormSubmit();
+    loadGroups();
+    // Keyboard shortcut
+    document.addEventListener('keydown', e => { if(e.ctrlKey && e.key==='e'){ e.preventDefault(); toggleEditMode(); } });
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.group-edit-wrap')) closeAllSuggestions();
+    });
+});
+
+// ═══════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════
+function switchTab(name) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-'+name).classList.add('active');
+    document.getElementById('panel-'+name).classList.add('active');
+    if (name === 'groups') loadGroups();
+    if (name === 'health') syncHealthDropdowns();
+}
+
+// ═══════════════════════════════════════════════════
+//  DROPDOWNS
+// ═══════════════════════════════════════════════════
+async function loadDropdowns() {
+    const selectors = [
+        { url:'/api/programmes', key:'data', val:'programme_id', lbl: p => p.programme_code || p.programme_name,
+          els:['filterProgramme','hcProgramme'] },
+        { url:'/api/branches',   key:'data', val:'branch_id',   lbl: b => b.branch_code  || b.branch_name,
+          els:['filterBranch','hcBranch'] },
+        { url:'/api/semesters',  key:'data', val:'semester_id', lbl: s => s.semester_name,
+          els:['filterSemester','hcSemester'] },
+        { url:'/api/regulations',key:'data', val:'regulation_id',lbl:r => r.regulation_name,
+          els:['filterRegulation','hcRegulation'] }
+    ];
+    for (const s of selectors) {
+        try {
+            const d = await (await fetch(s.url)).json();
+            (d[s.key]||[]).forEach(item => {
+                s.els.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    const o = document.createElement('option');
+                    o.value = item[s.val]; o.textContent = s.lbl(item);
+                    el.appendChild(o);
+                });
+            });
+        } catch(_) {}
+    }
+    // Load group codes for autocomplete
+    await refreshGroupCodes();
+}
+
+async function refreshGroupCodes() {
+    try {
+        const d = await (await fetch('/api/subjects/group-codes')).json();
+        allGroupCodes = d.data || [];
+    } catch(_) {}
+}
+
+function syncHealthDropdowns() {
+    // Already populated in loadDropdowns
+}
+
+// ═══════════════════════════════════════════════════
+//  FILTERS & LOAD
+// ═══════════════════════════════════════════════════
+async function applyFilters() {
+    const f = {
+        programme_id:  document.getElementById('filterProgramme').value,
+        branch_id:     document.getElementById('filterBranch').value,
+        semester_id:   document.getElementById('filterSemester').value,
+        regulation_id: document.getElementById('filterRegulation').value,
+    };
+    const groupFilter = document.getElementById('filterGroupStatus').value;
+    Object.keys(f).forEach(k => { if (!f[k]) delete f[k]; });
+    if (!Object.keys(f).length) { showAlert('Please select at least one filter','warning'); return; }
+    window.currentFilters = f;
+
+    document.getElementById('subjectsTableContainer').innerHTML =
+        '<div style="padding:30px;text-align:center;"><div class="shimmer" style="height:40px;margin-bottom:10px;"></div><div class="shimmer" style="height:40px;margin-bottom:10px;opacity:.7;"></div><div class="shimmer" style="height:40px;opacity:.5;"></div></div>';
+
+    try {
+        const res  = await fetch('/api/subjects?' + new URLSearchParams({...f, limit:500}));
+        const data = await res.json();
+        if (data.status !== 'success') throw new Error(data.message);
+        subjects = data.data || [];
+
+        // Apply client-side group filter
+        let filtered = subjects;
+        if (groupFilter === 'grouped')   filtered = subjects.filter(s => s.subject_group_code);
+        if (groupFilter === 'ungrouped') filtered = subjects.filter(s => !s.subject_group_code);
+
+        updateStats();
+        renderTable(filtered);
+        updateStats();
+    } catch(e) {
+        document.getElementById('subjectsTableContainer').innerHTML = `<div style="padding:20px;color:#dc2626;">Error: ${e.message}</div>`;
+    }
+}
+
+function clearFilters() {
+    ['filterProgramme','filterBranch','filterSemester','filterRegulation','filterGroupStatus']
+        .forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+    window.currentFilters = {};
+    subjects = [];
+    updateStats();
+    document.getElementById('subjectsTableContainer').innerHTML =
+        '<div style="padding:30px;text-align:center;color:#94a3b8;"><i class="bi bi-funnel" style="font-size:32px;display:block;margin-bottom:8px;"></i>Select filters and click Apply Filters</div>';
+    document.getElementById('statsBar').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════
+//  STATS
+// ═══════════════════════════════════════════════════
+function updateStats() {
+    const total     = subjects.length;
+    const grouped   = subjects.filter(s => s.subject_group_code).length;
+    const ungrouped = total - grouped;
+    const score     = total > 0 ? Math.round((grouped / total) * 100) : 0;
+
+    document.getElementById('hdrTotal').textContent  = total;
+    document.getElementById('stTotal').textContent   = total;
+    document.getElementById('stGrouped').textContent = grouped;
+    document.getElementById('stUngrouped').textContent = ungrouped;
+    document.getElementById('stScore').textContent   = score + '%';
+    document.getElementById('tableCount').textContent = total + ' subjects';
+    document.getElementById('tableCount').style.display = total ? 'inline' : 'none';
+
+    const bar = document.getElementById('stScoreBar');
+    bar.style.width = score + '%';
+    bar.className = 'health-bar-fill ' + (score >= 80 ? 'hb-excellent' : score >= 50 ? 'hb-good' : 'hb-poor');
+
+    // Conflicts: same subject name, different group codes
+    const nameMap = {};
+    subjects.forEach(s => {
+        const k = s.subject_name.toUpperCase().trim();
+        if (!nameMap[k]) nameMap[k] = new Set();
+        if (s.subject_group_code) nameMap[k].add(s.subject_group_code);
+    });
+    const conflicts = Object.values(nameMap).filter(s => s.size > 1).length;
+    document.getElementById('stConflicts').textContent = conflicts;
+
+    document.getElementById('statsBar').style.display = total ? 'flex' : 'none';
+
+    // Ungrouped banner
+    if (ungrouped > 0) {
+        document.getElementById('ungroupedCount').textContent = ungrouped;
+        document.getElementById('ungroupedBanner').style.display = 'flex';
+    } else {
+        document.getElementById('ungroupedBanner').style.display = 'none';
+    }
+}
+
+// ═══════════════════════════════════════════════════
+//  RENDER TABLE
+// ═══════════════════════════════════════════════════
+function renderTable(list) {
+    if (!list.length) {
+        document.getElementById('subjectsTableContainer').innerHTML =
+            '<div style="padding:30px;text-align:center;color:#94a3b8;">No subjects found</div>';
+        return;
+    }
+
+    // Detect name conflicts
+    const nameMap = {};
+    list.forEach(s => {
+        const k = s.subject_name.toUpperCase().trim();
+        if (!nameMap[k]) nameMap[k] = new Set();
+        if (s.subject_group_code) nameMap[k].add(s.subject_group_code);
+    });
+
+    let html = `
+        <table class="subjects-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Syllabus Code</th>
+              <th>Subject Name</th>
+              <th>Type</th>
+              <th>Credits</th>
+              <th>Marks (I/E/T)</th>
+              <th style="min-width:160px;">
+                <i class="bi bi-tag me-1"></i>Group Code
+                <span title="Anti-copy grouping" style="cursor:help;opacity:.7;">ⓘ</span>
+              </th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+    list.forEach((s, i) => {
+        const nameKey    = s.subject_name.toUpperCase().trim();
+        const hasConflict = nameMap[nameKey] && nameMap[nameKey].size > 1;
+        const conflictClass = hasConflict ? ' class="conflict-row"' : '';
+
+        html += `<tr id="row_${s.subject_id}"${conflictClass}>
+          <td>${s.subject_order || (i+1)}</td>
+          <td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:12px;">${s.syllabus_code}</code></td>
+          <td>
+            <div style="font-weight:600;color:#1e293b;">${s.subject_name}</div>
+            ${hasConflict ? '<div style="font-size:10px;color:#d97706;"><i class="bi bi-exclamation-triangle me-1"></i>Group code conflict!</div>' : ''}
+          </td>
+          <td><span class="badge badge-grey">${s.subject_type||'Theory'}</span></td>
+          <td>${s.credits}</td>
+          <td style="font-size:12px;">${s.internal_max_marks}/${s.external_max_marks}/${s.ta_max_marks}</td>
+          <td>${renderGroupCell(s)}</td>
+          <td>
+            ${s.is_locked ? '<span class="badge badge-danger">🔒 Locked</span>' : '<span class="badge badge-success">🔓</span>'}
+            ${s.is_running_curriculum ? '<span class="badge badge-success ms-1">Running</span>' : '<span class="badge badge-warning ms-1">Stopped</span>'}
+          </td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-xs btn-primary me-1" onclick="editSubject(${s.subject_id})">Edit</button>
+            <button class="btn btn-xs btn-warning me-1" onclick="toggleLock(${s.subject_id})">${s.is_locked?'Unlock':'Lock'}</button>
+            <button class="btn btn-xs btn-danger" onclick="deleteSubject(${s.subject_id})" ${s.is_locked?'disabled':''}>Del</button>
+          </td>
+        </tr>`;
+    });
+
+    html += '</tbody></table>';
+    document.getElementById('subjectsTableContainer').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════
+//  GROUP CODE CELL — inline editable
+// ═══════════════════════════════════════════════════
+function renderGroupCell(s) {
+    if (s.subject_group_code) {
+        return `<span class="gbadge assigned" onclick="startGroupEdit(${s.subject_id}, '${s.subject_group_code}')">
+                    <i class="bi bi-tag-fill"></i> ${s.subject_group_code}
+                    <i class="bi bi-pencil" style="font-size:9px;opacity:.6;"></i>
+                </span>`;
+    }
+    return `<span class="gbadge unassigned" onclick="startGroupEdit(${s.subject_id}, '')">
+                <i class="bi bi-plus"></i> Assign Group
+            </span>`;
+}
+
+function startGroupEdit(subjectId, current) {
+    // Close any open editors
+    closeAllSuggestions();
+    const cell = document.querySelector(`#row_${subjectId} td:nth-child(7)`);
+    if (!cell) return;
+
+    const suggestions = allGroupCodes.map(g =>
+        `<div class="gs-item" onclick="applyGroupCode(${subjectId}, '${g.group_code}')">
+            <span class="gs-code">${g.group_code}</span>
+            <span class="gs-name" title="${g.sample_names}">${g.sample_names||''}</span>
+        </div>`
+    ).join('');
+
+    cell.innerHTML = `
+        <div class="group-edit-wrap" id="gew_${subjectId}">
+            <input class="group-input" id="gi_${subjectId}" type="text"
+                value="${current}" placeholder="e.g. DS"
+                style="text-transform:uppercase;"
+                oninput="filterSuggestions(${subjectId}, this.value)"
+                onkeydown="handleGroupKey(event, ${subjectId})"/>
+            <div class="group-suggestions" id="gs_${subjectId}">
+                ${suggestions || '<div style="padding:10px;color:#94a3b8;font-size:12px;">No groups yet. Type to create new.</div>'}
+            </div>
+        </div>`;
+    document.getElementById(`gi_${subjectId}`).focus();
+}
+
+function filterSuggestions(subjectId, val) {
+    const box = document.getElementById(`gs_${subjectId}`);
+    if (!box) return;
+    const filtered = allGroupCodes.filter(g =>
+        g.group_code.toUpperCase().includes(val.toUpperCase()) ||
+        (g.sample_names||'').toUpperCase().includes(val.toUpperCase())
+    );
+    if (filtered.length === 0 && val) {
+        box.innerHTML = `<div class="gs-item" onclick="applyGroupCode(${subjectId}, '${val.toUpperCase()}')">
+            <span class="gs-code">+ Create "${val.toUpperCase()}"</span></div>`;
+    } else {
+        box.innerHTML = filtered.map(g =>
+            `<div class="gs-item" onclick="applyGroupCode(${subjectId}, '${g.group_code}')">
+                <span class="gs-code">${g.group_code}</span>
+                <span class="gs-name">${g.sample_names||''}</span>
+             </div>`
+        ).join('');
+    }
+}
+
+function handleGroupKey(e, subjectId) {
+    if (e.key === 'Enter') {
+        const val = document.getElementById(`gi_${subjectId}`)?.value?.trim().toUpperCase();
+        if (val) applyGroupCode(subjectId, val);
+    }
+    if (e.key === 'Escape') {
+        closeAllSuggestions();
+        renderTableCell(subjectId);
+    }
+}
+
+async function applyGroupCode(subjectId, code) {
+    closeAllSuggestions();
+    const cell = document.querySelector(`#row_${subjectId} td:nth-child(7)`);
+    if (cell) cell.innerHTML = '<span style="color:#94a3b8;font-size:12px;">Saving…</span>';
+
+    try {
+        const res  = await fetch(`/api/subjects/${subjectId}/group-code`, {
+            method: 'PATCH', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ group_code: code })
+        });
+        const data = await res.json();
+        if (data.status !== 'success') throw new Error(data.message);
+
+        // Update local subjects array
+        const s = subjects.find(x => x.subject_id === subjectId);
+        if (s) s.subject_group_code = code || null;
+
+        // Re-render cell
+        if (cell) cell.innerHTML = renderGroupCell({ subject_id:subjectId, subject_group_code: code||null });
+
+        await refreshGroupCodes();
+        updateStats();
+        showAlert(`Group code "${code}" saved for subject`, 'success');
+    } catch(e) {
+        if (cell) {
+            const s = subjects.find(x => x.subject_id === subjectId);
+            if (s) cell.innerHTML = renderGroupCell(s);
+        }
+        showAlert('Save failed: ' + e.message, 'error');
+    }
+}
+
+function renderTableCell(subjectId) {
+    const cell = document.querySelector(`#row_${subjectId} td:nth-child(7)`);
+    const s = subjects.find(x => x.subject_id === subjectId);
+    if (cell && s) cell.innerHTML = renderGroupCell(s);
+}
+
+function closeAllSuggestions() {
+    document.querySelectorAll('.group-suggestions').forEach(el => el.style.display='none');
+}
+
+// ═══════════════════════════════════════════════════
+//  GROUPS TAB
+// ═══════════════════════════════════════════════════
+async function loadGroups() {
+    document.getElementById('groupsGrid').innerHTML =
+        '<div style="padding:20px;text-align:center;"><div class="shimmer" style="height:80px;margin-bottom:10px;"></div></div>';
+    try {
+        const res  = await fetch('/api/subjects/group-codes');
+        const data = await res.json();
+        allGroupCodes = data.data || [];
+        document.getElementById('groupCount').textContent = allGroupCodes.length + ' groups';
+
+        if (!allGroupCodes.length) {
+            document.getElementById('groupsGrid').innerHTML =
+                '<div style="padding:30px;text-align:center;color:#94a3b8;grid-column:1/-1;">No groups assigned yet. Go to Subjects tab to assign group codes.</div>';
+            return;
+        }
+
+        const COLORS = ['#dbeafe','#d1fae5','#fce7f3','#fef3c7','#ede9fe','#ccfbf1','#fee2e2','#e0f2fe'];
+        document.getElementById('groupsGrid').innerHTML = allGroupCodes.map((g,i) => `
+            <div class="group-card" style="border-color:${COLORS[i%COLORS.length]};background:${COLORS[i%COLORS.length]}20;">
+                <div>
+                    <div class="gc-code">${g.group_code}</div>
+                    <div class="gc-count">${g.subject_count} subjects linked</div>
+                    <div class="gc-names">${g.sample_names||''}</div>
+                    <div style="margin-top:6px;font-size:10px;color:#94a3b8;">${g.sample_codes||''}</div>
+                </div>
+                <div style="margin-left:auto;text-align:center;">
+                    <div style="font-size:28px;font-weight:800;color:#334155;opacity:.12;">${g.subject_count}</div>
+                </div>
+            </div>`).join('');
+    } catch(e) {
+        document.getElementById('groupsGrid').innerHTML = `<div style="color:#dc2626;grid-column:1/-1;">Error: ${e.message}</div>`;
+    }
+}
+
+// ═══════════════════════════════════════════════════
+//  QUICK ASSIGN
+// ═══════════════════════════════════════════════════
+async function doQuickAssign() {
+    const name = document.getElementById('qaMatchName').value.trim();
+    const code = document.getElementById('qaGroupCode').value.trim().toUpperCase();
+    if (!name || !code) { showAlert('Both fields required','warning'); return; }
+    const res  = await fetch('/api/subjects/bulk-assign-group', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ match_name:name, group_code:code })
+    });
+    const data = await res.json();
+    const el   = document.getElementById('qaResult');
+    el.style.display = 'block';
+    el.innerHTML = data.status==='success'
+        ? `<span style="color:#16a34a;"><i class="bi bi-check-circle me-1"></i>${data.message}</span>`
+        : `<span style="color:#dc2626;">${data.message}</span>`;
+    await loadGroups();
+    await refreshGroupCodes();
+    if (subjects.length) await applyFilters();
+}
+
+// ═══════════════════════════════════════════════════
+//  BULK ASSIGN (in subjects tab)
+// ═══════════════════════════════════════════════════
+function openBulkAssign()  { document.getElementById('bulkPanel').classList.add('show'); }
+function closeBulkAssign() { document.getElementById('bulkPanel').classList.remove('show'); }
+
+async function doBulkAssign() {
+    const name = document.getElementById('bulkMatchName').value.trim();
+    const code = document.getElementById('bulkGroupCode').value.trim().toUpperCase();
+    if (!name || !code) { showAlert('Both fields required','warning'); return; }
+    const res  = await fetch('/api/subjects/bulk-assign-group', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ match_name:name, group_code:code })
+    });
+    const data = await res.json();
+    if (data.status==='success') {
+        showAlert(data.message,'success');
+        closeBulkAssign();
+        await refreshGroupCodes();
+        await applyFilters();
+    } else {
+        showAlert(data.message,'error');
+    }
+}
+
+// ═══════════════════════════════════════════════════
+//  AUTO-SUGGEST
+// ═══════════════════════════════════════════════════
+async function openAutoGroup() {
+    document.getElementById('autoGroupModal').style.display = 'block';
+    document.getElementById('autoGroupList').innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8;">Loading suggestions…</div>';
+    const res  = await fetch('/api/subjects/auto-group', { method:'POST' });
+    const data = await res.json();
+    autoSuggestions = data.suggestions || [];
+    if (!autoSuggestions.length) {
+        document.getElementById('autoGroupList').innerHTML = '<div style="text-align:center;color:#16a34a;padding:20px;">✅ All subjects already have group codes!</div>';
+        return;
+    }
+    document.getElementById('autoGroupList').innerHTML = `
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead style="background:#f8fafc;">
+            <tr>
+              <th style="padding:8px;text-align:left;border-bottom:2px solid #e2e8f0;">Subject Name</th>
+              <th style="padding:8px;text-align:left;border-bottom:2px solid #e2e8f0;">Code</th>
+              <th style="padding:8px;text-align:left;border-bottom:2px solid #e2e8f0;">Suggested Group</th>
+              <th style="padding:8px;text-align:left;border-bottom:2px solid #e2e8f0;">Source</th>
+              <th style="padding:8px;border-bottom:2px solid #e2e8f0;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${autoSuggestions.map((s,i) => `
+            <tr style="border-bottom:1px solid #f1f5f9;">
+              <td style="padding:8px;font-weight:600;">${s.subject_name}</td>
+              <td style="padding:8px;"><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;">${s.syllabus_code}</code></td>
+              <td style="padding:8px;">
+                <input id="sug_${i}" value="${s.suggested_group}" style="width:80px;padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-weight:700;text-transform:uppercase;font-size:13px;"/>
+              </td>
+              <td style="padding:8px;font-size:11px;color:${s.match_source==='existing_match'?'#16a34a':'#6366f1'};">
+                ${s.match_source==='existing_match'?'🔗 Matched existing':'✨ Auto-generated'}
+              </td>
+              <td style="padding:8px;">
+                <button class="btn btn-xs btn-success" onclick="applySingleSuggestion(${i})">Apply</button>
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table>`;
+}
+
+function closeAutoGroup() { document.getElementById('autoGroupModal').style.display='none'; }
+
+async function applySingleSuggestion(i) {
+    const s    = autoSuggestions[i];
+    const code = document.getElementById(`sug_${i}`)?.value?.trim().toUpperCase();
+    if (!code) return;
+    await fetch('/api/subjects/bulk-assign-group', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ subject_ids:[s.subject_id], group_code:code })
+    });
+    await refreshGroupCodes();
+    showAlert(`"${code}" assigned to ${s.subject_name}`,'success');
+}
+
+async function applyAllSuggestions() {
+    for (let i=0; i<autoSuggestions.length; i++) {
+        const s    = autoSuggestions[i];
+        const code = document.getElementById(`sug_${i}`)?.value?.trim().toUpperCase();
+        if (!code) continue;
+        await fetch('/api/subjects/bulk-assign-group', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ subject_ids:[s.subject_id], group_code:code })
+        });
+    }
+    closeAutoGroup();
+    await refreshGroupCodes();
+    await applyFilters();
+    showAlert(`All suggestions applied!`,'success');
+}
+
+// ═══════════════════════════════════════════════════
+//  HEALTH CHECK TAB
+// ═══════════════════════════════════════════════════
+async function runHealthCheck() {
+    const f = {
+        programme_id:  document.getElementById('hcProgramme').value,
+        branch_id:     document.getElementById('hcBranch').value,
+        semester_id:   document.getElementById('hcSemester').value,
+        regulation_id: document.getElementById('hcRegulation').value
+    };
+    Object.keys(f).forEach(k => { if(!f[k]) delete f[k]; });
+
+    document.getElementById('healthResult').innerHTML =
+        '<div style="text-align:center;padding:20px;color:#94a3b8;">Running health check…</div>';
+
+    try {
+        const res  = await fetch('/api/subjects/group-summary?' + new URLSearchParams(f));
+        const data = await res.json();
+        if (data.status !== 'success') throw new Error(data.message);
+
+        const score = data.total ? Math.round((data.grouped/data.total)*100) : 0;
+        const scoreClass = score >= 80 ? 'hb-excellent' : score >= 50 ? 'hb-good' : 'hb-poor';
+        const scoreColor = score >= 80 ? '#16a34a' : score >= 50 ? '#d97706' : '#dc2626';
+        const scoreLabel = score >= 80 ? '🟢 EXCELLENT' : score >= 50 ? '🟡 NEEDS ATTENTION' : '🔴 ACTION REQUIRED';
+
+        let conflictHtml = '';
+        if (data.conflict_details?.length) {
+            conflictHtml = `
+                <div style="background:#fff7ed;border:1.5px solid #f59e0b;border-radius:10px;padding:16px;margin-top:14px;">
+                    <div style="font-weight:700;color:#92400e;margin-bottom:10px;">⚠️ Group Code Conflicts (${data.conflict_details.length})</div>
+                    ${data.conflict_details.map(c=>`
+                        <div style="background:#fff;border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:13px;">
+                            <strong>${c.subject_name}</strong>
+                            <span style="color:#dc2626;margin-left:8px;">Has multiple group codes: ${c.group_codes.join(', ')}</span>
+                            <div style="font-size:11px;color:#94a3b8;margin-top:2px;">→ Standardise to one group code</div>
+                        </div>`).join('')}
+                </div>`;
+        }
+
+        let ungroupedHtml = '';
+        if (data.ungrouped_subjects?.length) {
+            ungroupedHtml = `
+                <div style="background:#fef9c3;border:1.5px solid #fde68a;border-radius:10px;padding:16px;margin-top:14px;">
+                    <div style="font-weight:700;color:#92400e;margin-bottom:10px;">⚠️ Subjects Without Group Code (${data.ungrouped_subjects.length})</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                        ${data.ungrouped_subjects.slice(0,20).map(s=>`
+                            <span style="background:#fff;border:1px solid #fde68a;border-radius:6px;padding:3px 10px;font-size:12px;">
+                                ${s.syllabus_code} · ${s.subject_name.substring(0,30)}
+                            </span>`).join('')}
+                        ${data.ungrouped_subjects.length > 20 ? `<span style="color:#94a3b8;font-size:12px;padding:3px 10px;">+${data.ungrouped_subjects.length-20} more</span>` : ''}
+                    </div>
+                </div>`;
+        }
+
+        document.getElementById('healthResult').innerHTML = `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;">
+                <div style="background:#f8fafc;border-radius:10px;padding:16px;text-align:center;">
+                    <div style="font-size:28px;font-weight:800;color:#1e293b;">${data.total}</div>
+                    <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;">Total Subjects</div>
+                </div>
+                <div style="background:#d1fae5;border-radius:10px;padding:16px;text-align:center;">
+                    <div style="font-size:28px;font-weight:800;color:#16a34a;">${data.grouped}</div>
+                    <div style="font-size:11px;color:#065f46;text-transform:uppercase;">Grouped ✓</div>
+                </div>
+                <div style="background:#fef9c3;border-radius:10px;padding:16px;text-align:center;">
+                    <div style="font-size:28px;font-weight:800;color:#d97706;">${data.ungrouped}</div>
+                    <div style="font-size:11px;color:#92400e;text-transform:uppercase;">No Group ⚠</div>
+                </div>
+                <div style="background:${data.conflicts>0?'#fee2e2':'#d1fae5'};border-radius:10px;padding:16px;text-align:center;">
+                    <div style="font-size:28px;font-weight:800;color:${data.conflicts>0?'#dc2626':'#16a34a'};">${data.conflicts}</div>
+                    <div style="font-size:11px;color:${data.conflicts>0?'#991b1b':'#065f46'};text-transform:uppercase;">Conflicts</div>
+                </div>
+            </div>
+            <div style="background:#f8fafc;border-radius:10px;padding:16px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                    <span style="font-weight:700;color:#1e293b;">Anti-Copy Readiness Score</span>
+                    <span style="font-weight:800;font-size:18px;color:${scoreColor};">${score}% — ${scoreLabel}</span>
+                </div>
+                <div class="health-bar-wrap" style="height:14px;">
+                    <div class="health-bar-fill ${scoreClass}" style="width:${score}%;"></div>
+                </div>
+                <div style="margin-top:8px;font-size:12px;color:#64748b;">
+                    ${score<80 ? `⚠ Assign group codes to the ${data.ungrouped} ungrouped subject(s) to improve the score.` : '✅ All subjects are ready for anti-copy seating.'}
+                </div>
+            </div>
+            ${conflictHtml}
+            ${ungroupedHtml}`;
+    } catch(e) {
+        document.getElementById('healthResult').innerHTML = `<div style="color:#dc2626;padding:16px;">Error: ${e.message}</div>`;
+    }
+}
+
+// ═══════════════════════════════════════════════════
+//  EDIT MODE
+// ═══════════════════════════════════════════════════
+function toggleEditMode() {
+    isEditMode = !isEditMode;
+    const btn = document.getElementById('editModeBtn');
+    const sec = document.getElementById('subjectEntrySection');
+    if (isEditMode) {
+        btn.textContent = '🚫 Disable Edit Mode';
+        btn.classList.add('active');
+        sec.style.display = 'block';
+        showAlert('Edit Mode Enabled — Ctrl+E to toggle','success');
+    } else {
+        btn.innerHTML = '<i class="bi bi-pencil me-1"></i>Enable Edit Mode';
+        btn.classList.remove('active');
+        sec.style.display = 'none';
+        showAlert('Edit Mode Disabled','info');
+    }
+}
+
+// ═══════════════════════════════════════════════════
+//  SUBJECT CRUD
+// ═══════════════════════════════════════════════════
+function setupFormSubmit() {
+    document.getElementById('subjectForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        if (!isEditMode) { showAlert('Enable edit mode first','warning'); return; }
+        if (!window.currentFilters || !Object.keys(window.currentFilters).length) {
+            showAlert('Please select filters first','error'); return;
+        }
+        const id = document.getElementById('subjectId').value;
+        const body = {
+            programme_id: parseInt(window.currentFilters.programme_id)||null,
+            branch_id:    parseInt(window.currentFilters.branch_id)||null,
+            semester_id:  parseInt(window.currentFilters.semester_id)||null,
+            regulation_id:parseInt(window.currentFilters.regulation_id)||null,
+            subject_order:parseInt(document.getElementById('subjectOrder').value),
+            syllabus_code:document.getElementById('syllabusCode').value,
+            ref_code:     document.getElementById('refCode').value,
+            internal_exam_code:  document.getElementById('internalExamCode').value,
+            external_exam_code:  document.getElementById('externalExamCode').value,
+            subject_name: document.getElementById('subjectName').value,
+            subject_type: document.getElementById('subjectType').value,
+            internal_max_marks:  parseInt(document.getElementById('internalMaxMarks').value)||0,
+            external_max_marks:  parseInt(document.getElementById('externalMaxMarks').value)||0,
+            ta_max_marks:        parseInt(document.getElementById('taMaxMarks').value)||0,
+            credits:      parseFloat(document.getElementById('credits').value)||0,
+            is_elective:  document.getElementById('isElective').checked?1:0,
+            is_under_group:      document.getElementById('isUnderGroup').checked?1:0,
+            is_replacement:      document.getElementById('isReplacement').checked?1:0,
+            elective_name:       document.getElementById('electiveName').value,
+            is_exempt_exam_fee:  document.getElementById('isExemptExamFee').checked?1:0,
+            replacement_group_order: document.getElementById('replacementGroupOrder').value||null,
+            is_running_curriculum:   document.getElementById('isRunningCurriculum').checked?1:0,
+            is_locked: 0
         };
+        try {
+            const url = id ? `/api/subjects/${id}` : '/api/subjects';
+            const res  = await fetch(url, { method:id?'PUT':'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+            const data = await res.json();
+            if (data.status !== 'success') throw new Error(data.message);
+            showAlert(data.message,'success');
+            resetForm();
+            await applyFilters();
+        } catch(e) { showAlert(e.message,'error'); }
+    });
+}
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', async () => {
-            await loadDropdowns();
-            setupFormSubmit();
-        });
+async function editSubject(id) {
+    if (!isEditMode) { showAlert('Enable edit mode first','warning'); return; }
+    try {
+        const res  = await fetch(`/api/subjects/${id}`);
+        const data = await res.json();
+        if (data.status !== 'success') throw new Error(data.message);
+        const s = data.data;
+        document.getElementById('subjectId').value  = s.subject_id;
+        document.getElementById('subjectOrder').value = s.subject_order;
+        document.getElementById('syllabusCode').value = s.syllabus_code;
+        document.getElementById('refCode').value       = s.ref_code||'';
+        document.getElementById('internalExamCode').value = s.internal_exam_code||'';
+        document.getElementById('externalExamCode').value = s.external_exam_code||'';
+        document.getElementById('subjectName').value   = s.subject_name;
+        document.getElementById('subjectType').value   = s.subject_type;
+        document.getElementById('internalMaxMarks').value = s.internal_max_marks;
+        document.getElementById('externalMaxMarks').value = s.external_max_marks;
+        document.getElementById('taMaxMarks').value    = s.ta_max_marks;
+        document.getElementById('credits').value       = s.credits;
+        document.getElementById('isElective').checked  = !!s.is_elective;
+        document.getElementById('isUnderGroup').checked= !!s.is_under_group;
+        document.getElementById('isReplacement').checked = !!s.is_replacement;
+        document.getElementById('electiveName').value  = s.elective_name||'';
+        document.getElementById('isExemptExamFee').checked = !!s.is_exempt_exam_fee;
+        document.getElementById('replacementGroupOrder').value = s.replacement_group_order||'';
+        document.getElementById('isRunningCurriculum').checked = !!s.is_running_curriculum;
+        document.getElementById('formTitle').textContent = 'Edit Subject';
+        document.getElementById('subjectEntrySection').scrollIntoView({behavior:'smooth'});
+    } catch(e) { showAlert(e.message,'error'); }
+}
 
-        // Load dropdowns
-        async function loadDropdowns() {
-            try {
-                // Load programmes
-                const progRes = await fetch('/api/programmes');
-                const progData = await progRes.json();
-                const progSelect = document.getElementById('filterProgramme');
-                progData.data.forEach(prog => {
-                    const option = document.createElement('option');
-                    option.value = prog.programme_id;
-                    option.textContent = prog.programme_code;
-                    progSelect.appendChild(option);
-                });
+async function deleteSubject(id) {
+    if (!confirm('Delete this subject?')) return;
+    try {
+        const res  = await fetch(`/api/subjects/${id}`, { method:'DELETE' });
+        const data = await res.json();
+        if (data.status !== 'success') throw new Error(data.message);
+        showAlert(data.message,'success');
+        await applyFilters();
+    } catch(e) { showAlert(e.message,'error'); }
+}
 
-                // Load branches
-                const branchRes = await fetch('/api/branches');
-                const branchData = await branchRes.json();
-                const branchSelect = document.getElementById('filterBranch');
-                branchData.data.forEach(branch => {
-                    const option = document.createElement('option');
-                    option.value = branch.branch_id;
-                    option.textContent = branch.branch_code;
-                    branchSelect.appendChild(option);
-                });
+async function toggleLock(id) {
+    try {
+        const res  = await fetch(`/api/subjects/${id}/toggle-lock`, { method:'POST' });
+        const data = await res.json();
+        if (data.status !== 'success') throw new Error(data.message);
+        showAlert(data.message,'success');
+        await applyFilters();
+    } catch(e) { showAlert(e.message,'error'); }
+}
 
-                // Load semesters
-                const semRes = await fetch('/api/semesters');
-                const semData = await semRes.json();
-                const semSelect = document.getElementById('filterSemester');
-                semData.data.forEach(sem => {
-                    const option = document.createElement('option');
-                    option.value = sem.semester_id;
-                    option.textContent = sem.semester_name;
-                    semSelect.appendChild(option);
-                });
+function resetForm() {
+    document.getElementById('subjectForm').reset();
+    document.getElementById('subjectId').value = '';
+    document.getElementById('subjectOrder').value = '1';
+    document.getElementById('formTitle').textContent = 'Add New Subject';
+    ['internalMaxMarks','externalMaxMarks','taMaxMarks'].forEach(id => { document.getElementById(id).value='0'; });
+}
 
-                // Load regulations
-                const regRes = await fetch('/api/regulations');
-                const regData = await regRes.json();
-                const regSelect = document.getElementById('filterRegulation');
-                regData.data.forEach(reg => {
-                    const option = document.createElement('option');
-                    option.value = reg.regulation_id;
-                    option.textContent = reg.regulation_name;
-                    regSelect.appendChild(option);
-                });
+// ═══════════════════════════════════════════════════
+//  EXCEL
+// ═══════════════════════════════════════════════════
+async function exportToExcel() {
+    if (!window.currentFilters || !Object.keys(window.currentFilters).length) {
+        showAlert('Select filters first','error'); return;
+    }
+    window.location.href = '/api/subjects/export/excel?' + new URLSearchParams(window.currentFilters);
+}
 
-            } catch (error) {
-                console.error('Error loading dropdowns:', error);
-                showAlert('Failed to load dropdown data', 'error');
-            }
-        }
+async function generateSampleExcel() {
+    const f = window.currentFilters || {};
+    window.location.href = '/api/subjects/sample-excel?' + new URLSearchParams(f);
+}
 
-        // Apply filters
-        async function applyFilters() {
-            const programmeSelect = document.getElementById('filterProgramme');
-            const branchSelect = document.getElementById('filterBranch');
-            const semesterSelect = document.getElementById('filterSemester');
-            const regulationSelect = document.getElementById('filterRegulation');
-            const electiveSelect = document.getElementById('filterElective');
-            const searchSelect = document.getElementById('searchSubject');
-            
-            const currentFilters = {
-                programme_id: programmeSelect ? programmeSelect.value : '',
-                branch_id: branchSelect ? branchSelect.value : '',
-                semester_id: semesterSelect ? semesterSelect.value : '',
-                regulation_id: regulationSelect ? regulationSelect.value : '',
-                is_elective: electiveSelect ? electiveSelect.value : '',
-                search: searchSelect ? searchSelect.value : ''
-            };
+function showImportModal()  { document.getElementById('importModal').style.display='block'; }
+function closeImportModal() { document.getElementById('importModal').style.display='none'; document.getElementById('excelFile').value=''; }
 
-            // Store current filters
-            window.currentFilters = currentFilters;
+async function importFromExcel() {
+    const file = document.getElementById('excelFile').files[0];
+    if (!file) { showAlert('Select a file first','error'); return; }
+    const form = new FormData(); form.append('file', file);
+    try {
+        const res  = await fetch('/api/subjects/import/excel', { method:'POST', body:form });
+        const data = await res.json();
+        if (data.status !== 'success') throw new Error(data.message);
+        showAlert(data.message,'success');
+        closeImportModal();
+        await applyFilters();
+    } catch(e) { showAlert(e.message,'error'); }
+}
 
-            // Remove empty filters
-            Object.keys(currentFilters).forEach(key => {
-                if (!currentFilters[key]) delete currentFilters[key];
-            });
-
-            console.log('🔄 Applying filters:', currentFilters);
-
-            // Require at least one filter to be selected
-            if (Object.keys(currentFilters).length === 0) {
-                showAlert('Please select at least one filter or enter search term', 'warning');
-                return;
-            }
-
-            showLoading(true);
-            
-            try {
-                const response = await fetch(`/api/subjects?${new URLSearchParams(currentFilters)}`);
-                const result = await response.json();
-                
-                if (result.status === 'success') {
-                    subjects = result.data;
-                    updateStats();
-                    displaySubjects(subjects);
-                } else {
-                    showAlert(result.message || 'Error loading subjects', 'error');
-                    subjects = [];
-                    updateStats();
-                    document.getElementById('subjectsTableContainer').innerHTML = 
-                        '<p class="empty-message">No subjects found for the selected filters</p>';
-                }
-            } catch (error) {
-                console.error('Error loading subjects:', error);
-                showAlert('Error loading subjects', 'error');
-                subjects = [];
-                updateStats();
-            }
-            
-            showLoading(false);
-        }
-
-        // Clear filters
-        function clearFilters() {
-            document.getElementById('filterProgramme').value = '';
-            document.getElementById('filterBranch').value = '';
-            document.getElementById('filterSemester').value = '';
-            document.getElementById('filterRegulation').value = '';
-            currentFilters = {
-                programme_id: '',
-                branch_id: '',
-                semester_id: '',
-                regulation_id: ''
-            };
-            subjects = [];
-            updateStats();
-            document.getElementById('subjectsTableContainer').innerHTML = 
-                '<p class="empty-message">Select filters and click "Apply Filters" to load subjects</p>';
-        }
-
-        // Load subjects
-        async function loadSubjects() {
-            try {
-                showLoading(true);
-                
-                const params = new URLSearchParams(window.currentFilters);
-                const response = await fetch(`/api/subjects?${params}`);
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    subjects = data.data;
-                    displaySubjects(subjects);
-                    updateStats();
-                    showAlert('Subjects loaded successfully', 'success');
-                } else {
-                    showAlert('Failed to load subjects', 'error');
-                }
-            } catch (error) {
-                console.error('Error loading subjects:', error);
-                showAlert('Failed to load subjects', 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        // Show loading spinner
-        function showLoading(show) {
-            const loading = document.getElementById('loading');
-            if (show) {
-                loading.classList.add('show');
-            } else {
-                loading.classList.remove('show');
-            }
-        }
-
-        // Display subjects
-        // Display subjects
-        function displaySubjects(subjects) {
-            const container = document.getElementById('subjectsTableContainer');
-            
-            if (subjects.length === 0) {
-                container.innerHTML = '<p class="empty-message">No subjects found for the selected filters</p>';
-                return;
-            }
-
-            let html = `
-                <table class="subjects-table">
-                    <thead>
-                        <tr>
-                            <th>Order</th>
-                            <th>Syllabus Code</th>
-                            <th>Subject Name</th>
-                            <th>Type</th>
-                            <th>Credits</th>
-                            <th>Marks (Int/Ext/TA)</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
-            subjects.forEach(subject => {
-                const locked = subject.is_locked ? '🔒' : '🔓';
-                const running = subject.is_running_curriculum ? 
-                    '<span class="badge badge-success">Running</span>' : 
-                    '<span class="badge badge-danger">Not Running</span>';
-                const elective = subject.is_elective ? '<span class="badge badge-info">Elective</span>' : '';
-
-                html += `
-                    <tr>
-                        <td>${subject.subject_order}</td>
-                        <td>${subject.syllabus_code}</td>
-                        <td>${subject.subject_name}</td>
-                        <td>${subject.subject_type}</td>
-                        <td>${subject.credits}</td>
-                        <td>${subject.internal_max_marks}/${subject.external_max_marks}/${subject.ta_max_marks}</td>
-                        <td>${locked} ${running} ${elective}</td>
-                        <td>
-                            <button class="btn btn-sm btn-primary" onclick="editSubject(${subject.subject_id})">Edit</button>
-                            <button class="btn btn-sm btn-warning" onclick="toggleLock(${subject.subject_id})">${subject.is_locked ? 'Unlock' : 'Lock'}</button>
-                            <button class="btn btn-sm btn-info" onclick="toggleRunning(${subject.subject_id})">${subject.is_running_curriculum ? 'Stop' : 'Run'}</button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteSubject(${subject.subject_id})" ${subject.is_locked ? 'disabled' : ''}>Delete</button>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            html += `
-                    </tbody>
-                </table>
-            `;
-
-            container.innerHTML = html;
-        }
-
-        // Update statistics
-        function updateStats() {
-            document.getElementById('totalSubjects').textContent = subjects.length;
-            document.getElementById('lockedSubjects').textContent = subjects.filter(s => s.is_locked).length;
-            document.getElementById('runningSubjects').textContent = subjects.filter(s => s.is_running_curriculum).length;
-        }
-
-        // Setup form submit
-        function setupFormSubmit() {
-            document.getElementById('subjectForm').addEventListener('submit', async (e) => {
-               console.log("🔥 FORM SUBMIT TRIGGERED");
-                e.preventDefault();
-                
-                // Check if edit mode is enabled
-                if (!isEditMode) {
-                    showAlert('Please enable edit mode first (Press Ctrl+E or click Enable Edit Mode)', 'warning');
-                    return;
-                }
-                
-                // Require at least one filter to be selected for context
-                if (!window.currentFilters || Object.keys(window.currentFilters).length === 0) {
-                    showAlert('Please select at least one filter (Programme, Branch, Semester, or Regulation) before adding subjects', 'error');
-                    return;
-                }
-
-                const subjectId = document.getElementById('subjectId').value;
-                const formData = {
-                    programme_id: parseInt(window.currentFilters.programme_id) || null,
-                    branch_id: parseInt(window.currentFilters.branch_id) || null,
-                    semester_id: parseInt(window.currentFilters.semester_id) || null,
-                    regulation_id: parseInt(window.currentFilters.regulation_id) || null,
-                    subject_order: parseInt(document.getElementById('subjectOrder').value),
-                    syllabus_code: document.getElementById('syllabusCode').value,
-                    ref_code: document.getElementById('refCode').value,
-                    internal_exam_code: document.getElementById('internalExamCode').value,
-                    external_exam_code: document.getElementById('externalExamCode').value,
-                    subject_name: document.getElementById('subjectName').value,
-                    subject_type: document.getElementById('subjectType').value,
-                    internal_max_marks: parseInt(document.getElementById('internalMaxMarks').value),
-                    external_max_marks: parseInt(document.getElementById('externalMaxMarks').value),
-                    ta_max_marks: parseInt(document.getElementById('taMaxMarks').value),
-                    credits: parseFloat(document.getElementById('credits').value),
-                    is_elective: document.getElementById('isElective').checked ? 1 : 0,
-                    is_under_group: document.getElementById('isUnderGroup').checked ? 1 : 0,
-                    is_replacement: document.getElementById('isReplacement').checked ? 1 : 0,
-                    elective_name: document.getElementById('electiveName').value,
-                    is_exempt_exam_fee: document.getElementById('isExemptExamFee').checked ? 1 : 0,
-                    replacement_group_order: document.getElementById('replacementGroupOrder').value || null,
-                    is_running_curriculum: document.getElementById('isRunningCurriculum').checked ? 1 : 0,
-                    is_locked: 0
-                };
-
-                try {
-                    let response;
-                    if (subjectId) {
-                        response = await fetch(`/api/subjects/${subjectId}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(formData)
-                        });
-                    } else {
-                        response = await fetch('/api/subjects', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(formData)
-                        });
-                    }
-
-                    const data = await response.json();
-                    
-                    if (data.status === 'success') {
-                        showAlert(data.message, 'success');
-                        resetForm();
-                        await loadSubjects();
-                    } else {
-                        showAlert(data.message, 'error');
-                    }
-                } catch (error) {
-                    console.error('Error saving subject:', error);
-                    showAlert('Failed to save subject', 'error');
-                }
-            });
-        }
-
-        // Edit subject
-        async function editSubject(id) {
-            if (!isEditMode) {
-                showAlert('Please enable edit mode first (Press Ctrl+E or click Enable Edit Mode)', 'warning');
-                return;
-            }
-
-            try {
-                const response = await fetch(`/api/subjects/${id}`);
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    const subject = data.data;
-                    document.getElementById('subjectId').value = subject.subject_id;
-                    document.getElementById('subjectOrder').value = subject.subject_order;
-                    document.getElementById('syllabusCode').value = subject.syllabus_code;
-                    document.getElementById('refCode').value = subject.ref_code || '';
-                    document.getElementById('internalExamCode').value = subject.internal_exam_code || '';
-                    document.getElementById('externalExamCode').value = subject.external_exam_code || '';
-                    document.getElementById('subjectName').value = subject.subject_name;
-                    document.getElementById('subjectType').value = subject.subject_type;
-                    document.getElementById('internalMaxMarks').value = subject.internal_max_marks;
-                    document.getElementById('externalMaxMarks').value = subject.external_max_marks;
-                    document.getElementById('taMaxMarks').value = subject.ta_max_marks;
-                    document.getElementById('credits').value = subject.credits;
-                    document.getElementById('isElective').checked = subject.is_elective;
-                    document.getElementById('isUnderGroup').checked = subject.is_under_group;
-                    document.getElementById('isReplacement').checked = subject.is_replacement;
-                    document.getElementById('electiveName').value = subject.elective_name || '';
-                    document.getElementById('isExemptExamFee').checked = subject.is_exempt_exam_fee;
-                    document.getElementById('replacementGroupOrder').value = subject.replacement_group_order || '';
-                    document.getElementById('isRunningCurriculum').checked = subject.is_running_curriculum;
-
-                    // Scroll to form
-                    document.getElementById('subjectEntrySection').scrollIntoView({ behavior: 'smooth' });
-                }
-            } catch (error) {
-                console.error('Error loading subject:', error);
-                showAlert('Failed to load subject', 'error');
-            }
-        }
-
-        // Delete subject
-        async function deleteSubject(id) {
-            if (!confirm('Are you sure you want to delete this subject?')) {
-                return;
-            }
-
-            try {
-                const response = await fetch(`/api/subjects/${id}`, {
-                    method: 'DELETE'
-                });
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    showAlert(data.message, 'success');
-                    await loadSubjects();
-                } else {
-                    showAlert(data.message, 'error');
-                }
-            } catch (error) {
-                console.error('Error deleting subject:', error);
-                showAlert('Failed to delete subject', 'error');
-            }
-        }
-
-        // Toggle lock
-        async function toggleLock(id) {
-            try {
-                const response = await fetch(`/api/subjects/${id}/toggle-lock`, {
-                    method: 'POST'
-                });
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    showAlert(data.message, 'success');
-                    await loadSubjects();
-                } else {
-                    showAlert(data.message, 'error');
-                }
-            } catch (error) {
-                console.error('Error toggling lock:', error);
-                showAlert('Failed to toggle lock', 'error');
-            }
-        }
-
-        // Toggle running curriculum
-        async function toggleRunning(id) {
-            try {
-                const response = await fetch(`/api/subjects/${id}/toggle-running`, {
-                    method: 'POST'
-                });
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    showAlert(data.message, 'success');
-                    await loadSubjects();
-                } else {
-                    showAlert(data.message, 'error');
-                }
-            } catch (error) {
-                console.error('Error toggling running curriculum:', error);
-                showAlert('Failed to toggle running curriculum', 'error');
-            }
-        }
-
-        // Reset form
-        function resetForm() {
-            document.getElementById('subjectForm').reset();
-            document.getElementById('subjectId').value = '';
-            document.getElementById('subjectOrder').value = '1';
-            document.getElementById('internalMaxMarks').value = '0';
-            document.getElementById('externalMaxMarks').value = '0';
-            document.getElementById('taMaxMarks').value = '0';
-        }
-
-        // ========================================
-        // EDIT MODE MANAGEMENT
-        // ========================================
-
-        let isEditMode = false;
-
-        // Toggle edit mode
-        function toggleEditMode() {
-            isEditMode = !isEditMode;
-            const toggleBtn = document.getElementById('editModeToggle');
-            const subjectSection = document.getElementById('subjectEntrySection');
-            
-            if (isEditMode) {
-                // Enable edit mode
-                toggleBtn.textContent = '🚫 Disable Edit Mode';
-                toggleBtn.classList.add('active');
-                subjectSection.classList.add('show');
-                showAlert('Edit Mode Enabled - You can now add/edit subjects', 'success');
-            } else {
-                // Disable edit mode
-                toggleBtn.textContent = '📝 Enable Edit Mode';
-                toggleBtn.classList.remove('active');
-                subjectSection.classList.remove('show');
-                showAlert('Edit Mode Disabled - Subject form hidden', 'info');
-            }
-        }
-
-        // Keyboard shortcut for edit mode (Ctrl+E)
-        document.addEventListener('keydown', function(e) {
-            if (e.ctrlKey && e.key === 'e') {
-                e.preventDefault();
-                toggleEditMode();
-            }
-        });
-
-        // Context-aware form handling
-        function openSubjectModal(mode = 'add', subjectId = null) {
-            if (!isEditMode) {
-                showAlert('Please enable edit mode first (Press Ctrl+E or click Enable Edit Mode)', 'warning');
-                return;
-            }
-
-            if (mode === 'edit' && subjectId) {
-                // Load subject data for editing
-                loadSubjectForEdit(subjectId);
-            } else {
-                // Reset form for adding new subject
-                resetForm();
-            }
-        }
-
-        // Load subject data for editing
-        async function loadSubjectForEdit(subjectId) {
-            try {
-                const response = await fetch(`/api/subjects/${subjectId}`);
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    const subject = data.data;
-                    document.getElementById('subjectId').value = subject.subject_id;
-                    document.getElementById('subjectOrder').value = subject.subject_order;
-                    document.getElementById('syllabusCode').value = subject.syllabus_code;
-                    document.getElementById('subjectName').value = subject.subject_name;
-                    document.getElementById('refCode').value = subject.ref_code || '';
-                    document.getElementById('subjectType').value = subject.subject_type;
-                    document.getElementById('credits').value = subject.credits;
-                    document.getElementById('internalMaxMarks').value = subject.internal_max_marks;
-                    document.getElementById('externalMaxMarks').value = subject.external_max_marks;
-                    document.getElementById('taMaxMarks').value = subject.ta_max_marks;
-                    document.getElementById('isElective').checked = subject.is_elective;
-                    document.getElementById('electiveName').value = subject.elective_name || '';
-                    document.getElementById('isActive').checked = subject.is_active;
-                    document.getElementById('isLocked').checked = subject.is_locked;
-                    document.getElementById('isRunningCurriculum').checked = subject.is_running_curriculum;
-                }
-            } catch (error) {
-                console.error('Error loading subject:', error);
-                showAlert('Failed to load subject data', 'error');
-            }
-        }
-
-        // Export to Excel
-        async function exportToExcel() {
-            // Check if we have any filters set
-            const hasFilters = window.currentFilters && Object.keys(window.currentFilters).length > 0;
-            
-            if (!hasFilters) {
-                showAlert('Please select at least one filter before exporting', 'error');
-                return;
-            }
-
-            try {
-                const params = new URLSearchParams(currentFilters);
-                window.location.href = `/api/subjects/export/excel?${params}`;
-                showAlert('Exporting to Excel...', 'success');
-            } catch (error) {
-                console.error('Error exporting:', error);
-                showAlert('Failed to export to Excel', 'error');
-            }
-        }
-
-        // Generate sample Excel with context
-        async function generateSampleExcel() {
-            try {
-                console.log('=== GENERATE SAMPLE EXCEL ===');
-                
-                // Get filter values safely
-                const programmeSelect = document.getElementById('filterProgramme');
-                const branchSelect = document.getElementById('filterBranch');
-                const semesterSelect = document.getElementById('filterSemester');
-                const regulationSelect = document.getElementById('filterRegulation');
-                
-                const programmeId = programmeSelect ? programmeSelect.value : null;
-                const branchId = branchSelect ? branchSelect.value : null;
-                const semesterId = semesterSelect ? semesterSelect.value : null;
-                const regulationId = regulationSelect ? regulationSelect.value : null;
-                
-                // Require at least one filter for context
-                if (!programmeId && !branchId && !semesterId && !regulationId) {
-                    alert('⚠️ Please select at least one filter (Programme, Branch, Semester, or Regulation) to generate sample Excel.\n\nThis information will be pre-filled in the Excel template.');
-                    return;
-                }
-                
-                // Build query string with filter context
-                const params = new URLSearchParams({
-                    programme_id: programmeId,
-                    branch_id: branchId,
-                    semester_id: semesterId,
-                    regulation_id: regulationId
-                });
-                
-                console.log('Requesting sample Excel with context:', params.toString());
-                
-                // Download sample Excel
-                window.location.href = `/api/subjects/sample-excel?${params.toString()}`;
-                
-                console.log('✅ Sample Excel download initiated');
-                
-            } catch (error) {
-                console.error('Error generating sample Excel:', error);
-                alert('Failed to generate sample Excel: ' + error.message);
-            }
-        }
-
-        // Show import modal
-        function showImportModal() {
-            // Check if we have any filters set
-            const hasFilters = window.currentFilters && Object.keys(window.currentFilters).length > 0;
-            
-            if (!hasFilters) {
-                showAlert('Please select at least one filter before importing', 'error');
-                return;
-            }
-            document.getElementById('importModal').classList.add('show');
-        }
-
-        // Close import modal
-        function closeImportModal() {
-            document.getElementById('importModal').classList.remove('show');
-            document.getElementById('excelFile').value = '';
-        }
-
-        // Import from Excel with context
-        async function importFromExcel() {
-            const fileInput = document.getElementById('excelFile');
-            
-            if (!fileInput.files || fileInput.files.length === 0) {
-                showAlert('Please select an Excel file', 'error');
-                return;
-            }
-
-            try {
-                // Create FormData for file upload
-                const formData = new FormData();
-                formData.append('file', fileInput.files[0]);
-
-                // Send to server
-                const response = await fetch('/api/subjects/import/excel', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const result = await response.json();
-                
-                if (result.status === 'success') {
-                    showAlert(result.message, 'success');
-                    closeImportModal();
-                    await loadSubjects();
-                } else {
-                    showAlert(result.message, 'error');
-                }
-            } catch (error) {
-                console.error('Error importing:', error);
-                showAlert('Failed to import Excel file: ' + error.message, 'error');
-            }
-        }
-
-        // Show alert
-        function showAlert(message, type) {
-            const alert = document.getElementById('alertMessage');
-            alert.className = `alert alert-${type} show`;
-            alert.textContent = message;
-            
-            setTimeout(() => {
-                alert.classList.remove('show');
-            }, 5000);
-        }
-    </script>
+// ═══════════════════════════════════════════════════
+//  ALERT
+// ═══════════════════════════════════════════════════
+function showAlert(msg, type) {
+    const el = document.getElementById('alertMsg');
+    el.className = `alert alert-${type} show`;
+    el.innerHTML = `<i class="bi bi-${type==='success'?'check-circle':type==='error'?'x-circle':'info-circle'} me-2"></i>${msg}`;
+    clearTimeout(window._alertTimer);
+    window._alertTimer = setTimeout(() => el.classList.remove('show'), 4000);
+}
+</script>
 </body>
 </html>

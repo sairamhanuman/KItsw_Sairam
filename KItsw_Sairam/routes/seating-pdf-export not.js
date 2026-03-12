@@ -140,15 +140,6 @@ function generateSeatingPDF(plan, rooms, notifications, collegeInfo = {}) {
             const ML = 28;
             const CW = PW - ML * 2;   // ≈ 786 pts usable width
 
-            // Helper: draw text at absolute position WITHOUT moving doc.y
-            // This is the key fix — prevents PDFKit from auto-adding blank pages
-            function txt(text, x, yPos, opts = {}) {
-                doc.text(text, x, yPos, { ...opts, lineBreak: false });
-                // Immediately move cursor back up so PDFKit never thinks
-                // we've overflowed the page
-                doc.moveTo(x, yPos);
-            }
-
             const collegeName = (collegeInfo.name       || 'KITS, WARANGAL').toUpperCase();
             const deptName    = (collegeInfo.department || 'EXAMINATION BRANCH').toUpperCase();
             const monthYear   = fmtMonthYear(plan.exam_date);
@@ -171,24 +162,24 @@ function generateSeatingPDF(plan, rooms, notifications, collegeInfo = {}) {
                 let y = ML;
 
                 // 1. College header
-                doc.font('Helvetica-Bold').fontSize(16).fillColor('black');
-                txt(`${collegeName} - ${deptName}`, ML, y, { align:'center', width:CW });
+                doc.font('Helvetica-Bold').fontSize(16).fillColor('black')
+                   .text(`${collegeName} - ${deptName}`, ML, y, { align:'center', width:CW, lineBreak:false });
                 y += 24;
 
                 // 2. Exam title
-                doc.font('Helvetica-Bold').fontSize(12);
-                txt(examTitle, ML, y, { align:'center', width:CW });
+                doc.font('Helvetica-Bold').fontSize(12)
+                   .text(examTitle, ML, y, { align:'center', width:CW, lineBreak:false });
                 y += 18;
 
                 // 3. Note
-                doc.font('Helvetica').fontSize(9).fillColor('black');
-                txt(noteText, ML, y, { align:'left', width:CW });
+                doc.font('Helvetica').fontSize(9).fillColor('black')
+                   .text(noteText, ML, y, { align:'left', width:CW, lineBreak:false });
                 y += 14;
 
                 // 4. Date (left) + Hall No (right)
                 doc.font('Helvetica-Bold').fontSize(12).fillColor('black');
-                txt(`Date: ${fmtDate(plan.exam_date, plan.session_order)}`, ML, y, {});
-                txt(`Hall No.: ${room.room_number || ''}`, ML, y, { align:'right', width:CW });
+                doc.text(`Date: ${fmtDate(plan.exam_date, plan.session_order)}`, ML, y, { lineBreak:false });
+                doc.text(`Hall No.: ${room.room_number || ''}`, ML, y, { align:'right', width:CW, lineBreak:false });
                 y += 20;
 
                 // 5. Grid ─────────────────────────────────────
@@ -220,7 +211,7 @@ function generateSeatingPDF(plan, rooms, notifications, collegeInfo = {}) {
                 for (let c = 1; c <= numCols; c++) {
                     const cx = ML + (c - 1) * COL_W;
                     if (c > 1) doc.lineWidth(0.5).moveTo(cx, y).lineTo(cx, y + GRID_H).stroke();
-                    txt(`Column ${c}`, cx, y + 5, { width:COL_W, align:'center' });
+                    doc.text(`Column ${c}`, cx, y + 5, { width:COL_W, align:'center', lineBreak:false });
                 }
                 doc.lineWidth(0.5)
                    .moveTo(ML, y + HDR_H)
@@ -304,7 +295,7 @@ function generateSeatingPDF(plan, rooms, notifications, collegeInfo = {}) {
                 let tx = tblX;
                 cw2.forEach((w, i) => {
                     doc.lineWidth(0.5).rect(tx, y, w, TH).stroke();
-                    txt(HDRS[i], tx+2, y+4, { width:w-4, align:'center' });
+                    doc.text(HDRS[i], tx+2, y+4, { width:w-4, align:'center', lineBreak:false });
                     tx += w;
                 });
                 y += TH;
@@ -316,34 +307,35 @@ function generateSeatingPDF(plan, rooms, notifications, collegeInfo = {}) {
                     const vals = [row.sem, row.branch, row.course, row.code, String(row.count)];
                     vals.forEach((v, i) => {
                         doc.lineWidth(0.4).rect(tx, y, cw2[i], TH).stroke();
+                        // Truncate long text to prevent wrapping
                         const maxChars = Math.floor((cw2[i] - 4) / 5.5);
-                        const t = (v || '').length > maxChars
+                        const txt = (v || '').length > maxChars
                             ? (v || '').substring(0, maxChars - 1) + '…'
                             : (v || '');
-                        txt(t, tx+2, y+4, { width:cw2[i]-4, align:'center' });
+                        doc.text(txt, tx+2, y+4, { width:cw2[i]-4, align:'center', lineBreak:false });
                         tx += cw2[i];
                     });
                     y += TH;
                 });
 
-                // Grand total row
+                // Grand total
                 doc.font('Helvetica-Bold').fontSize(9.5);
                 tx = tblX;
                 ['','','','Grand Total', String(grandTotal)].forEach((v, i) => {
                     doc.lineWidth(0.5).rect(tx, y, cw2[i], TH).stroke();
-                    txt(v, tx+2, y+4, { width:cw2[i]-4, align:'center' });
+                    doc.text(v, tx+2, y+4, { width:cw2[i]-4, align:'center', lineBreak:false });
                     tx += cw2[i];
                 });
-                y += TH + 14;
+                y += TH + 16;
 
-                // 7. Red footer note
-                doc.font('Helvetica-Bold').fontSize(10).fillColor('#cc0000');
-                txt(footerNote, ML, Math.min(y, PH - 40), { align:'center', width:CW });
+                // 7. Red footer
+                doc.font('Helvetica-Bold').fontSize(10).fillColor('#cc0000')
+                   .text(footerNote, ML, Math.min(y, PH - 40), { align:'center', width:CW, lineBreak:false });
 
-                // Page stamp (bottom right)
-                doc.font('Helvetica').fontSize(8).fillColor('#aaaaaa');
-                txt(`Plan #${plan.plan_id}  ·  ${fmtDate(plan.exam_date, plan.session_order)}`,
-                    ML, PH - 18, { align:'right', width:CW });
+                // Page stamp
+                doc.font('Helvetica').fontSize(8).fillColor('#aaaaaa')
+                   .text(`Plan #${plan.plan_id}  ·  ${fmtDate(plan.exam_date, plan.session_order)}`,
+                         ML, PH - 18, { align:'right', width:CW, lineBreak:false });
             });
 
             doc.end();

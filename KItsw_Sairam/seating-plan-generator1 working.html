@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Seating Plan Generator</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"/>
+    <style>
+        body { background: #f0f2f5; font-family: 'Segoe UI', sans-serif; }
+
+        /* ── Step Wizard ── */
+        .step-wizard { display: flex; align-items: center; justify-content: center; padding: 24px 0 16px; gap: 0; }
+        .step-item { display: flex; flex-direction: column; align-items: center; position: relative; }
+        .step-circle {
+            width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; font-weight: 700; font-size: 15px;
+            background: #e2e8f0; color: #94a3b8; border: 2px solid #cbd5e1; transition: all .3s;
+        }
+        .step-circle.active { background: #3b82f6; color: #fff; border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,.2); }
+        .step-circle.done { background: #22c55e; color: #fff; border-color: #22c55e; }
+        .step-label { font-size: 11px; color: #64748b; margin-top: 4px; font-weight: 600; text-align: center; width: 80px; }
+        .step-label.active { color: #3b82f6; }
+        .step-label.done { color: #22c55e; }
+        .step-line { width: 80px; height: 2px; background: #e2e8f0; margin-bottom: 18px; transition: background .3s; }
+        .step-line.done { background: #22c55e; }
+
+        /* ── Panel Cards ── */
+        .panel-card { background: #fff; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,.06); margin-bottom: 20px; }
+        .panel-header { padding: 16px 20px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 10px; }
+        .panel-header h6 { margin: 0; font-weight: 700; font-size: 15px; color: #1e293b; }
+        .panel-body { padding: 20px; }
+
+        /* ── Room Cards ── */
+        .room-card {
+            border-radius: 10px; padding: 14px; cursor: pointer;
+            border: 2px solid #e2e8f0; background: #fff; transition: all .2s;
+            position: relative; min-height: 110px;
+        }
+        .room-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,.1); }
+        .room-card.status-FREE { border-color: #e2e8f0; }
+        .room-card.status-FREE:hover { border-color: #3b82f6; }
+        .room-card.status-SELECTED { border-color: #3b82f6; background: #eff6ff; }
+        .room-card.status-OCCUPIED { border-color: #fca5a5; background: #fff5f5; cursor: not-allowed; opacity: .8; }
+        .room-card.status-BLOCKED { border-color: #fcd34d; background: #fffbeb; cursor: not-allowed; opacity: .8; }
+        .room-card.status-INACTIVE { border-color: #e2e8f0; background: #f8fafc; cursor: not-allowed; opacity: .5; }
+
+        .room-badge {
+            display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px;
+            font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+        }
+        .badge-FREE { background: #dcfce7; color: #16a34a; }
+        .badge-SELECTED { background: #dbeafe; color: #2563eb; }
+        .badge-OCCUPIED { background: #fee2e2; color: #dc2626; }
+        .badge-BLOCKED { background: #fef3c7; color: #d97706; }
+        .badge-INACTIVE { background: #f1f5f9; color: #94a3b8; }
+
+        .room-number { font-size: 16px; font-weight: 800; color: #1e293b; margin-bottom: 2px; }
+        .room-cap { font-size: 12px; color: #64748b; }
+        .room-note { font-size: 10px; color: #94a3b8; margin-top: 4px; }
+
+        .quick-block-btn {
+            position: absolute; top: 8px; right: 8px; width: 26px; height: 26px;
+            border-radius: 50%; background: #fff; border: 1px solid #e2e8f0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; color: #94a3b8; cursor: pointer; z-index: 2;
+        }
+        .quick-block-btn:hover { background: #fef3c7; border-color: #fcd34d; color: #d97706; }
+
+        /* ── Capacity Bar ── */
+        .cap-bar-wrap { background: #f1f5f9; border-radius: 20px; height: 8px; overflow: hidden; margin-top: 6px; }
+        .cap-bar-fill { height: 100%; border-radius: 20px; transition: width .4s; }
+        .cap-bar-ok { background: linear-gradient(90deg,#22c55e,#16a34a); }
+        .cap-bar-warn { background: linear-gradient(90deg,#f59e0b,#d97706); }
+        .cap-bar-over { background: linear-gradient(90deg,#ef4444,#dc2626); }
+
+        /* ── Notification Check Cards ── */
+        .notif-check-card {
+            border: 2px solid #e2e8f0; border-radius: 10px; padding: 14px 16px;
+            cursor: pointer; transition: all .2s; margin-bottom: 10px;
+        }
+        .notif-check-card.checked { border-color: #3b82f6; background: #eff6ff; }
+        .notif-check-card:hover { border-color: #93c5fd; }
+
+        /* ── Preview Table ── */
+        .preview-room-header {
+            background: linear-gradient(135deg,#1e293b,#334155);
+            color: #fff; border-radius: 10px 10px 0 0; padding: 12px 16px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .preview-table th { background: #f8fafc; font-size: 12px; font-weight: 700; color: #475569; }
+        .preview-table td { font-size: 12px; }
+
+        /* ── Sticky Summary Bar ── */
+        .summary-bar {
+            position: sticky; top: 0; z-index: 100; background: #fff;
+            border-bottom: 1px solid #e2e8f0; padding: 10px 20px;
+            display: flex; gap: 20px; align-items: center; flex-wrap: wrap;
+        }
+        .summary-stat { display: flex; flex-direction: column; align-items: center; }
+        .summary-stat .val { font-size: 20px; font-weight: 800; color: #1e293b; line-height: 1; }
+        .summary-stat .lbl { font-size: 10px; color: #94a3b8; font-weight: 600; text-transform: uppercase; }
+
+        /* ── Block Grid for multi-room display ── */
+        .block-section-title {
+            font-size: 11px; font-weight: 800; color: #64748b; letter-spacing: 1px;
+            text-transform: uppercase; padding: 8px 0 4px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid px-3 px-md-4" style="max-width:1200px;">
+
+    <!-- Page Header -->
+    <div class="d-flex align-items-center justify-content-between py-3">
+        <div>
+            <h4 class="mb-0 fw-bold" style="color:#1e293b;"><i class="bi bi-layout-text-window me-2 text-primary"></i>Seating Plan Generator</h4>
+            <small class="text-muted">Anti-copy mixed seating across rooms</small>
+        </div>
+        <a href="seating-plans-list.html" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-list-ul me-1"></i>All Plans
+        </a>
+    </div>
+
+    <!-- Step Wizard -->
+    <div class="step-wizard" id="stepWizard">
+        <div class="step-item">
+            <div class="step-circle active" id="sc1">1</div>
+            <div class="step-label active" id="sl1">Date & Notifications</div>
+        </div>
+        <div class="step-line" id="sl12"></div>
+        <div class="step-item">
+            <div class="step-circle" id="sc2">2</div>
+            <div class="step-label" id="sl2">Select Rooms</div>
+        </div>
+        <div class="step-line" id="sl23"></div>
+        <div class="step-item">
+            <div class="step-circle" id="sc3">3</div>
+            <div class="step-label" id="sl3">Preview</div>
+        </div>
+        <div class="step-line" id="sl34"></div>
+        <div class="step-item">
+            <div class="step-circle" id="sc4">4</div>
+            <div class="step-label" id="sl4">Save & Export</div>
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- STEP 1: Date + Session + Notifications                  -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <div id="step1Panel">
+        <div class="panel-card">
+            <div class="panel-header">
+                <i class="bi bi-calendar3 text-primary fs-5"></i>
+                <h6>Step 1 — Select Date, Session & Notifications</h6>
+            </div>
+            <div class="panel-body">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label fw-600 text-muted small">EXAM DATE</label>
+                        <input type="date" class="form-control" id="examDate" onchange="onDateSessionChange()"/>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-600 text-muted small">SESSION</label>
+                        <select class="form-select" id="sessionOrder" onchange="onDateSessionChange()">
+                            <option value="">-- Select Session --</option>
+                            <option value="1">FN (Fore Noon)</option>
+                            <option value="2">AN (After Noon)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button class="btn btn-primary w-100" onclick="loadNotifications()">
+                            <i class="bi bi-search me-1"></i> Find Notifications
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Notifications Checklist -->
+                <div id="notificationsSection" style="display:none;">
+                    <hr class="my-3"/>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0 fw-bold"><i class="bi bi-bell me-1 text-primary"></i>Notifications for this slot</h6>
+                        <span class="badge bg-primary rounded-pill" id="notifCountBadge">0</span>
+                    </div>
+                    <div id="notificationsList"></div>
+
+                    <div class="d-flex align-items-center justify-content-between mt-3 p-3 rounded-3" style="background:#f8fafc; border:1px solid #e2e8f0;">
+                        <div>
+                            <span class="fw-bold text-dark" id="totalStudentsLabel">0 students selected</span>
+                            <span class="text-muted small ms-2" id="notifSelectionNote"></span>
+                        </div>
+                        <button class="btn btn-success" id="btnProceedToRooms" onclick="proceedToStep2()" disabled>
+                            Proceed to Room Selection <i class="bi bi-arrow-right ms-1"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="noNotificationsMsg" style="display:none;" class="alert alert-warning mt-3">
+                    <i class="bi bi-exclamation-triangle me-2"></i>No notifications found for this date and session. Make sure timetable entries exist and student data has been generated.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- STEP 2: Room Selection                                  -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <div id="step2Panel" style="display:none;">
+
+        <!-- Summary Bar -->
+        <div class="summary-bar rounded-3 mb-3" id="summaryBar">
+            <div class="summary-stat">
+                <span class="val" id="sumStudents">0</span>
+                <span class="lbl">Students</span>
+            </div>
+            <div class="vr"></div>
+            <div class="summary-stat">
+                <span class="val" id="sumRoomsNeeded">0</span>
+                <span class="lbl">Rooms Needed</span>
+            </div>
+            <div class="vr"></div>
+            <div class="summary-stat">
+                <span class="val text-primary" id="sumRoomsSelected">0</span>
+                <span class="lbl">Rooms Selected</span>
+            </div>
+            <div class="vr"></div>
+            <div class="summary-stat">
+                <span class="val" id="sumCapacity">0</span>
+                <span class="lbl">Seats Available</span>
+            </div>
+            <div class="ms-auto">
+                <div id="capacityStatus" class="badge fs-6 px-3 py-2">Select rooms</div>
+            </div>
+        </div>
+
+        <!-- Capacity Bar -->
+        <div class="panel-card mb-3" style="padding:14px 20px;">
+            <div class="d-flex justify-content-between mb-1">
+                <small class="text-muted fw-600">Seat Coverage</small>
+                <small id="capBarLabel" class="text-muted">0 / 0 seats</small>
+            </div>
+            <div class="cap-bar-wrap">
+                <div class="cap-bar-fill cap-bar-ok" id="capBarFill" style="width:0%"></div>
+            </div>
+        </div>
+
+        <div class="panel-card">
+            <div class="panel-header">
+                <i class="bi bi-building text-primary fs-5"></i>
+                <h6>Step 2 — Select Rooms</h6>
+                <div class="ms-auto d-flex gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="clearAllRooms()">
+                        <i class="bi bi-x-circle me-1"></i>Clear All
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="autoSelectRooms()">
+                        <i class="bi bi-magic me-1"></i>Auto Select
+                    </button>
+                </div>
+            </div>
+            <div class="panel-body">
+                <!-- Legend -->
+                <div class="d-flex flex-wrap gap-3 mb-3">
+                    <span><span class="room-badge badge-FREE">FREE</span> <small class="text-muted">Click to select</small></span>
+                    <span><span class="room-badge badge-SELECTED">SELECTED</span> <small class="text-muted">Click to deselect</small></span>
+                    <span><span class="room-badge badge-OCCUPIED">OCCUPIED</span> <small class="text-muted">Another exam</small></span>
+                    <span><span class="room-badge badge-BLOCKED">BLOCKED</span> <small class="text-muted">Admin blocked</small></span>
+                    <span><span class="room-badge badge-INACTIVE">INACTIVE</span> <small class="text-muted">Not available</small></span>
+                </div>
+                <div id="roomsContainer"></div>
+
+                <div class="d-flex justify-content-between mt-4">
+                    <button class="btn btn-outline-secondary" onclick="goToStep(1)">
+                        <i class="bi bi-arrow-left me-1"></i>Back
+                    </button>
+                    <button class="btn btn-success px-4" id="btnGenerateSeating" onclick="generateSeating()" disabled>
+                        <i class="bi bi-cpu me-1"></i>Generate Seating Plan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- STEP 3: Preview                                         -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <div id="step3Panel" style="display:none;">
+        <div class="panel-card">
+            <div class="panel-header">
+                <i class="bi bi-eye text-success fs-5"></i>
+                <h6>Step 3 — Room-wise Preview</h6>
+                <div class="ms-auto">
+                    <span class="badge bg-success fs-6 px-3" id="previewTotalBadge">0 students</span>
+                </div>
+            </div>
+            <div class="panel-body p-0">
+                <div id="previewContainer" class="p-3"></div>
+            </div>
+            <div class="d-flex justify-content-between p-3 border-top">
+                <button class="btn btn-outline-secondary" onclick="goToStep(2)">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Rooms
+                </button>
+                <button class="btn btn-primary px-4" onclick="proceedToStep4()">
+                    Save Seating Plan <i class="bi bi-arrow-right ms-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- STEP 4: Save & Export                                   -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <div id="step4Panel" style="display:none;">
+        <div class="panel-card">
+            <div class="panel-header">
+                <i class="bi bi-save text-primary fs-5"></i>
+                <h6>Step 4 — Save & Export</h6>
+            </div>
+            <div class="panel-body">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small fw-600">GENERATED BY</label>
+                        <input type="text" class="form-control" id="generatedBy" placeholder="Admin name"/>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small fw-600">NOTES (optional)</label>
+                        <input type="text" class="form-control" id="planNotes" placeholder="Any notes about this plan"/>
+                    </div>
+                </div>
+
+                <!-- Summary -->
+                <div class="row g-3 mb-4" id="saveSummary">
+                    <div class="col-6 col-md-3">
+                        <div class="text-center p-3 rounded-3" style="background:#eff6ff;">
+                            <div class="fs-3 fw-bold text-primary" id="saveStudentCount">0</div>
+                            <div class="small text-muted">Total Students</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="text-center p-3 rounded-3" style="background:#f0fdf4;">
+                            <div class="fs-3 fw-bold text-success" id="saveRoomCount">0</div>
+                            <div class="small text-muted">Total Rooms</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="text-center p-3 rounded-3" style="background:#fefce8;">
+                            <div class="fs-3 fw-bold text-warning" id="saveDate">—</div>
+                            <div class="small text-muted">Exam Date</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="text-center p-3 rounded-3" style="background:#fdf4ff;">
+                            <div class="fs-3 fw-bold" style="color:#9333ea;" id="saveSession">—</div>
+                            <div class="small text-muted">Session</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-3 flex-wrap">
+                    <button class="btn btn-primary px-4" onclick="saveSeatingPlan()" id="btnSavePlan">
+                        <i class="bi bi-save me-1"></i>Save Seating Plan
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="goToStep(3)">
+                        <i class="bi bi-arrow-left me-1"></i>Back
+                    </button>
+                </div>
+
+                <!-- Post-save actions -->
+                <div id="postSaveActions" style="display:none;" class="mt-4 p-4 rounded-3" style="background:#f0fdf4; border:1px solid #bbf7d0;">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <i class="bi bi-check-circle-fill text-success fs-3"></i>
+                        <div>
+                            <div class="fw-bold text-success">Seating Plan Saved Successfully!</div>
+                            <div class="text-muted small">Plan ID: <span id="savedPlanId" class="fw-bold"></span></div>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-success btn-sm" onclick="exportPDF()">
+                            <i class="bi bi-file-pdf me-1"></i>Export Room-wise PDF
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="viewFullPlan()">
+                            <i class="bi bi-eye me-1"></i>View Full Plan
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="startNew()">
+                            <i class="bi bi-plus-circle me-1"></i>Create Another Plan
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Quick Block Modal -->
+<div class="modal fade" id="quickBlockModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark py-2">
+                <h6 class="modal-title mb-0"><i class="bi bi-slash-circle me-2"></i>Quick Block Room</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-1"><small class="text-muted fw-600">ROOM</small></div>
+                <div class="fw-bold mb-3" id="qbRoomLabel">—</div>
+                <div class="mb-1"><small class="text-muted fw-600">DATE</small></div>
+                <div class="mb-3" id="qbDateLabel">—</div>
+                <div class="mb-1"><small class="text-muted fw-600">SESSION</small></div>
+                <div class="mb-3" id="qbSessionLabel">—</div>
+                <label class="form-label text-muted small fw-600">REASON</label>
+                <select class="form-select form-select-sm mb-2" id="qbReason">
+                    <option value="Regular Lecture">Regular Lecture</option>
+                    <option value="Lab Session">Lab Session</option>
+                    <option value="Faculty Meeting">Faculty Meeting</option>
+                    <option value="Maintenance">Maintenance</option>
+                    <option value="Other">Other</option>
+                </select>
+                <input type="text" class="form-control form-control-sm" id="qbNote" placeholder="Note (optional)"/>
+                <input type="hidden" id="qbRoomId"/>
+            </div>
+            <div class="modal-footer py-2">
+                <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-warning btn-sm" onclick="confirmQuickBlock()">Block Room</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+const state = {
+    step: 1,
+    examDate: '',
+    sessionOrder: '',
+    notifications: [],
+    selectedNotificationIds: [],
+    totalStudents: 0,
+    rooms: [],
+    selectedRoomIds: [],
+    selectedRoomsCapacity: 0,
+    generatedAllocations: [],
+    generatedRoomsPreview: [],
+    savedPlanId: null
+};
+
+// ═══════════════════════════════════════════════════════════
+//  STEP NAVIGATION
+// ═══════════════════════════════════════════════════════════
+function goToStep(n) {
+    for (let i = 1; i <= 4; i++) {
+        document.getElementById(`step${i}Panel`).style.display = i === n ? 'block' : 'none';
+        const circle = document.getElementById(`sc${i}`);
+        const label = document.getElementById(`sl${i}`);
+        circle.className = 'step-circle' + (i === n ? ' active' : i < n ? ' done' : '');
+        label.className = 'step-label' + (i === n ? ' active' : i < n ? ' done' : '');
+        if (i < n) circle.innerHTML = '<i class="bi bi-check-lg"></i>';
+        else circle.textContent = i;
+    }
+    for (let i = 1; i <= 3; i++) {
+        const line = document.getElementById(`sl${i}${i+1}`);
+        if (line) line.className = 'step-line' + (i < n ? ' done' : '');
+    }
+    state.step = n;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  STEP 1 — NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════
+function onDateSessionChange() {
+    document.getElementById('notificationsSection').style.display = 'none';
+    document.getElementById('noNotificationsMsg').style.display = 'none';
+}
+
+async function loadNotifications() {
+    const date = document.getElementById('examDate').value;
+    const session = document.getElementById('sessionOrder').value;
+    if (!date || !session) {
+        Swal.fire('Missing', 'Please select both date and session.', 'warning');
+        return;
+    }
+    state.examDate = date;
+    state.sessionOrder = session;
+
+    const btn = document.querySelector('#step1Panel .btn-primary');
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Searching...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(`/api/seating/notifications?date=${date}&session=${session}`);
+        const data = await res.json();
+        const notifs = data.notifications || [];
+
+        btn.innerHTML = '<i class="bi bi-search me-1"></i> Find Notifications';
+        btn.disabled = false;
+
+        if (notifs.length === 0) {
+            document.getElementById('noNotificationsMsg').style.display = 'block';
+            document.getElementById('notificationsSection').style.display = 'none';
+            return;
+        }
+
+        state.notifications = notifs;
+        document.getElementById('notifCountBadge').textContent = notifs.length;
+        document.getElementById('notificationsSection').style.display = 'block';
+        document.getElementById('noNotificationsMsg').style.display = 'none';
+        renderNotifications(notifs);
+    } catch (err) {
+        btn.innerHTML = '<i class="bi bi-search me-1"></i> Find Notifications';
+        btn.disabled = false;
+        Swal.fire('Error', err.message, 'error');
+    }
+}
+
+function renderNotifications(notifs) {
+    const container = document.getElementById('notificationsList');
+    container.innerHTML = notifs.map((n, i) => {
+        const id = n.hashed_id || n.notification_id;
+        const name = n.exam_name || n.notification_ref || `Notification ${id}`;
+        const sem = n.semester_label || n.branches || '';
+        const count = n.student_count || 0;
+        return `
+        <div class="notif-check-card" id="nc_${id}" onclick="toggleNotification('${id}', ${count})">
+            <div class="d-flex align-items-center gap-3">
+                <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="chk_${id}" style="width:18px;height:18px;" onchange="updateTotalStudents()"/>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-bold text-dark">${name}</div>
+                    <div class="small text-muted">${sem}${n.batch_name ? ' · ' + n.batch_name : ''}</div>
+                </div>
+                <div class="text-end">
+                    <div class="fw-bold text-primary fs-5">${count}</div>
+                    <div class="small text-muted">students</div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function toggleNotification(id, count) {
+    const chk = document.getElementById(`chk_${id}`);
+    const card = document.getElementById(`nc_${id}`);
+    chk.checked = !chk.checked;
+    card.classList.toggle('checked', chk.checked);
+    updateTotalStudents();
+}
+
+function updateTotalStudents() {
+    let total = 0;
+    const selected = [];
+    state.notifications.forEach(n => {
+        const id = n.hashed_id || n.notification_id;
+        const chk = document.getElementById(`chk_${id}`);
+        if (chk && chk.checked) {
+            total += (n.student_count || 0);
+            selected.push(id);
+        }
+    });
+    state.selectedNotificationIds = selected;
+    state.totalStudents = total;
+
+    document.getElementById('totalStudentsLabel').textContent = `${total.toLocaleString()} students selected`;
+    document.getElementById('notifSelectionNote').textContent = selected.length > 0 ? `from ${selected.length} notification(s)` : '';
+    document.getElementById('btnProceedToRooms').disabled = selected.length === 0;
+}
+
+async function proceedToStep2() {
+    goToStep(2);
+    document.getElementById('sumStudents').textContent = state.totalStudents.toLocaleString();
+    document.getElementById('sumRoomsNeeded').textContent = Math.ceil(state.totalStudents / 42);
+    document.getElementById('saveDate').textContent = formatDate(state.examDate);
+    document.getElementById('saveSession').textContent = state.sessionOrder === '1' ? 'FN' : 'AN';
+    await loadRooms();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  STEP 2 — ROOM SELECTION
+// ═══════════════════════════════════════════════════════════
+async function loadRooms() {
+    const container = document.getElementById('roomsContainer');
+    container.innerHTML = '<div class="text-center py-4"><span class="spinner-border text-primary"></span><div class="mt-2 text-muted">Loading rooms...</div></div>';
+
+    try {
+        const res = await fetch(`/api/seating/room-availability?date=${state.examDate}&session=${state.sessionOrder}`);
+        const data = await res.json();
+        state.rooms = data.rooms || [];
+        renderRooms(data.grouped || []);
+    } catch (err) {
+        container.innerHTML = `<div class="alert alert-danger">Failed to load rooms: ${err.message}</div>`;
+    }
+}
+
+function renderRooms(grouped) {
+    const container = document.getElementById('roomsContainer');
+    if (!grouped.length) {
+        container.innerHTML = '<div class="alert alert-warning">No rooms found in the system.</div>';
+        return;
+    }
+
+    container.innerHTML = grouped.map(block => `
+        <div class="block-section-title"><i class="bi bi-building me-1"></i>${block.block_name || block.block_code}</div>
+        <div class="row g-3 mb-4">
+            ${block.rooms.map(r => renderRoomCard(r)).join('')}
+        </div>
+    `).join('');
+}
+
+function renderRoomCard(r) {
+    const isFree = r.status === 'FREE';
+    const badgeClass = `badge-${r.status === 'SELECTED' ? 'SELECTED' : r.status}`;
+    const badgeLabel = r.status;
+
+    return `
+    <div class="col-6 col-md-4 col-lg-3">
+        <div class="room-card status-${r.status}" id="rc_${r.room_id}" 
+             onclick="${isFree ? `toggleRoom(${r.room_id}, ${r.usable_capacity})` : ''}">
+            ${isFree ? `<div class="quick-block-btn" onclick="event.stopPropagation(); openQuickBlock(${r.room_id}, '${r.room_number}')" title="Block this room">⛔</div>` : ''}
+            <div class="room-badge ${badgeClass} mb-1">${badgeLabel}</div>
+            <div class="room-number">${r.room_number}</div>
+            <div class="room-cap"><i class="bi bi-people me-1"></i>Cap: ${r.usable_capacity}</div>
+            ${r.status_note ? `<div class="room-note text-truncate" title="${r.status_note}">${r.status_note}</div>` : ''}
+        </div>
+    </div>`;
+}
+
+function toggleRoom(roomId, capacity) {
+    const card = document.getElementById(`rc_${roomId}`);
+    const idx = state.selectedRoomIds.indexOf(roomId);
+
+    if (idx === -1) {
+        state.selectedRoomIds.push(roomId);
+        state.selectedRoomsCapacity += capacity;
+        card.classList.remove('status-FREE');
+        card.classList.add('status-SELECTED');
+        card.querySelector('.room-badge').className = 'room-badge badge-SELECTED mb-1';
+        card.querySelector('.room-badge').textContent = 'SELECTED';
+    } else {
+        state.selectedRoomIds.splice(idx, 1);
+        state.selectedRoomsCapacity -= capacity;
+        card.classList.remove('status-SELECTED');
+        card.classList.add('status-FREE');
+        card.querySelector('.room-badge').className = 'room-badge badge-FREE mb-1';
+        card.querySelector('.room-badge').textContent = 'FREE';
+    }
+    updateRoomSummary();
+}
+
+function updateRoomSummary() {
+    const sel = state.selectedRoomIds.length;
+    const cap = state.selectedRoomsCapacity;
+    const students = state.totalStudents;
+
+    document.getElementById('sumRoomsSelected').textContent = sel;
+    document.getElementById('sumCapacity').textContent = cap;
+    document.getElementById('capBarLabel').textContent = `${students} students / ${cap} seats`;
+
+    const pct = cap > 0 ? Math.min((students / cap) * 100, 100) : 0;
+    const fill = document.getElementById('capBarFill');
+    fill.style.width = pct + '%';
+    fill.className = 'cap-bar-fill ' + (pct <= 80 ? 'cap-bar-ok' : pct <= 100 ? 'cap-bar-warn' : 'cap-bar-over');
+
+    const statusEl = document.getElementById('capacityStatus');
+    if (sel === 0) {
+        statusEl.textContent = 'No rooms selected';
+        statusEl.className = 'badge bg-secondary fs-6 px-3 py-2';
+    } else if (cap >= students) {
+        const extra = cap - students;
+        statusEl.textContent = `✓ ${extra} extra seats`;
+        statusEl.className = 'badge bg-success fs-6 px-3 py-2';
+    } else {
+        const need = students - cap;
+        statusEl.textContent = `⚠ Need ${need} more seats`;
+        statusEl.className = 'badge bg-danger fs-6 px-3 py-2';
+    }
+
+    document.getElementById('btnGenerateSeating').disabled = sel === 0 || cap < students;
+}
+
+function clearAllRooms() {
+    state.selectedRoomIds.forEach(id => {
+        const card = document.getElementById(`rc_${id}`);
+        if (card) {
+            card.classList.remove('status-SELECTED');
+            card.classList.add('status-FREE');
+            card.querySelector('.room-badge').className = 'room-badge badge-FREE mb-1';
+            card.querySelector('.room-badge').textContent = 'FREE';
+        }
+    });
+    state.selectedRoomIds = [];
+    state.selectedRoomsCapacity = 0;
+    updateRoomSummary();
+}
+
+function autoSelectRooms() {
+    clearAllRooms();
+    const freeRooms = state.rooms.filter(r => r.status === 'FREE').sort((a, b) => b.usable_capacity - a.usable_capacity);
+    let cap = 0;
+    for (const r of freeRooms) {
+        if (cap >= state.totalStudents) break;
+        toggleRoom(r.room_id, r.usable_capacity);
+        cap += r.usable_capacity;
+    }
+    if (cap < state.totalStudents) {
+        Swal.fire('Warning', `Only ${cap} seats available across all free rooms. Not enough for ${state.totalStudents} students.`, 'warning');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  STEP 2 → 3 — GENERATE
+// ═══════════════════════════════════════════════════════════
+async function generateSeating() {
+    const result = await Swal.fire({
+        title: 'Generate Seating Plan?',
+        html: `<div class="text-start">
+            <p><b>${state.totalStudents}</b> students will be seated across <b>${state.selectedRoomIds.length}</b> rooms.</p>
+            <p class="text-muted small">Anti-copy algorithm will mix branches and ensure no two neighbors share the same subject.</p>
+        </div>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Generate',
+        confirmButtonColor: '#3b82f6'
+    });
+    if (!result.isConfirmed) return;
+
+    const btn = document.getElementById('btnGenerateSeating');
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generating...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/seating/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                exam_date: state.examDate,
+                session_order: parseInt(state.sessionOrder),
+                notification_ids: state.selectedNotificationIds,
+                room_ids: state.selectedRoomIds
+            })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Generation failed');
+
+        state.generatedAllocations = data.allocations;
+        state.generatedRoomsPreview = data.rooms_preview;
+
+        renderPreview(data);
+        goToStep(3);
+        document.getElementById('previewTotalBadge').textContent = `${data.total_students} students`;
+    } catch (err) {
+        Swal.fire('Error', err.message, 'error');
+    } finally {
+        btn.innerHTML = '<i class="bi bi-cpu me-1"></i>Generate Seating Plan';
+        btn.disabled = false;
+    }
+}
+
+function renderPreview(data) {
+    const container = document.getElementById('previewContainer');
+    container.innerHTML = data.rooms_preview.map((r, i) => `
+        <div class="mb-4">
+            <div class="preview-room-header">
+                <div>
+                    <span class="fw-bold fs-6">${r.room_number || r.room_name}</span>
+                    <span class="ms-2 opacity-75 small">Room ${i + 1} of ${data.rooms_preview.length}</span>
+                </div>
+                <div class="d-flex gap-3 align-items-center">
+                    <span class="badge bg-light text-dark">${r.student_count} / ${r.usable_capacity} seats</span>
+                </div>
+            </div>
+            <div class="small text-muted px-2 py-1 border-start border-end" style="background:#f8fafc;">
+                <i class="bi bi-people me-1"></i>${r.branch_summary_display || 'Mixed branches'}
+            </div>
+            <div class="table-responsive" style="max-height:300px; overflow-y:auto;">
+                <table class="table table-sm table-bordered mb-0 preview-table">
+                    <thead>
+                        <tr>
+                            <th>S.No</th><th>Bench</th><th>Register No</th>
+                            <th>Student Name</th><th>Branch</th><th>Subject</th><th>Code</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${r.students.slice(0, 50).map(s => `
+                        <tr>
+                            <td>${s.seat_serial}</td>
+                            <td><span class="badge bg-secondary">${s.bench_label || '—'}</span></td>
+                            <td class="fw-bold">${s.register_number || s.student_id}</td>
+                            <td>${s.student_name || '—'}</td>
+                            <td><span class="badge bg-primary">${s.branch_code || '—'}</span></td>
+                            <td class="text-truncate" style="max-width:140px;" title="${s.subject_name || ''}">${s.subject_name || '—'}</td>
+                            <td><small>${s.syllabus_code || '—'}</small></td>
+                        </tr>`).join('')}
+                        ${r.students.length > 50 ? `<tr><td colspan="7" class="text-center text-muted">... and ${r.students.length - 50} more students</td></tr>` : ''}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  STEP 3 → 4
+// ═══════════════════════════════════════════════════════════
+function proceedToStep4() {
+    document.getElementById('saveStudentCount').textContent = state.totalStudents.toLocaleString();
+    document.getElementById('saveRoomCount').textContent = state.selectedRoomIds.length;
+    document.getElementById('saveDate').textContent = formatDate(state.examDate);
+    document.getElementById('saveSession').textContent = state.sessionOrder === '1' ? 'FN' : 'AN';
+    goToStep(4);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  STEP 4 — SAVE
+// ═══════════════════════════════════════════════════════════
+async function saveSeatingPlan() {
+    const btn = document.getElementById('btnSavePlan');
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/seating/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                exam_date: state.examDate,
+                session_order: parseInt(state.sessionOrder),
+                notification_ids: state.selectedNotificationIds,
+                room_ids: state.selectedRoomIds,
+                allocations: state.generatedAllocations,
+                generated_by: document.getElementById('generatedBy').value || 'Admin',
+                notes: document.getElementById('planNotes').value || null
+            })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Save failed');
+
+        state.savedPlanId = data.plan_id;
+        document.getElementById('savedPlanId').textContent = data.plan_id;
+        document.getElementById('postSaveActions').style.display = 'block';
+        document.getElementById('btnSavePlan').style.display = 'none';
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Saved!',
+            text: data.message,
+            timer: 3000,
+            showConfirmButton: false
+        });
+    } catch (err) {
+        Swal.fire('Error', err.message, 'error');
+        btn.innerHTML = '<i class="bi bi-save me-1"></i>Save Seating Plan';
+        btn.disabled = false;
+    }
+}
+
+function exportPDF() {
+    if (!state.savedPlanId) return;
+    window.open(`/api/seating/pdf/${state.savedPlanId}`, '_blank');
+}
+
+function viewFullPlan() {
+    if (!state.savedPlanId) return;
+    window.open(`seating-plan-view.html?planId=${state.savedPlanId}`, '_blank');
+}
+
+function startNew() {
+    location.reload();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  QUICK BLOCK
+// ═══════════════════════════════════════════════════════════
+function openQuickBlock(roomId, roomNumber) {
+    document.getElementById('qbRoomId').value = roomId;
+    document.getElementById('qbRoomLabel').textContent = roomNumber;
+    document.getElementById('qbDateLabel').textContent = formatDate(state.examDate);
+    document.getElementById('qbSessionLabel').textContent = state.sessionOrder === '1' ? 'FN (Fore Noon)' : 'AN (After Noon)';
+    new bootstrap.Modal(document.getElementById('quickBlockModal')).show();
+}
+
+async function confirmQuickBlock() {
+    const roomId = document.getElementById('qbRoomId').value;
+    const reason = document.getElementById('qbReason').value;
+    const note = document.getElementById('qbNote').value;
+
+    try {
+        const res = await fetch('/api/seating/block-room', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                room_id: roomId,
+                from_date: state.examDate,
+                sessions: [parseInt(state.sessionOrder)],
+                reason,
+                reason_note: note || null,
+                blocked_by: document.getElementById('generatedBy').value || 'Admin'
+            })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        bootstrap.Modal.getInstance(document.getElementById('quickBlockModal')).hide();
+
+        // Update card to BLOCKED state
+        const room = state.rooms.find(r => r.room_id == roomId);
+        if (room) {
+            room.status = 'BLOCKED';
+            room.status_note = reason;
+            const card = document.getElementById(`rc_${roomId}`);
+            if (card) {
+                card.className = 'room-card status-BLOCKED';
+                card.innerHTML = `
+                    <div class="room-badge badge-BLOCKED mb-1">BLOCKED</div>
+                    <div class="room-number">${room.room_number}</div>
+                    <div class="room-cap"><i class="bi bi-people me-1"></i>Cap: ${room.usable_capacity}</div>
+                    <div class="room-note">${reason}</div>`;
+            }
+        }
+
+        Swal.fire({ icon: 'success', title: 'Blocked!', text: `${document.getElementById('qbRoomLabel').textContent} blocked for this session.`, timer: 2000, showConfirmButton: false });
+    } catch (err) {
+        Swal.fire('Error', err.message, 'error');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  UTILITIES
+// ═══════════════════════════════════════════════════════════
+function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+</script>
+</body>
+</html>
