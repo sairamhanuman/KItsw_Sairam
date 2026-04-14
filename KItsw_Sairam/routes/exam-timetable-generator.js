@@ -1,415 +1,422 @@
 const express = require('express');
 
-// Initialize routes function
 function initializeRouter(promisePool) {
     const router = express.Router();
 
-    // POST generate initial timetable
+    // ── GET /saved/:notificationId ──────────────────────────────────────────
+    router.get('/saved/:notificationId', async (req, res) => {
+        try {
+            const { notificationId } = req.params;
+
+            const [entries] = await promisePool.query(`
+                SELECT
+                    ete.timetable_id,
+                    CAST(ete.notification_id AS CHAR) AS notification_id,
+                    DATE_FORMAT(ete.exam_date, '%Y-%m-%d') AS exam_date,
+                    ete.branch_id,
+                    ete.subject_id,
+                    ete.session_order,
+                    ete.status,
+                    sm.subject_name,
+                    sm.syllabus_code,
+                    sm.subject_type,
+                    COALESCE(sm.is_elective, 0)    AS is_elective,
+                    COALESCE(sm.is_under_group, 0) AS is_under_group,
+                    sm.elective_name,
+                    bm.branch_name,
+                    bm.branch_code
+                FROM exam_timetable_entries ete
+                LEFT JOIN subject_master sm ON sm.subject_id = ete.subject_id
+                LEFT JOIN branch_master  bm ON bm.branch_id  = ete.branch_id
+                WHERE CAST(ete.notification_id AS CHAR) = ?
+                ORDER BY ete.exam_date, bm.branch_code, sm.syllabus_code
+            `, [notificationId]);
+
+            let unassigned = [];
+            try {
+                const [rows] = await promisePool.query(`
+                    SELECT
+                        eus.unassigned_id,
+                        CAST(eus.notification_id AS CHAR) AS notification_id,
+                        eus.branch_id,
+                        eus.subject_id,
+                        eus.reason,
+                        sm.subject_name,
+                        sm.syllabus_code,
+                        sm.subject_type,
+                        COALESCE(sm.is_elective, 0)    AS is_elective,
+                        COALESCE(sm.is_under_group, 0) AS is_under_group,
+                        sm.elective_name,
+                        bm.branch_name,
+                        bm.branch_code
+                    FROM exam_unassigned_subjects eus
+                    LEFT JOIN subject_master sm ON sm.subject_id = eus.subject_id
+                    LEFT JOIN branch_master  bm ON bm.branch_id  = eus.branch_id
+                    WHERE CAST(eus.notification_id AS CHAR) = ?
+                    ORDER BY bm.branch_code, sm.syllabus_code
+                `, [notificationId]);
+                unassigned = rows;
+            } catch (_) {}
+
+            const dates = [...new Set(entries.map(e => e.exam_date))].sort();
+            const branchMap = {};
+            [...entries, ...unassigned].forEach(e => {
+                if (e.branch_id && !branchMap[e.branch_id]) {
+                    branchMap[e.branch_id] = {
+                        id:   e.branch_id,
+                        name: e.branch_name || `Branch ${e.branch_id}`,
+                        code: e.branch_code || `B${e.branch_id}`
+                    };
+                }
+            });
+            const branches = Object.values(branchMap)
+                .sort((a, b) => (a.code||'').localeCompare(b.code||''));
+
+            res.json({ status:'success', entries, unassigned, dates, branches, total:entries.length });
+
+        } catch (err) {
+            console.error('[/saved]', err.message);
+            res.status(500).json({ status:'error', message:err.message });
+        }
+    });
+
+    // ── POST /save-bulk ─────────────────────────────────────────────────────
+    // FIXED: uses SELECT * to handle both 'semesters' and 'semester_ids' columns
+    router.post('/save-bulk', async (req, res) => {
+        try {
+            const { notification_id, entries } = req.body;
+            if (!notification_id || !entries?.length) {
+                return res.status(400).json({ status:'error', message:'notification_id and entries required' });
+            }
+
+            // SELECT * handles both old (semester_ids) and new (semesters) column names
+            const [[notif]] = await promisePool.query(
+                `SELECT * FROM exam_notifications WHERE notification_id = ?`,
+                [notification_id]
+            );
+
+            let semesterId   = null;
+            let regulationId = null;
+            let batchId      = notif?.batch_id   || null;
+            let batchName    = notif?.batch_name  || null;
+
+            const semRaw = notif?.semesters   || notif?.semester_ids   || null;
+            const regRaw = notif?.regulations || notif?.regulation_ids || null;
+
+            if (semRaw) {
+                try { const a = JSON.parse(semRaw); semesterId   = Array.isArray(a) ? a[0] : a; }
+                catch(_) { semesterId   = semRaw; }
+            }
+            if (regRaw) {
+                try { const a = JSON.parse(regRaw); regulationId = Array.isArray(a) ? a[0] : a; }
+                catch(_) { regulationId = regRaw; }
+            }
+
+            // ── Resolve session_order from sessions_master ────────────────
+            let sessionOrder = 1;
+            try {
+                const [[sessRow]] = await promisePool.query(
+                    `SELECT COALESCE(session_group, session_name) AS grp
+                     FROM sessions_master WHERE session_id = ?`,
+                    [notif?.session_id]
+                );
+                sessionOrder = (sessRow?.grp || 'AN').toUpperCase() === 'FN' ? 1 : 2;
+            } catch (_) {}
+            console.log(`[/save-bulk] session_id=${notif?.session_id} → session_order=${sessionOrder}`);
+
+            // Delete existing then re-insert (notification_id stored as string)
+            await promisePool.query(
+                `DELETE FROM exam_timetable_entries WHERE CAST(notification_id AS CHAR) = ?`,
+                [notification_id]
+            );
+
+            const rows = entries.map(e => [
+                notification_id,        // stored as-is (VARCHAR)
+                e.exam_date,
+                e.branch_id,
+                e.subject_id,
+                semesterId,
+                regulationId,
+                sessionOrder,           // resolved from sessions_master
+                'scheduled',
+                batchId,
+                batchName
+            ]);
+
+            await promisePool.query(`
+                INSERT INTO exam_timetable_entries
+                    (notification_id, exam_date, branch_id, subject_id,
+                     semester_id, regulation_id, session_order, status,
+                     batch_id, batch_name)
+                VALUES ?
+            `, [rows]);
+
+            await promisePool.query(
+                `UPDATE exam_notifications SET timetable_generated = 1 WHERE notification_id = ?`,
+                [notification_id]
+            ).catch(() => {});
+
+            console.log(`[/save-bulk] Saved ${rows.length} entries for ${notification_id}`);
+
+            res.json({ status:'success', message:`${rows.length} entries saved`, total:rows.length });
+
+        } catch (err) {
+            console.error('[/save-bulk]', err.message);
+            res.status(500).json({ status:'error', message:err.message });
+        }
+    });
+
+    // ── POST /generate/:notificationId ─────────────────────────────────────
+    // FIXED: notification_id stored as string, not parseInt
     router.post('/generate/:notificationId', async (req, res) => {
         try {
-            console.log('=== GENERATE INITIAL TIMETABLE ===');
             const { notificationId } = req.params;
-            
-            // Get notification details
+
             const [notification] = await promisePool.query(
                 'SELECT * FROM exam_notifications WHERE notification_id = ?',
                 [notificationId]
             );
-            
-            if (notification.length === 0) {
-                return res.status(404).json({
-                    status: 'error',
-                    message: 'Notification not found'
-                });
+            if (!notification.length) {
+                return res.status(404).json({ status:'error', message:'Notification not found' });
             }
-            
             const notif = notification[0];
-            
-            // Clear existing timetable entries and unassigned subjects for this notification
-            await promisePool.query('DELETE FROM exam_timetable_entries WHERE notification_id = ?', [notificationId]);
-            await promisePool.query('DELETE FROM exam_unassigned_subjects WHERE notification_id = ?', [notificationId]);
-            
-            // Get all subjects matching the notification criteria
-            const subjectsQuery = `
-                SELECT 
-                    sm.*,
-                    bm.branch_id,
-                    bm.branch_name,
-                    bm.branch_code
+
+            await promisePool.query(
+                'DELETE FROM exam_timetable_entries WHERE CAST(notification_id AS CHAR) = ?',
+                [notificationId]
+            );
+            await promisePool.query(
+                'DELETE FROM exam_unassigned_subjects WHERE CAST(notification_id AS CHAR) = ?',
+                [notificationId]
+            );
+
+            // Support both semesters/semester_ids and regulations/regulation_ids
+            const semIds = notif.semesters   || notif.semester_ids   || '';
+            const regIds = notif.regulations || notif.regulation_ids || '';
+
+            const [subjects] = await promisePool.query(`
+                SELECT sm.*, bm.branch_id, bm.branch_name, bm.branch_code
                 FROM subject_master sm
                 JOIN branch_master bm ON sm.branch_id = bm.branch_id
                 WHERE sm.programme_id = ?
-                AND FIND_IN_SET(sm.semester_id, ?) > 0
-                AND FIND_IN_SET(sm.regulation_id, ?) > 0
-                AND sm.is_active = 1
+                  AND FIND_IN_SET(sm.semester_id,   ?) > 0
+                  AND FIND_IN_SET(sm.regulation_id, ?) > 0
+                  AND sm.is_active = 1
                 ORDER BY bm.branch_code, sm.subject_order, sm.subject_name
-            `;
-            
-            const [subjects] = await promisePool.query(subjectsQuery, [
-                notif.programme_id,
-                notif.semester_ids,
-                notif.regulation_ids
-            ]);
-            
-            console.log(`Found ${subjects.length} subjects for timetable generation`);
-            
-            // Get exam dates between start_date and end_date
-            const datesQuery = `
-                SELECT 
-                    DATE(?) as exam_date
-                WHERE DATE(?) BETWEEN ? AND ?
-            `;
-            
-            // Generate date range
-            const startDate = new Date(notif.start_date);
-            const endDate = new Date(notif.end_date);
+            `, [notif.programme_id, semIds, regIds]);
+
+            let holidayDates = [];
+            try {
+                const [holidays] = await promisePool.query(
+                    `SELECT DATE_FORMAT(holiday_date,'%Y-%m-%d') AS hdate FROM holidays WHERE is_active = 1`
+                );
+                holidayDates = holidays.map(h => h.hdate);
+            } catch (_) {}
+
+            // ── Resolve session_order from sessions_master ────────────────
+            //    Uses notification's session_id → FN=1, everything else=2
+            let sessionOrder = 1;
+            try {
+                const [[sessRow]] = await promisePool.query(
+                    `SELECT COALESCE(session_group, session_name) AS grp
+                     FROM sessions_master WHERE session_id = ?`,
+                    [notif.session_id]
+                );
+                sessionOrder = (sessRow?.grp || 'AN').toUpperCase() === 'FN' ? 1 : 2;
+            } catch (_) {}
+            console.log(`[/generate] session_id=${notif.session_id} → session_order=${sessionOrder}`);
+
             const examDates = [];
-            
-            for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-                // Skip weekends (Saturday = 6, Sunday = 0)
-                if (date.getDay() !== 0 && date.getDay() !== 6) {
-                    examDates.push(new Date(date));
-                }
+            for (let d = new Date(notif.start_date); d <= new Date(notif.end_date); d.setDate(d.getDate()+1)) {
+                if (d.getDay() === 0) continue;
+                const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                if (!holidayDates.includes(ds)) examDates.push(ds);
             }
-            
-            console.log(`Generated ${examDates.length} exam dates (excluding weekends)`);
-            
-            if (examDates.length === 0) {
-                return res.status(400).json({
-                    status: 'error',
-                    message: 'No valid exam dates in the specified range (excluding weekends)'
-                });
+
+            if (!examDates.length) {
+                return res.status(400).json({ status:'error', message:'No valid exam dates found' });
             }
-            
-            // Group subjects by branch
+
             const subjectsByBranch = {};
-            subjects.forEach(subject => {
-                if (!subjectsByBranch[subject.branch_id]) {
-                    subjectsByBranch[subject.branch_id] = {
-                        branch_info: {
-                            branch_id: subject.branch_id,
-                            branch_name: subject.branch_name,
-                            branch_code: subject.branch_code
-                        },
-                        subjects: []
-                    };
-                }
-                subjectsByBranch[subject.branch_id].subjects.push(subject);
+            subjects.forEach(s => {
+                if (!subjectsByBranch[s.branch_id]) subjectsByBranch[s.branch_id] = [];
+                subjectsByBranch[s.branch_id].push(s);
             });
-            
-            // Generate timetable using round-robin algorithm
+
             const timetableEntries = [];
             const unassignedSubjects = [];
-            
-            // Create rounds for each date
-            examDates.forEach((examDate, dateIndex) => {
+            const scheduledSet = new Set();
+
+            examDates.forEach(dateStr => {
                 Object.keys(subjectsByBranch).forEach(branchId => {
-                    const branchData = subjectsByBranch[branchId];
-                    const subjectsForBranch = branchData.subjects;
-                    
-                    // Calculate which subject should be scheduled for this date
-                    const subjectIndex = dateIndex % subjectsForBranch.length;
-                    
-                    if (subjectIndex < subjectsForBranch.length) {
-                        const subject = subjectsForBranch[subjectIndex];
-                        
-                        // Check if this subject is already scheduled
-                        const alreadyScheduled = timetableEntries.some(entry => 
-                            entry.subject_id === subject.subject_id
-                        );
-                        
-                        if (!alreadyScheduled) {
+                    for (const subject of subjectsByBranch[branchId]) {
+                        if (!scheduledSet.has(String(subject.subject_id))) {
                             timetableEntries.push({
-                                notification_id: parseInt(notificationId),
-                                exam_date: examDate.toISOString().split('T')[0],
-                                branch_id: subject.branch_id,
-                                subject_id: subject.subject_id,
-                                session_order: 1,
-                                status: 'scheduled'
+                                notification_id: notificationId,  // string, not parseInt
+                                exam_date:       dateStr,
+                                branch_id:       subject.branch_id,
+                                subject_id:      subject.subject_id,
+                                session_order:   sessionOrder,    // resolved from sessions_master
+                                status:          'scheduled'
                             });
-                        } else {
-                            // Add to unassigned if already scheduled
-                            unassignedSubjects.push({
-                                notification_id: parseInt(notificationId),
-                                subject_id: subject.subject_id,
-                                branch_id: subject.branch_id,
-                                reason: 'pending',
-                                priority_order: 0
-                            });
+                            scheduledSet.add(String(subject.subject_id));
+                            break;
                         }
                     }
                 });
             });
-            
-            // Add remaining subjects to unassigned
-            Object.keys(subjectsByBranch).forEach(branchId => {
-                const branchData = subjectsByBranch[branchId];
-                const subjectsForBranch = branchData.subjects;
-                
-                subjectsForBranch.forEach(subject => {
-                    const isScheduled = timetableEntries.some(entry => 
-                        entry.subject_id === subject.subject_id
-                    );
-                    
-                    if (!isScheduled) {
-                        unassignedSubjects.push({
-                            notification_id: parseInt(notificationId),
-                            subject_id: subject.subject_id,
-                            branch_id: subject.branch_id,
-                            reason: 'no_dates_available',
-                            priority_order: 0
-                        });
-                    }
-                });
-            });
-            
-            // Insert timetable entries
-            if (timetableEntries.length > 0) {
-                const timetableValues = timetableEntries.map(entry => 
-                    `(${entry.notification_id}, '${entry.exam_date}', ${entry.branch_id}, ${entry.subject_id}, ${entry.session_order}, '${entry.status}')`
-                ).join(', ');
-                
-                const insertTimetableQuery = `
-                    INSERT INTO exam_timetable_entries 
-                    (notification_id, exam_date, branch_id, subject_id, session_order, status)
-                    VALUES ${timetableValues}
-                `;
-                
-                await promisePool.query(insertTimetableQuery);
-            }
-            
-            // Insert unassigned subjects
-            if (unassignedSubjects.length > 0) {
-                const unassignedValues = unassignedSubjects.map(entry => 
-                    `(${entry.notification_id}, ${entry.subject_id}, ${entry.branch_id}, '${entry.reason}', ${entry.priority_order})`
-                ).join(', ');
-                
-                const insertUnassignedQuery = `
-                    INSERT INTO exam_unassigned_subjects 
-                    (notification_id, subject_id, branch_id, reason, priority_order)
-                    VALUES ${unassignedValues}
-                `;
-                
-                await promisePool.query(insertUnassignedQuery);
-            }
-            
-            // Update notification to mark timetable as generated
-            await promisePool.query(
-                'UPDATE exam_notifications SET timetable_generated = TRUE WHERE notification_id = ?',
-                [notificationId]
-            );
-            
-            res.json({
-                status: 'success',
-                message: 'Initial timetable generated successfully',
-                data: {
-                    scheduled_entries: timetableEntries.length,
-                    unassigned_subjects: unassignedSubjects.length,
-                    total_dates: examDates.length,
-                    total_branches: Object.keys(subjectsByBranch).length
+
+            subjects.forEach(s => {
+                if (!scheduledSet.has(String(s.subject_id))) {
+                    unassignedSubjects.push({
+                        notification_id: notificationId,  // string
+                        subject_id:      s.subject_id,
+                        branch_id:       s.branch_id,
+                        reason:          'no_dates_available',
+                        priority_order:  0
+                    });
                 }
             });
-            
-        } catch (error) {
-            console.error('=== GENERATE INITIAL TIMETABLE ERROR ===');
-            console.error('Error:', error);
-            res.status(500).json({
-                status: 'error',
-                message: 'Failed to generate initial timetable',
-                error: error.message
+
+            if (timetableEntries.length > 0) {
+                const rows = timetableEntries.map(e => [
+                    e.notification_id, e.exam_date, e.branch_id,
+                    e.subject_id, e.session_order, e.status
+                ]);
+                await promisePool.query(`
+                    INSERT INTO exam_timetable_entries
+                        (notification_id,exam_date,branch_id,subject_id,session_order,status)
+                    VALUES ?
+                `, [rows]);
+            }
+
+            if (unassignedSubjects.length > 0) {
+                const rows = unassignedSubjects.map(e => [
+                    e.notification_id, e.subject_id, e.branch_id, e.reason, e.priority_order
+                ]);
+                await promisePool.query(`
+                    INSERT INTO exam_unassigned_subjects
+                        (notification_id,subject_id,branch_id,reason,priority_order)
+                    VALUES ?
+                `, [rows]);
+            }
+
+            await promisePool.query(
+                'UPDATE exam_notifications SET timetable_generated = 1 WHERE notification_id = ?',
+                [notificationId]
+            ).catch(() => {});
+
+            res.json({
+                status:  'success',
+                message: 'Timetable generated',
+                data: {
+                    scheduled_entries:   timetableEntries.length,
+                    unassigned_subjects: unassignedSubjects.length,
+                    total_dates:         examDates.length,
+                    total_branches:      Object.keys(subjectsByBranch).length
+                }
             });
+
+        } catch (err) {
+            console.error('[/generate]', err.message);
+            res.status(500).json({ status:'error', message:err.message });
         }
     });
 
-    // POST update timetable entry (drag and drop)
+    // ── POST /update-entry ──────────────────────────────────────────────────
     router.post('/update-entry', async (req, res) => {
         try {
-            console.log('=== UPDATE TIMETABLE ENTRY ===');
-            
-            const {
-                timetable_id,
-                new_exam_date,
-                new_branch_id,
-                new_subject_id,
-                session_order = 1
-            } = req.body;
-            
-            // Check if entry exists
-            const [existing] = await promisePool.query(
-                'SELECT * FROM exam_timetable_entries WHERE timetable_id = ?',
-                [timetable_id]
-            );
-            
-            if (existing.length === 0) {
-                return res.status(404).json({
-                    status: 'error',
-                    message: 'Timetable entry not found'
-                });
+            const { timetable_id, new_exam_date, swap_timetable_id } = req.body;
+            if (!timetable_id || !new_exam_date) {
+                return res.status(400).json({ status:'error', message:'timetable_id and new_exam_date required' });
             }
-            
-            // Check for conflicts
-            const [conflicts] = await promisePool.query(
-                'SELECT * FROM exam_timetable_entries WHERE exam_date = ? AND branch_id = ? AND subject_id = ? AND timetable_id != ?',
-                [new_exam_date, new_branch_id, new_subject_id, timetable_id]
+
+            const [[entry]] = await promisePool.query(
+                'SELECT * FROM exam_timetable_entries WHERE timetable_id = ?', [timetable_id]
             );
-            
-            if (conflicts.length > 0) {
-                return res.status(400).json({
-                    status: 'error',
-                    message: 'Conflicting entry exists for this date, branch, and subject'
-                });
+            if (!entry) return res.status(404).json({ status:'error', message:'Entry not found' });
+
+            if (swap_timetable_id) {
+                const [[entryB]] = await promisePool.query(
+                    'SELECT * FROM exam_timetable_entries WHERE timetable_id = ?', [swap_timetable_id]
+                );
+                if (!entryB) return res.status(404).json({ status:'error', message:'Swap entry not found' });
+
+                const dateA = entry.exam_date;
+                const dateB = entryB.exam_date;
+                await promisePool.query(
+                    `UPDATE exam_timetable_entries SET exam_date = '1970-01-01' WHERE timetable_id = ?`, [timetable_id]
+                );
+                await promisePool.query(
+                    `UPDATE exam_timetable_entries SET exam_date = ? WHERE timetable_id = ?`, [dateA, swap_timetable_id]
+                );
+                await promisePool.query(
+                    `UPDATE exam_timetable_entries SET exam_date = ? WHERE timetable_id = ?`, [dateB, timetable_id]
+                );
+                return res.json({ status:'success', message:'Dates swapped', swapped:true });
             }
-            
-            // Update the entry
+
             await promisePool.query(
-                'UPDATE exam_timetable_entries SET exam_date = ?, branch_id = ?, subject_id = ?, session_order = ? WHERE timetable_id = ?',
-                [new_exam_date, new_branch_id, new_subject_id, session_order, timetable_id]
+                'UPDATE exam_timetable_entries SET exam_date = ? WHERE timetable_id = ?',
+                [new_exam_date, timetable_id]
             );
-            
-            // Get updated entry
-            const [updatedEntry] = await promisePool.query(
-                'SELECT * FROM exam_timetable_entries WHERE timetable_id = ?',
-                [timetable_id]
-            );
-            
-            res.json({
-                status: 'success',
-                message: 'Timetable entry updated successfully',
-                data: updatedEntry[0]
-            });
-            
-        } catch (error) {
-            console.error('=== UPDATE TIMETABLE ENTRY ERROR ===');
-            console.error('Error:', error);
-            res.status(500).json({
-                status: 'error',
-                message: 'Failed to update timetable entry',
-                error: error.message
-            });
+            res.json({ status:'success', message:'Date updated', timetable_id, new_exam_date });
+
+        } catch (err) {
+            console.error('[/update-entry]', err.message);
+            res.status(500).json({ status:'error', message:err.message });
         }
     });
 
-    // POST move subject from unassigned to timetable
+    // ── POST /assign-subject ────────────────────────────────────────────────
     router.post('/assign-subject', async (req, res) => {
         try {
-            console.log('=== ASSIGN UNASSIGNED SUBJECT ===');
-            
-            const {
-                unassigned_id,
-                exam_date,
-                branch_id,
-                subject_id,
-                session_order = 1
-            } = req.body;
-            
-            // Check if unassigned subject exists
-            const [unassigned] = await promisePool.query(
-                'SELECT * FROM exam_unassigned_subjects WHERE unassigned_id = ?',
-                [unassigned_id]
+            const { unassigned_id, exam_date, branch_id, session_order = 1 } = req.body;
+            const [[unassigned]] = await promisePool.query(
+                'SELECT * FROM exam_unassigned_subjects WHERE unassigned_id = ?', [unassigned_id]
             );
-            
-            if (unassigned.length === 0) {
-                return res.status(404).json({
-                    status: 'error',
-                    message: 'Unassigned subject not found'
-                });
-            }
-            
-            // Check for conflicts
-            const [conflicts] = await promisePool.query(
-                'SELECT * FROM exam_timetable_entries WHERE exam_date = ? AND branch_id = ? AND subject_id = ?',
-                [exam_date, branch_id, subject_id]
-            );
-            
-            if (conflicts.length > 0) {
-                return res.status(400).json({
-                    status: 'error',
-                    message: 'Conflicting entry exists for this date, branch, and subject'
-                });
-            }
-            
-            // Insert into timetable
-            const [result] = await promisePool.query(
-                'INSERT INTO exam_timetable_entries (notification_id, exam_date, branch_id, subject_id, session_order, status) VALUES (?, ?, ?, ?, ?, ?)',
-                [unassigned[0].notification_id, exam_date, branch_id, subject_id, session_order, 'scheduled']
-            );
-            
-            // Remove from unassigned
+            if (!unassigned) return res.status(404).json({ status:'error', message:'Not found' });
+
+            const [result] = await promisePool.query(`
+                INSERT INTO exam_timetable_entries
+                    (notification_id, exam_date, branch_id, subject_id, session_order, status)
+                VALUES (?, ?, ?, ?, ?, 'scheduled')
+            `, [unassigned.notification_id, exam_date, branch_id, unassigned.subject_id, session_order]);
+
             await promisePool.query(
-                'DELETE FROM exam_unassigned_subjects WHERE unassigned_id = ?',
-                [unassigned_id]
+                'DELETE FROM exam_unassigned_subjects WHERE unassigned_id = ?', [unassigned_id]
             );
-            
-            // Get new entry
-            const [newEntry] = await promisePool.query(
-                'SELECT * FROM exam_timetable_entries WHERE timetable_id = ?',
-                [result.insertId]
-            );
-            
-            res.json({
-                status: 'success',
-                message: 'Subject assigned successfully',
-                data: newEntry[0]
-            });
-            
-        } catch (error) {
-            console.error('=== ASSIGN UNASSIGNED SUBJECT ERROR ===');
-            console.error('Error:', error);
-            res.status(500).json({
-                status: 'error',
-                message: 'Failed to assign subject',
-                error: error.message
-            });
+            res.json({ status:'success', timetable_id:result.insertId });
+
+        } catch (err) {
+            console.error('[/assign-subject]', err.message);
+            res.status(500).json({ status:'error', message:err.message });
         }
     });
 
-    // POST move subject from timetable to unassigned
+    // ── POST /unassign-subject ──────────────────────────────────────────────
     router.post('/unassign-subject', async (req, res) => {
         try {
-            console.log('=== UNASSIGN SUBJECT ===');
-            
             const { timetable_id, reason = 'pending' } = req.body;
-            
-            // Check if timetable entry exists
-            const [entry] = await promisePool.query(
-                'SELECT * FROM exam_timetable_entries WHERE timetable_id = ?',
-                [timetable_id]
+            const [[entry]] = await promisePool.query(
+                'SELECT * FROM exam_timetable_entries WHERE timetable_id = ?', [timetable_id]
             );
-            
-            if (entry.length === 0) {
-                return res.status(404).json({
-                    status: 'error',
-                    message: 'Timetable entry not found'
-                });
-            }
-            
-            const timetableEntry = entry[0];
-            
-            // Add to unassigned
+            if (!entry) return res.status(404).json({ status:'error', message:'Not found' });
+
+            await promisePool.query(`
+                INSERT INTO exam_unassigned_subjects
+                    (notification_id, subject_id, branch_id, reason, priority_order)
+                VALUES (?, ?, ?, ?, 0)
+            `, [entry.notification_id, entry.subject_id, entry.branch_id, reason]);
+
             await promisePool.query(
-                'INSERT INTO exam_unassigned_subjects (notification_id, subject_id, branch_id, reason, priority_order) VALUES (?, ?, ?, ?, ?)',
-                [timetableEntry.notification_id, timetableEntry.subject_id, timetableEntry.branch_id, reason, 0]
+                'DELETE FROM exam_timetable_entries WHERE timetable_id = ?', [timetable_id]
             );
-            
-            // Remove from timetable
-            await promisePool.query(
-                'DELETE FROM exam_timetable_entries WHERE timetable_id = ?',
-                [timetable_id]
-            );
-            
-            res.json({
-                status: 'success',
-                message: 'Subject unassigned successfully'
-            });
-            
-        } catch (error) {
-            console.error('=== UNASSIGN SUBJECT ERROR ===');
-            console.error('Error:', error);
-            res.status(500).json({
-                status: 'error',
-                message: 'Failed to unassign subject',
-                error: error.message
-            });
+            res.json({ status:'success', message:'Subject unassigned' });
+
+        } catch (err) {
+            console.error('[/unassign-subject]', err.message);
+            res.status(500).json({ status:'error', message:err.message });
         }
     });
 

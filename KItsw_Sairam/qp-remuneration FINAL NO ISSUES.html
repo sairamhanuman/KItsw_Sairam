@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QP Remuneration Bill - KITSW</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#1a1a2e;font-size:14px;}
+.page-wrap{max-width:960px;margin:0 auto;padding:24px 20px 60px;}
+.page-header{background:linear-gradient(135deg,#1a237e,#3949ab);color:#fff;padding:20px 28px;border-radius:10px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 18px rgba(26,35,126,.25);}
+.page-header h1{font-size:19px;font-weight:700;}.page-header p{font-size:12px;opacity:.75;margin-top:3px;}
+.kits-logo{font-size:11px;text-align:right;opacity:.8;line-height:1.5;}
+#toast-container{position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column-reverse;gap:8px;z-index:9999;}
+.toast{min-width:260px;max-width:380px;padding:12px 16px;border-radius:8px;font-size:13px;font-weight:600;display:flex;align-items:flex-start;gap:10px;box-shadow:0 4px 16px rgba(0,0,0,.18);animation:toastIn .3s ease forwards;}
+@keyframes toastIn{from{opacity:0;transform:translateX(40px);}to{opacity:1;transform:translateX(0);}}
+.toast-success{background:#1b5e20;color:#fff;}.toast-error{background:#b71c1c;color:#fff;}
+.toast-warning{background:#e65100;color:#fff;}.toast-info{background:#0d47a1;color:#fff;}
+.toast-close{margin-left:auto;cursor:pointer;opacity:.7;font-size:15px;}
+.card{background:#fff;border-radius:10px;padding:22px 26px;margin-bottom:18px;box-shadow:0 1px 6px rgba(0,0,0,.08);}
+.card-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#3949ab;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #e8eaf6;display:flex;align-items:center;gap:8px;}
+.fetch-bar{display:flex;gap:10px;align-items:flex-end;}
+.fetch-bar input{flex:1;max-width:200px;padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:6px;font-size:14px;font-family:inherit;text-transform:uppercase;}
+.staff-info{display:none;background:#e8f5e9;border-radius:8px;padding:14px 18px;margin-bottom:0;border-left:4px solid #43a047;}
+.staff-info h4{color:#1b5e20;font-size:13px;font-weight:700;margin-bottom:10px;}
+.si-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;}
+.si-item label{font-size:10px;font-weight:700;color:#388e3c;text-transform:uppercase;letter-spacing:.4px;}
+.si-item span{display:block;font-size:13px;font-weight:600;color:#1a1a2e;}
+.pending-grid{display:grid;gap:10px;}
+.panel-option{border:2px solid #e0e0e0;border-radius:8px;padding:14px 18px;cursor:pointer;transition:all .2s;background:#fafafa;position:relative;}
+.panel-option:hover{border-color:#3949ab;background:#f3f4ff;}
+.panel-option.selected{border-color:#3949ab;background:#e8eaf6;}
+.panel-option.draft-exists{border-color:#f57c00;}
+.panel-option.draft-exists::after{content:'Draft saved';position:absolute;top:10px;right:12px;font-size:11px;font-weight:700;color:#f57c00;background:#fff3e0;padding:2px 8px;border-radius:8px;}
+.panel-option.submitted-panel::after{content:'Submitted';position:absolute;top:10px;right:12px;font-size:11px;font-weight:700;color:#2e7d32;background:#e8f5e9;padding:2px 8px;border-radius:8px;}
+.po-subject{font-weight:700;font-size:14px;color:#1a237e;}
+.po-meta{font-size:12px;color:#666;margin-top:3px;}
+.po-due{font-size:11px;color:#b71c1c;font-weight:600;margin-top:4px;}
+.fg label{display:block;font-size:11px;font-weight:700;color:#555;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px;}
+.fg input{width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:6px;font-size:13px;font-family:inherit;background:#fafafa;}
+.fg input[readonly]{background:#f0f0f0;color:#666;cursor:not-allowed;}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;}
+.remun-table{width:100%;border-collapse:collapse;font-size:13px;margin:14px 0;}
+.remun-table th{background:#1a237e;color:#fff;padding:10px 14px;text-align:left;font-size:11px;font-weight:700;}
+.remun-table td{padding:10px 14px;border-bottom:1px solid #f0f0f0;vertical-align:middle;}
+.remun-table .total-row td{background:#e8f5e9;font-weight:700;font-size:14px;}
+.remun-table .amt{font-weight:700;color:#1b5e20;text-align:right;}
+.amount-words{font-style:italic;color:#555;font-size:13px;margin-top:4px;}
+select.sets-sel{padding:6px 8px;border:1.5px solid #c5cae9;border-radius:4px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer;}
+.sig-area{border:2px dashed #c5cae9;border-radius:8px;padding:18px;text-align:center;cursor:pointer;transition:border-color .2s;max-width:300px;}
+.sig-area:hover{border-color:#3949ab;}
+.sig-area input{display:none;}
+#sig-preview{max-height:70px;margin-top:8px;border-radius:4px;display:none;}
+.btn{padding:10px 20px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;display:inline-flex;align-items:center;gap:6px;}
+.btn-primary{background:#3949ab;color:#fff;}.btn-success{background:#43a047;color:#fff;}
+.btn-outline{background:#fff;color:#3949ab;border:1.5px solid #3949ab;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.action-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;}
+.submitted-banner{background:#e8f5e9;border:2px solid #43a047;border-radius:8px;padding:14px 18px;font-size:13px;font-weight:600;color:#1b5e20;display:none;align-items:center;gap:8px;margin-bottom:14px;}
+.no-panels{text-align:center;padding:32px;color:#aaa;}
+</style>
+</head>
+<body>
+<div id="toast-container"></div>
+<div class="page-wrap">
+  <div class="page-header">
+    <div><h1>&#128176; QP Remuneration Bill</h1><p>Question Paper Setting &#8212; Remuneration Bill Generation &amp; Submission</p></div>
+    <div class="kits-logo">KAKATIYA INSTITUTE OF TECHNOLOGY &amp; SCIENCE<br>Examination Branch, KITSW, Warangal</div>
+  </div>
+  <div class="card">
+    <div class="card-title">&#128100; Step 1 &#8212; Enter Your Employee ID</div>
+    <div class="fetch-bar">
+      <input type="text" id="emp-id" placeholder="e.g. S0329" maxlength="20" onkeydown="if(event.key==='Enter') fetchPending()">
+      <button class="btn btn-primary" onclick="fetchPending()">&#128269; Fetch My Assignments</button>
+    </div>
+    <p style="font-size:12px;color:#888;margin-top:8px;">Enter your Employee ID to see your pending QP assignments.</p>
+  </div>
+  <div class="staff-info" id="staff-info-box">
+    <h4>&#9989; Faculty Details</h4>
+    <div class="si-grid">
+      <div class="si-item"><label>Name</label><span id="si-name"></span></div>
+      <div class="si-item"><label>Designation</label><span id="si-desig"></span></div>
+      <div class="si-item"><label>Department</label><span id="si-dept"></span></div>
+      <div class="si-item"><label>Contact</label><span id="si-contact"></span></div>
+      <div class="si-item"><label>Email</label><span id="si-email"></span></div>
+      <div class="si-item"><label>Bank / Branch</label><span id="si-bank"></span></div>
+      <div class="si-item"><label>Account No.</label><span id="si-account"></span></div>
+      <div class="si-item"><label>IFSC</label><span id="si-ifsc"></span></div>
+      <div class="si-item"><label>PAN</label><span id="si-pan"></span></div>
+    </div>
+  </div>
+  <div class="card" id="step2-card" style="display:none;">
+    <div class="card-title">&#128218; Step 2 &#8212; Select Your QP Assignment</div>
+    <div class="pending-grid" id="pending-grid"></div>
+  </div>
+  <div class="card" id="step3-card" style="display:none;">
+    <div class="card-title">&#128203; Step 3 &#8212; Bill Details</div>
+    <div class="submitted-banner" id="submitted-banner">&#9989; Bill already submitted. You can still download a copy below.</div>
+    <div id="bill-form-wrap">
+      <div class="form-grid" style="margin-bottom:16px;">
+        <div class="fg"><label>Course Code &#8212; Name</label><input type="text" id="r-course" readonly></div>
+        <div class="fg"><label>Examination</label><input type="text" id="r-exam" readonly></div>
+        <div class="fg"><label>Exam Type</label><input type="text" id="r-examtype" readonly></div>
+        <div class="fg"><label>Date</label><input type="date" id="r-date"></div>
+        <div class="fg"><label>Station</label><input type="text" id="r-station" value="Hanamkonda"></div>
+      </div>
+      <div class="card-title" style="margin-top:4px;">&#128181; Step 4 &#8212; Remuneration Calculation</div>
+      <table class="remun-table">
+        <thead><tr><th>Item</th><th>No. of Sets</th><th style="text-align:right">Rate (&#8377;)</th><th style="text-align:right">Amount (&#8377;)</th></tr></thead>
+        <tbody>
+          <tr><td><b>Question Paper Setting</b><br><small style="color:#888">(&#8377; 1,000 per set)</small></td>
+              <td><select class="sets-sel" id="r-qp-sets" onchange="calcRemun()"><option value="1">1</option><option value="2" selected>2</option></select></td>
+              <td style="text-align:right">1,000</td><td class="amt" id="r-qp-amt">2,000</td></tr>
+          <tr><td><b>Scheme of Evaluation</b><br><small style="color:#888">(&#8377; 500 per paper)</small></td>
+              <td><select class="sets-sel" id="r-scheme-sets" onchange="calcRemun()"><option value="0">0</option><option value="1" selected>1</option><option value="2">2</option></select></td>
+              <td style="text-align:right">500</td><td class="amt" id="r-scheme-amt">500</td></tr>
+          <tr class="total-row"><td colspan="3"><b>TOTAL AMOUNT</b></td><td class="amt" id="r-total-amt">&#8377; 2,500</td></tr>
+        </tbody>
+      </table>
+      <div class="amount-words" id="r-words">In words: <b>Rupees Two Thousand Five Hundred Only</b></div>
+      <div class="card-title" style="margin-top:20px;">&#9997;&#65039; Step 5 &#8212; Digital Signature</div>
+      <div class="sig-area" id="sig-area" onclick="document.getElementById('sig-file').click()">
+        <div style="font-size:28px;">&#9997;&#65039;</div>
+        <div style="font-size:13px;color:#666;margin-top:4px;">Click to upload signature</div>
+        <div style="font-size:11px;color:#aaa;">PNG / JPG &#8212; max 300KB</div>
+        <input type="file" id="sig-file" accept="image/png,image/jpeg" onchange="loadSig(event)">
+        <img id="sig-preview" src="" alt="Signature">
+      </div>
+      <div id="sig-status" style="font-size:12px;color:#43a047;margin-top:6px;display:none;">&#9989; Signature loaded</div>
+      <div class="action-row" id="action-row">
+        <button class="btn btn-outline" onclick="saveDraft()" id="btn-draft">&#128190; Save Draft</button>
+        <button class="btn btn-primary" onclick="downloadPDF()" id="btn-download">&#128196; Download PDF</button>
+        <button class="btn btn-success" onclick="submitBill()" id="btn-submit">&#128228; Submit Bill</button>
+      </div>
+      <p style="font-size:12px;color:#888;margin-top:10px;">&#128161; You can download the PDF unlimited times. Submit only when ready &#8212; submission is final.</p>
+    </div>
+  </div>
+</div>
+<script>
+let staffData=null,allPanels=[],selectedPanel=null,currentBill=null,sigDataUrl=null;
+function showToast(msg,type='success'){const icons={success:'✅',error:'❌',warning:'⚠️',info:'ℹ️'};const c=document.getElementById('toast-container');const t=document.createElement('div');t.className='toast toast-'+type;t.innerHTML='<span class="toast-icon">'+icons[type]+'</span><span style="flex:1">'+msg+'</span><span class="toast-close" onclick="this.parentElement.remove()">✕</span>';c.appendChild(t);setTimeout(()=>t.remove(),5000);}
+document.addEventListener('DOMContentLoaded',()=>{document.getElementById('r-date').value=new Date().toISOString().split('T')[0];const p=new URLSearchParams(window.location.search);if(p.get('emp')){document.getElementById('emp-id').value=p.get('emp');fetchPending();}});
+async function fetchPending(){const empId=document.getElementById('emp-id').value.trim().toUpperCase();if(!empId){showToast('Please enter your Employee ID','warning');return;}try{const res=await fetch('/api/qp-setting/remuneration/pending/'+encodeURIComponent(empId));const data=await res.json();if(!data.success){showToast(data.message,'error');return;}staffData=data.staff;document.getElementById('si-name').textContent=(staffData.title_prefix||'')+' '+staffData.full_name;document.getElementById('si-desig').textContent=staffData.designation||'—';document.getElementById('si-dept').textContent=staffData.branch_name||'—';document.getElementById('si-contact').textContent=staffData.mobile_number||'—';document.getElementById('si-email').textContent=staffData.email||'—';document.getElementById('si-bank').textContent=(staffData.bank_name||'—')+' / '+(staffData.bank_branch||'—');document.getElementById('si-account').textContent=staffData.account_number||'—';document.getElementById('si-ifsc').textContent=staffData.ifsc_code||'—';document.getElementById('si-pan').textContent=staffData.pan_card||'—';document.getElementById('staff-info-box').style.display='block';allPanels=data.panels||[];renderPanels(allPanels);document.getElementById('step2-card').style.display='block';showToast(allPanels.length?'Found '+allPanels.length+' assignment(s). Select one below.':'No pending assignments found.',allPanels.length?'success':'info');}catch(err){showToast('Error: '+err.message,'error');}}
+function renderPanels(panels){const grid=document.getElementById('pending-grid');if(!panels.length){grid.innerHTML='<div class="no-panels"><div style="font-size:40px">🎉</div><b>No assignments found.</b><br><small>No QP assignments have been sent to you yet.</small></div>';return;}const pending=panels.filter(p=>!p.bill_id||p.bill_status!=='submitted');const submitted=panels.filter(p=>p.bill_id&&p.bill_status==='submitted');function renderCard(p,i){const hasDraft=p.bill_id&&p.bill_status==='draft';const isSubmitted=p.bill_id&&p.bill_status==='submitted';const cls=isSubmitted?'submitted-panel':hasDraft?'draft-exists':'';const due=p.due_date?new Date(p.due_date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'—';return'<div class="panel-option '+cls+'" onclick="selectPanel('+i+')" id="po-'+i+'"><div class="po-subject">'+p.syllabus_code+' — '+p.subject_name+'</div><div class="po-meta">'+p.branch_name+' | Sem '+p.semester_number+' — '+p.exam_type+' | '+p.no_of_templates+' set(s) | Ref: '+p.ref_no+'</div><div class="po-due">📅 Due: '+due+'</div></div>';}let html='';if(pending.length){html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#b71c1c;margin-bottom:6px;">⏳ Pending Bills ('+pending.length+')</div>';}html+=pending.map((p,i)=>renderCard(p,i)).join('');if(submitted.length){html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#2e7d32;margin-top:'+(pending.length?'14px':'0')+'px;margin-bottom:6px;">✅ Already Submitted — Download Only ('+submitted.length+')</div>';}html+=submitted.map((p,i)=>renderCard(p,pending.length+i)).join('');grid.innerHTML=html;}
+
+async function selectPanel(idx){document.querySelectorAll('.panel-option').forEach(e=>e.classList.remove('selected'));document.getElementById('po-'+idx).classList.add('selected');selectedPanel=allPanels[idx];const p=selectedPanel;const romans={1:'I',2:'II',3:'III',4:'IV',5:'V',6:'VI',7:'VII',8:'VIII'};document.getElementById('r-course').value=p.syllabus_code+' — '+p.subject_name;document.getElementById('r-exam').value='B.Tech '+(romans[p.semester_number]||p.semester_number)+' Semester Examination';document.getElementById('r-examtype').value=p.exam_type==='Supply'?'Supplementary':'Regular';if(p.bill_id){currentBill={bill_id:p.bill_id,bill_status:p.bill_status};document.getElementById('r-qp-sets').value=p.no_of_sets||2;document.getElementById('r-scheme-sets').value=p.scheme_sets||1;if(p.signature_data){sigDataUrl=p.signature_data;const img=document.getElementById('sig-preview');img.src=sigDataUrl;img.style.display='block';document.getElementById('sig-status').style.display='block';}}else{currentBill=null;document.getElementById('r-qp-sets').value=p.no_of_templates>=2?2:1;document.getElementById('r-scheme-sets').value=1;sigDataUrl=null;document.getElementById('sig-preview').style.display='none';document.getElementById('sig-status').style.display='none';}calcRemun();const isSubmitted=p.bill_id&&p.bill_status==='submitted';document.getElementById('submitted-banner').style.display=isSubmitted?'flex':'none';document.getElementById('btn-download').style.display=isSubmitted?'inline-flex':'none';document.getElementById('btn-draft').style.display=isSubmitted?'none':'inline-flex';document.getElementById('btn-submit').style.display=isSubmitted?'none':'inline-flex';document.querySelectorAll('.sets-sel').forEach(el=>el.disabled=isSubmitted);document.getElementById('sig-area').style.pointerEvents=isSubmitted?'none':'auto';document.getElementById('step3-card').style.display='block';document.getElementById('step3-card').scrollIntoView({behavior:'smooth',block:'start'});}
+function calcRemun(){const qp=parseInt(document.getElementById('r-qp-sets').value)||0;const sc=parseInt(document.getElementById('r-scheme-sets').value)||0;const qa=qp*1000,sa=sc*500,tot=qa+sa;document.getElementById('r-qp-amt').textContent=qa.toLocaleString('en-IN');document.getElementById('r-scheme-amt').textContent=sa.toLocaleString('en-IN');document.getElementById('r-total-amt').textContent='₹ '+tot.toLocaleString('en-IN');document.getElementById('r-words').innerHTML='In words: <b>'+amountToWords(tot)+' Only</b>';}
+function loadSig(e){const file=e.target.files[0];if(!file)return;if(file.size>300*1024){showToast('Signature must be under 300KB','warning');return;}const r=new FileReader();r.onload=ev=>{sigDataUrl=ev.target.result;const img=document.getElementById('sig-preview');img.src=sigDataUrl;img.style.display='block';document.getElementById('sig-status').style.display='block';};r.readAsDataURL(file);}
+async function saveDraft(){if(!selectedPanel||!staffData){showToast('Select an assignment first','warning');return;}const btn=document.getElementById('btn-draft');btn.disabled=true;btn.textContent='⏳ Saving...';try{const res=await fetch('/api/qp-setting/remuneration/save-draft',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({panel_id:selectedPanel.panel_id,staff_id:staffData.staff_id,no_of_sets:parseInt(document.getElementById('r-qp-sets').value)||0,scheme_sets:parseInt(document.getElementById('r-scheme-sets').value)||0,signature_data:sigDataUrl||null})});const data=await res.json();if(!data.success)throw new Error(data.message);currentBill={bill_id:data.bill_id,bill_status:'draft'};showToast('Draft saved successfully','success');const idx=allPanels.findIndex(p=>p.panel_id===selectedPanel.panel_id);if(idx>=0){allPanels[idx].bill_id=data.bill_id;allPanels[idx].bill_status='draft';renderPanels(allPanels);}}catch(err){showToast('Error: '+err.message,'error');}finally{btn.disabled=false;btn.innerHTML='💾 Save Draft';}}
+function downloadPDF(){if(!selectedPanel||!staffData){showToast('Select an assignment first','warning');return;}const qp=parseInt(document.getElementById('r-qp-sets').value)||0;const sc=parseInt(document.getElementById('r-scheme-sets').value)||0;const tot=qp*1000+sc*500;const station=document.getElementById('r-station').value||'Hanamkonda';const dateVal=document.getElementById('r-date').value;const p=selectedPanel,s=staffData;const romans={1:'I',2:'II',3:'III',4:'IV',5:'V',6:'VI',7:'VII',8:'VIII'};const semR=romans[p.semester_number]||p.semester_number;const examLbl=p.exam_type==='Supply'?'Supplementary':'Regular';function fd(d){if(!d)return'—';const dt=new Date(d);return String(dt.getDate()).padStart(2,'0')+'.'+String(dt.getMonth()+1).padStart(2,'0')+'.'+dt.getFullYear();}const sigHtml=sigDataUrl?'<img src="'+sigDataUrl+'" style="height:56px;">':'<div style="height:48px;border-bottom:1px solid #000;width:120px;"></div>';
+const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+@page{size:A4;margin:13mm 14mm 12mm 14mm;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Times New Roman',serif;font-size:9.8pt;color:#000;line-height:1.35;}
+.kh{text-align:center;border-bottom:2px solid #000;padding-bottom:7px;margin-bottom:8px;}
+.kh h2{font-size:12pt;font-weight:bold;}
+.kh p{font-size:9pt;}
+h3{text-align:center;text-decoration:underline;font-size:11pt;margin:6px 0 4px;}
+.note{text-align:center;font-style:italic;font-size:8.5pt;margin-bottom:8px;}
+.decl{border:1px solid #555;padding:7px 10px;margin-bottom:7px;font-size:9pt;}
+.decl b{font-size:9pt;}
+.emprow{margin-bottom:6px;font-size:10pt;}
+table{width:100%;border-collapse:collapse;margin:6px 0;}
+table td,table th{border:1px solid #555;padding:4px 8px;font-size:9.5pt;}
+th{background:#ddd;font-weight:bold;text-align:left;font-size:9.5pt;}
+.lbl{font-weight:bold;background:#efefef;width:33%;}
+.total-row td{font-weight:bold;background:#f0f0f0;}
+.amt{text-align:right;}
+.words{font-style:italic;font-size:9pt;margin:5px 0;}
+.bank-note{font-size:9pt;margin:5px 0;}
+.sign-row{display:flex;justify-content:space-between;align-items:flex-end;margin-top:12px;}
+.office{border:1px solid #555;padding:9px 11px;margin-top:10px;font-size:9pt;}
+.off-title{font-weight:bold;text-decoration:underline;margin-bottom:8px;font-size:9.5pt;}
+.off-sign{display:flex;justify-content:space-between;margin-top:10px;font-size:9pt;}
+.off-line{margin-top:10px;font-size:9pt;line-height:1.6;}
+</style></head><body>
+<div class="kh">
+  <h2>KAKATIYA INSTITUTE OF TECHNOLOGY &amp; SCIENCE</h2>
+  <p>(An Autonomous Institute under Kakatiya University, Warangal)</p>
+  <p>Opp: Yerragattugutta, Bheemaram (V), Hasanparthy (Mandal), WARANGAL - 506 015</p>
+</div>
+<h3>REMUNERATION BILL FOR PAPER SETTING</h3>
+<div class="note">(Scanned copy of the signed remuneration bill is to be e-mailed along with the question papers)</div>
+<div class="decl"><b><u>DECLARATION</u></b><br>I hereby declare that the following question paper has been set as per the instructions provided. I also declare that none of my family members, relatives and close acquaintances are appearing for the examination.</div>
+<div class="emprow"><b>Employee ID:</b> &nbsp;${s.employee_id}</div>
+<table>
+<tr><td class="lbl">Name of the Examiner</td><td>${(s.title_prefix||'')} ${s.full_name}</td></tr>
+<tr><td class="lbl">Designation, College &amp; Address</td><td>${s.designation||''}, Dept. of ${s.branch_name||''}, KITSW, Hanamkonda, Warangal.</td></tr>
+<tr><td class="lbl">Contact Number</td><td>${s.mobile_number||'—'} &nbsp;&nbsp; <b>E-mail</b> &nbsp; ${s.email||'—'}</td></tr>
+<tr><td class="lbl">Course Code - Name</td><td>${p.syllabus_code} — ${p.subject_name}</td></tr>
+<tr><td class="lbl">Examination</td><td>B.Tech ${semR} Semester ${examLbl} Examination</td></tr>
+</table>
+<table>
+<thead><tr><th>Item</th><th style="text-align:center;width:18%">No of Sets</th><th style="text-align:right;width:22%">Amount (Rs.)</th></tr></thead>
+<tbody>
+<tr><td><b>Question Paper setting</b> <small style="font-style:italic">(Rs.1000/- per paper)</small></td><td style="text-align:center">${qp}</td><td class="amt"><b>${(qp*1000).toLocaleString('en-IN')}</b></td></tr>
+<tr><td><b>Scheme of Evaluation</b> <small style="font-style:italic">(Rs.500/- per paper)</small></td><td style="text-align:center">${sc}</td><td class="amt"><b>${(sc*500).toLocaleString('en-IN')}</b></td></tr>
+<tr class="total-row"><td colspan="2"><b>Total Amount</b></td><td class="amt"><b>${tot.toLocaleString('en-IN')}</b></td></tr>
+</tbody>
+</table>
+<div class="words"><i>In words: <b>${amountToWords(tot)} Only</b>.</i></div>
+<div class="bank-note">Please furnish the following details which are mandatory for payment of remuneration.</div>
+<table>
+<tr><td class="lbl">Name of the Account Holder</td><td>${s.full_name}</td></tr>
+<tr><td class="lbl">SB Account Number</td><td>${s.account_number||'—'}</td></tr>
+<tr><td class="lbl">Bank / Branch</td><td>${s.bank_name||'—'}, ${s.bank_branch||'—'}</td></tr>
+<tr><td class="lbl">IFSC Code</td><td>${s.ifsc_code||'—'} &nbsp;&nbsp; <b>PAN</b> &nbsp; ${s.pan_card||'—'}</td></tr>
+</table>
+<div class="sign-row">
+  <div>Station: ${station}<br>Date: ${fd(dateVal)}</div>
+  <div style="text-align:center">${sigHtml}<br><b>Signature</b></div>
+</div>
+<div class="office">
+  <div class="off-title">FOR OFFICE USE ONLY</div>
+  <div class="off-line">Certified that the bill for Paper setting for the Course <b>${p.syllabus_code} — ${p.subject_name}</b> for Rs <b>${tot.toLocaleString('en-IN')}</b> (<i>in words</i> <b>${amountToWords(tot)} Only</b>) has been forwarded for payment.</div>
+  <div class="off-sign" style="margin-top:18px;">
+    <span style="padding-top:30px;display:inline-block;">Date: ________________</span>
+    <span style="text-align:center">
+      <div style="height:30px;border-bottom:1px solid #000;width:140px;margin:0 auto;"></div>
+      Superintendent (Exams)
+    </span>
+    <span style="text-align:center">
+      <div style="height:30px;border-bottom:1px solid #000;width:160px;margin:0 auto;"></div>
+      Controller of Examinations
+    </span>
+  </div>
+  <div class="off-line" style="margin-top:10px">Passed for payment of Rs <b>${tot.toLocaleString('en-IN')}</b> (<i>in words</i> <b>${amountToWords(tot)} Only</b>) for the above mentioned work.</div>
+  <div class="off-sign" style="margin-top:18px;">
+    <span style="padding-top:30px;display:inline-block;">Date: ________________</span>
+    <span style="text-align:center">
+      <div style="height:30px;border-bottom:1px solid #000;width:120px;margin:0 auto;"></div>
+      Accounts Clerk
+    </span>
+    <span style="text-align:center">
+      <div style="height:30px;border-bottom:1px solid #000;width:160px;margin:0 auto;"></div>
+      Superintendent (Accounts)
+    </span>
+    <span style="text-align:center">
+      <div style="height:30px;border-bottom:1px solid #000;width:110px;margin:0 auto;"></div>
+      Principal
+    </span>
+  </div>
+</div>
+</body></html>`;
+// Direct download as HTML file (opens as printable doc, no print preview)
+  const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const fileName = 'Remuneration_Bill_' + (p.ref_code||p.syllabus_code||'Bill') + '_' + (s.employee_id||'Staff') + '.html';
+  a.href     = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  showToast('✅ Remuneration Bill downloaded!', 'success');
+}
+
+async function submitBill(){if(!selectedPanel||!staffData){showToast('Select an assignment first','warning');return;}if(!sigDataUrl){showToast('Please upload your digital signature before submitting','warning');return;}if(!currentBill){await saveDraft();}if(!currentBill)return;if(!confirm('Submit this remuneration bill? This action is final.'))return;const btn=document.getElementById('btn-submit');btn.disabled=true;btn.textContent='⏳ Submitting...';try{const res=await fetch('/api/qp-setting/remuneration/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({panel_id:selectedPanel.panel_id,bill_id:currentBill.bill_id})});const data=await res.json();if(!data.success)throw new Error(data.message);showToast('Remuneration bill submitted successfully!','success');
+        // Auto-download PDF
+        setTimeout(() => downloadPDF(), 500);
+        // Show professional reminder popup
+        setTimeout(() => {
+            alert('📧 Please mail the downloaded Remuneration Bill along with Question Papers and Scheme of Evaluation to:\n\nacoec@kitsw.ac.in');
+        }, 1500);
+        // Show download button
+        document.getElementById('btn-download').style.display='inline-flex';const idx=allPanels.findIndex(p=>p.panel_id===selectedPanel.panel_id);if(idx>=0){allPanels[idx].bill_status='submitted';renderPanels(allPanels);}document.getElementById('submitted-banner').style.display='flex';document.getElementById('btn-draft').style.display='none';document.getElementById('btn-submit').style.display='none';document.querySelectorAll('.sets-sel').forEach(el=>el.disabled=true);document.getElementById('sig-area').style.pointerEvents='none';}catch(err){showToast('Error: '+err.message,'error');}finally{btn.disabled=false;btn.innerHTML='📤 Submit Bill';}}
+function amountToWords(n){const ones=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];const tens=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];if(n===0)return'Zero';function h(n){if(n===0)return'';if(n<20)return ones[n]+' ';if(n<100)return tens[Math.floor(n/10)]+' '+(n%10?ones[n%10]+' ':'');return ones[Math.floor(n/100)]+' Hundred '+(n%100?h(n%100):'');}let r='';if(Math.floor(n/1000)>0){r+=h(Math.floor(n/1000))+'Thousand ';n%=1000;}r+=h(n);return'Rupees '+r.trim();}
+</script>
+</body>
+</html>

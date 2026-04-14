@@ -1,45 +1,51 @@
-// ================================================================
-//  seating-allocation-routes.js  —  Professional v6.0
-//  SLOT-BASED ANTI-COPY ENGINE  |  room_master driven
-// ================================================================
+// ════════════════════════════════════════════════════════════════════════════
+//  seating-allocation-routes.js  —  Professional v10.0
+//  SMART MULTI-NOTIFICATION ANTI-COPY ENGINE  |  ZERO-WASTE ROW-FIRST FILL
+// ════════════════════════════════════════════════════════════════════════════
 //
-//  CORE PHILOSOPHY — Zero Hardcoding
-//  ─────────────────────────────────────────────────────────────
-//  Everything derives from room_master:
+//  ┌─────────────────────────────────────────────────────────────────────┐
+//  │                   AUTO-DETECTION LOGIC (v10)                        │
+//  │                                                                     │
+//  │  SCENARIO A — Single notification, single ref_code                  │
+//  │    → 1 student per bench  (anti-copy N/A, can always save)          │
+//  │                                                                     │
+//  │  SCENARIO B — Single notification, multiple ref_codes               │
+//  │    → Full spb, ref_code-based interleaving                          │
+//  │                                                                     │
+//  │  SCENARIO C — Multiple notifications, same ref_codes                │
+//  │    → notification_id used as discriminator (N1 vs N2)               │
+//  │    → Full spb, notification-based interleaving                      │
+//  │                                                                     │
+//  │  SCENARIO D — Multiple notifications, multiple ref_codes            │
+//  │    → notification_id + ref_code combined as discriminator           │
+//  │    → Full spb, richest possible interleaving                        │
+//  │                                                                     │
+//  │  KEY FIX v8: ref_code alone is NOT enough to distinguish groups.   │
+//  │  notification_id is ALWAYS used as the primary group identity.      │
+//  │                                                                     │
+//  │  KEY FIX v9: ZERO-WASTE ROW-FIRST FILL                             │
+//  │                                                                     │
+//  │  KEY FIX v10: PER-ROOM SPB CAP                                     │
+//  │  effectiveSpb is capped to each room's physical students_per_bench. │
+//  │  Audi/split rooms (spb=1) are never over-counted as spb=2.         │
+//  │  DB query uses notification_id (not notification_ref) for correct  │
+//  │  multi-notification group discrimination.                           │
+//  └─────────────────────────────────────────────────────────────────────┘
 //
-//    batch_cap   = room.total_rows          (seats per column-side)
-//    total_slots = total_columns × spb      (8 for 4-col 2-spb room)
-//    max_students= batch_cap × total_slots  (56 for 7×4×2 room)
+//  MANDATORY RULES (always enforced):
+//    • Same group NEVER on same bench  (LEFT seat ≠ RIGHT seat)
+//    • Same group NEVER in same col+pos on adjacent rows
+//    • Row-first fill guarantees zero waste / zero holes
+//    • effectiveSpb never exceeds a room's physical students_per_bench
 //
-//  SLOT MAP (per room):
-//    Slot 1: col=1, pos=1 (LEFT)  → Subject A, max batch_cap seats
-//    Slot 2: col=1, pos=2 (RIGHT) → Subject B (must ≠ A)
-//    Slot 3: col=2, pos=1 (LEFT)  → Subject C (must ≠ B)
-//    Slot 4: col=2, pos=2 (RIGHT) → Subject D (must ≠ C)
-//    ...
-//    Adjacent slots always differ → same bench ≠, adj column edge ≠
-//
-//  GREEDY SUBJECT-TO-SLOT ASSIGNMENT:
-//    Always pick subject with most remaining students ≠ previous slot.
-//    Blocked benches reduce slot capacity automatically.
-//
-//  ANTI-COPY GUARANTEES:
-//    ✅ Same bench LEFT ≠ RIGHT (100% enforced by slot design)
-//    ✅ col-RIGHT ≠ next col-LEFT (100% by greedy)
-//    ✅ Max subjects per room = total_columns × spb
-//    ✅ Blocked seats excluded from layout_data.benches
-//    ✅ No subject overflows its column-side
-//
-//  PRE-VALIDATION (before assignment):
-//    Checks capacity, blocked seats, overflow, dominant groups.
-//    Errors block generation. Warnings shown to user.
-//
-// ================================================================
+// ════════════════════════════════════════════════════════════════════════════
 
 'use strict';
 const express = require('express');
 
-// ── Helpers ──────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+//  SECTION 1 ── UTILITY HELPERS
+// ────────────────────────────────────────────────────────────────────────────
 
 function toIST(date) {
     if (!date) return '';
@@ -63,15 +69,65 @@ const DAY_COL = {
     6: ['sat_fn', 'sat_an']
 };
 
-// ── 1. DEDUPLICATE STUDENTS ───────────────────────────────────
-// One physical seat per student.
-// Consolidates multiple subjects into subjects[] array.
+// ────────────────────────────────────────────────────────────────────────────
+//  SECTION 2 ── SESSION RESOLVER
+// ────────────────────────────────────────────────────────────────────────────
+
+async function resolveSession(db, sessionId) {
+    try {
+        const [[row]] = await db.query(
+            `SELECT session_name,
+                    COALESCE(session_group, session_name) AS grp
+             FROM sessions_master
+             WHERE session_id = ?`,
+            [parseInt(sessionId)]
+        );
+        const grp           = (row?.grp || 'AN').toUpperCase();
+        const session_order = grp === 'FN' ? 1 : 2;
+        return { session_order, grp, session_name: row?.session_name || grp };
+    } catch (_) {
+        const n = parseInt(sessionId);
+        return {
+            session_order: n === 1 ? 1 : 2,
+            grp:           n === 1 ? 'FN' : 'AN',
+            session_name:  n === 1 ? 'FN' : 'AN'
+        };
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+//  SECTION 3 ── GROUP KEY BUILDER
+//
+//  • Single notification  → group by ref_code
+//  • Multiple notifications → group by notification_id + ref_code
+//    so Sem4 R20 and Sem6 R20 become N{id1}_R20 vs N{id2}_R20
+// ────────────────────────────────────────────────────────────────────────────
+
+function buildGroupKey(student, uniqueNotifIds) {
+    const nid     = student.notification_id;
+    const refCode = (student.ref_code || student.syllabus_code || 'GRP').toUpperCase().trim();
+
+    if (uniqueNotifIds.size === 1) {
+        return refCode;
+    }
+    return `N${nid}_${refCode}`;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+//  SECTION 4 ── STUDENT DEDUPLICATION
+// ────────────────────────────────────────────────────────────────────────────
 
 function deduplicateStudents(rawRows) {
+    const uniqueNotifIds = new Set(rawRows.map(r => r.notification_id));
+
     const map = new Map();
     for (const row of rawRows) {
         const sid = row.student_id;
+
         if (!map.has(sid)) {
+            const ref_code  = (row.ref_code || row.syllabus_code || 'GRP').toUpperCase().trim();
+            const group_key = buildGroupKey({ ...row, ref_code }, uniqueNotifIds);
+
             map.set(sid, {
                 student_id:       row.student_id,
                 notification_id:  row.notification_id,
@@ -90,10 +146,12 @@ function deduplicateStudents(rawRows) {
                 subject_id:       row.subject_id,
                 subject_name:     row.subject_name,
                 syllabus_code:    row.syllabus_code,
-                ref_code:         (row.ref_code || row.syllabus_code || 'GRP').toUpperCase().trim(),
-                subjects:         []
+                ref_code,
+                group_key,
+                subjects: []
             });
         }
+
         const s = map.get(sid);
         if (!s.subjects.find(x => x.subject_id === row.subject_id)) {
             s.subjects.push({
@@ -104,39 +162,93 @@ function deduplicateStudents(rawRows) {
             });
         }
     }
+
     return [...map.values()];
 }
 
-// ── 2. CALCULATE USABLE CAPACITY ─────────────────────────────
-// Uses layout_data.benches to exclude blocked benches.
+// ────────────────────────────────────────────────────────────────────────────
+//  SECTION 5 ── SMART SPB DETECTION
+// ────────────────────────────────────────────────────────────────────────────
 
-function calcCapacity(room) {
+function detectGrouping(students, roomSpb) {
+    const uniqueNotifIds  = new Set(students.map(s => s.notification_id));
+    const uniqueGroupKeys = new Set(students.map(s => s.group_key));
+    const uniqueRefCodes  = new Set(students.map(s => s.ref_code));
+
+    const notifCount   = uniqueNotifIds.size;
+    const groupCount   = uniqueGroupKeys.size;
+    const isSingle     = groupCount === 1;
+    const effectiveSpb = isSingle ? 1 : (roomSpb || 2);
+
+    let scenario, scenarioDetail;
+    if (notifCount === 1 && uniqueRefCodes.size === 1) {
+        scenario       = 'A';
+        scenarioDetail = `Single notification, single group (${[...uniqueRefCodes][0]}) → 1 student per bench`;
+    } else if (notifCount === 1 && uniqueRefCodes.size > 1) {
+        scenario       = 'B';
+        scenarioDetail = `Single notification, ${uniqueRefCodes.size} subject groups → ${effectiveSpb} per bench, ref_code interleaving`;
+    } else if (notifCount > 1 && uniqueRefCodes.size === 1) {
+        scenario       = 'C';
+        scenarioDetail = `${notifCount} notifications sharing ref_code "${[...uniqueRefCodes][0]}" → discriminated by notification_id → ${effectiveSpb} per bench`;
+    } else {
+        scenario       = 'D';
+        scenarioDetail = `${notifCount} notifications × ${uniqueRefCodes.size} ref_codes = ${groupCount} distinct groups → ${effectiveSpb} per bench`;
+    }
+
+    const groupCounts = {};
+    for (const s of students) {
+        groupCounts[s.group_key] = (groupCounts[s.group_key] || 0) + 1;
+    }
+
+    return {
+        effective_spb:      effectiveSpb,
+        is_single_group:    isSingle,
+        notification_count: notifCount,
+        group_count:        groupCount,
+        unique_ref_codes:   uniqueRefCodes.size,
+        group_keys:         [...uniqueGroupKeys],
+        ref_codes:          [...uniqueRefCodes],
+        group_counts:       groupCounts,
+        scenario,
+        scenario_detail:    scenarioDetail
+    };
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+//  SECTION 6 ── CAPACITY CALCULATION
+//  KEY FIX v10: effectiveSpb is capped to each room's physical spb.
+//  Audi/split rooms with students_per_bench=1 are never counted as 2.
+// ────────────────────────────────────────────────────────────────────────────
+
+function calcCapacity(room, effectiveSpb) {
+    // ✅ CRITICAL: never exceed the room's physical seats per bench
+    const roomPhysicalSpb = room.students_per_bench || 2;
+    const spb = Math.min(
+        effectiveSpb ?? roomPhysicalSpb,
+        roomPhysicalSpb
+    );
+
     if (room.layout_data) {
         try {
             const ld = typeof room.layout_data === 'string'
                 ? JSON.parse(room.layout_data) : room.layout_data;
             if (ld.benches && ld.benches.length) {
                 const avail = ld.benches.filter(b => b.available !== false).length;
-                return avail * (room.students_per_bench || 2);
+                return avail * spb;
             }
         } catch (_) {}
     }
-    return room.total_capacity || 42;
+
+    // Fallback: derive bench count from total_capacity / physical spb
+    const benches = Math.floor((room.total_capacity || (room.total_rows * room.total_columns * roomPhysicalSpb) || 42) / roomPhysicalSpb);
+    return benches * spb;
 }
 
-// ── 3. BUILD SLOT MAP ─────────────────────────────────────────
-//
-//  Reads room_master ONLY. Zero hardcoding.
-//
-//  batch_cap = total_rows (seats per column-side, derived from DB)
-//
-//  Returns ordered slot array:
-//  [col1-pos1, col1-pos2, col2-pos1, col2-pos2, ...]
-//
-//  Each slot: { col, pos, benches[], capacity, subject_key, students[] }
-//  capacity = actual available benches in that column (blocked excluded)
+// ────────────────────────────────────────────────────────────────────────────
+//  SECTION 7 ── BENCH GRID BUILDER
+// ────────────────────────────────────────────────────────────────────────────
 
-function buildSlotMap(room) {
+function buildBenchGrid(room) {
     let layout = {};
     try {
         layout = room.layout_data
@@ -145,14 +257,9 @@ function buildSlotMap(room) {
             : {};
     } catch (_) {}
 
-    const total_cols = room.total_columns      || layout.cols || 4;
-    const total_rows = room.total_rows         || layout.rows || 8;
-    const spb        = room.students_per_bench || layout.students_per_bench || 2;
+    const total_cols = room.total_columns || layout.cols || 4;
+    const total_rows = room.total_rows    || layout.rows || 8;
 
-    // batch_cap = total_rows — zero hardcoding, pure room_master
-    const batch_cap = total_rows;
-
-    // Build bench list from layout_data or auto-generate
     let allBenches = [];
     if (layout.benches && layout.benches.length) {
         allBenches = layout.benches;
@@ -163,7 +270,49 @@ function buildSlotMap(room) {
                 allBenches.push({ col: c, row: r + 1, label: `${ALPHA[r]}${c}`, available: true });
     }
 
-    // Group AVAILABLE benches by column, sorted by row
+    const grid   = {};
+    const rowSet = new Set();
+    const colSet = new Set();
+
+    for (const b of allBenches) {
+        if (b.available === false) continue;
+        if (!grid[b.row]) grid[b.row] = {};
+        grid[b.row][b.col] = b;
+        rowSet.add(b.row);
+        colSet.add(b.col);
+    }
+
+    const rows = [...rowSet].sort((a, b) => a - b);
+    const cols = [...colSet].sort((a, b) => a - b);
+    return { grid, rows, cols, total_rows, total_cols };
+}
+
+// Legacy slot map — kept for preValidate / capacity summary display
+function buildSlotMap(room, effectiveSpb) {
+    let layout = {};
+    try {
+        layout = room.layout_data
+            ? (typeof room.layout_data === 'string'
+                ? JSON.parse(room.layout_data) : room.layout_data)
+            : {};
+    } catch (_) {}
+
+    const total_cols      = room.total_columns      || layout.cols || 4;
+    const total_rows      = room.total_rows         || layout.rows || 8;
+    const roomPhysicalSpb = room.students_per_bench || 2;
+    // ✅ Cap to physical room limit
+    const spb             = Math.min(effectiveSpb || 2, roomPhysicalSpb);
+
+    let allBenches = [];
+    if (layout.benches && layout.benches.length) {
+        allBenches = layout.benches;
+    } else {
+        const ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        for (let r = 0; r < total_rows; r++)
+            for (let c = 1; c <= total_cols; c++)
+                allBenches.push({ col: c, row: r + 1, label: `${ALPHA[r]}${c}`, available: true });
+    }
+
     const colBenches = {};
     for (let c = 1; c <= total_cols; c++) {
         colBenches[c] = allBenches
@@ -171,116 +320,118 @@ function buildSlotMap(room) {
             .sort((a, b) => a.row - b.row);
     }
 
-    // Build slot array: col1-pos1, col1-pos2, col2-pos1 ...
     const slots = [];
     for (let col = 1; col <= total_cols; col++) {
         const benches = colBenches[col] || [];
         for (let pos = 1; pos <= spb; pos++) {
-            slots.push({
-                col,
-                pos,
-                benches,              // available benches in this column
-                capacity: benches.length,
-                subject_key: null,
-                students: []
-            });
+            slots.push({ col, pos, benches, capacity: benches.length, group_key: null, students: [] });
         }
     }
 
-    return { slots, batch_cap, total_cols, spb };
+    return { slots, batch_cap: total_rows, total_cols, spb };
 }
 
-// ── 4. PLAN SUBJECTS TO SLOTS (GREEDY) ───────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+//  SECTION 8 ── ZERO-WASTE ROW-FIRST ALLOCATION ENGINE
 //
-//  Globally assigns subjects to slots across all rooms.
-//
-//  For each room → for each slot:
-//    Pick subject with most remaining students ≠ previous slot.
-//    Take min(slot.capacity, available_students).
-//
-//  Guarantees: consecutive slots always differ → same bench ≠ → adj col ≠
-//
-//  Returns: { roomPlans{}, validation{} }
+//  KEY FIX v10: spb is capped per-room to room.students_per_bench.
+//  This means audi/split rooms fill at spb=1 while normal rooms fill at spb=2.
+// ────────────────────────────────────────────────────────────────────────────
 
-function planSubjectsToSlots(students, rooms) {
-    // Group by ref_code, sort each group by register_number
+function planSubjectsToSlots(students, rooms, effectiveSpb) {
+
     const pools = {};
     for (const s of students) {
-        const k = (s.ref_code || 'GRP').toUpperCase().trim();
+        const k = s.group_key || s.ref_code || 'GRP';
         if (!pools[k]) pools[k] = [];
         pools[k].push(s);
     }
     for (const k of Object.keys(pools)) {
         pools[k].sort((a, b) =>
-            (a.register_number || '').localeCompare(b.register_number || ''));
+            (a.register_number || '').localeCompare(b.register_number || '')
+        );
     }
 
     const validation = { errors: [], warnings: [], room_slot_plans: [] };
     const roomPlans  = {};
 
     for (const room of rooms) {
-        const { slots, batch_cap } = buildSlotMap(room);
-        let prevKey = null;
-        const roomSlotPlan = [];
+        const { grid, rows, cols } = buildBenchGrid(room);
 
-        for (const slot of slots) {
-            if (slot.capacity === 0) {
-                roomSlotPlan.push({
-                    col: slot.col, pos: slot.pos,
-                    subject: '(blocked)', count: 0, capacity: 0
-                });
-                continue;
+        // ✅ KEY FIX v10: cap spb to room's physical limit
+        const roomPhysicalSpb = room.students_per_bench || 2;
+        const spb             = Math.min(effectiveSpb || 2, roomPhysicalSpb);
+        const batch_cap       = room.total_rows || rows.length;
+
+        const roomAllocs  = [];
+        const slotSummary = {};
+
+        const prevAssigned = {};
+
+        for (const row of rows) {
+            const thisBenchAssigned = {};
+
+            for (const col of cols) {
+                const bench = grid[row]?.[col];
+                if (!bench) continue;
+
+                if (!prevAssigned[col])      prevAssigned[col]      = {};
+                if (!thisBenchAssigned[col]) thisBenchAssigned[col] = {};
+
+                for (let pos = 1; pos <= spb; pos++) {
+                    const available = Object.keys(pools)
+                        .filter(k => pools[k].length > 0)
+                        .sort((a, b) => pools[b].length - pools[a].length);
+
+                    if (!available.length) continue;
+
+                    const forbidden = new Set();
+                    const otherPos  = pos === 1 ? 2 : 1;
+
+                    if (prevAssigned[col][pos])           forbidden.add(prevAssigned[col][pos]);
+                    if (thisBenchAssigned[col][otherPos]) forbidden.add(thisBenchAssigned[col][otherPos]);
+
+                    const pick    = available.find(k => !forbidden.has(k)) || available[0];
+                    const student = pools[pick].shift();
+
+                    roomAllocs.push({ bench, pos, student, group_key: pick });
+                    prevAssigned[col][pos]      = pick;
+                    thisBenchAssigned[col][pos] = pick;
+
+                    const sk = `${col}_${pos}`;
+                    if (!slotSummary[sk]) slotSummary[sk] = { col, pos, counts: {} };
+                    slotSummary[sk].counts[pick] = (slotSummary[sk].counts[pick] || 0) + 1;
+                }
             }
-
-            // Subjects with remaining students, sorted desc
-            const available = Object.keys(pools)
-                .filter(k => pools[k].length > 0)
-                .sort((a, b) => pools[b].length - pools[a].length);
-
-            if (!available.length) {
-                roomSlotPlan.push({
-                    col: slot.col, pos: slot.pos,
-                    subject: '(empty)', count: 0, capacity: slot.capacity
-                });
-                continue;
-            }
-
-            // Greedy: largest ≠ previous
-            const pick = available.find(k => k !== prevKey) || available[0];
-            const take = Math.min(slot.capacity, pools[pick].length);
-
-            slot.subject_key = pick;
-            slot.students    = pools[pick].splice(0, take);
-            prevKey          = pick;
-
-            roomSlotPlan.push({
-                col:      slot.col,
-                pos:      slot.pos,
-                subject:  pick,
-                count:    take,
-                capacity: slot.capacity
-            });
         }
 
-        roomPlans[room.room_id] = slots;
+        roomPlans[room.room_id] = roomAllocs;
+
+        const roomSlotPlan = Object.values(slotSummary).map(s => ({
+            col:      s.col,
+            pos:      s.pos,
+            subject:  Object.keys(s.counts).sort().join('+'),
+            count:    Object.values(s.counts).reduce((x, y) => x + y, 0),
+            capacity: rows.length
+        }));
+
         validation.room_slot_plans.push({
             room_id:      room.room_id,
             room_number:  room.room_number || room.room_code,
             batch_cap,
             slots:        roomSlotPlan,
-            total_seated: roomSlotPlan.reduce((s, r) => s + r.count, 0)
+            total_seated: roomAllocs.length
         });
     }
 
-    // Check overflow — students that couldn't be placed
     for (const [k, remaining] of Object.entries(pools)) {
         if (remaining.length > 0) {
             const roomRows = rooms[0]?.total_rows || 7;
             validation.errors.push({
-                type:    'OVERFLOW',
-                subject: k,
-                count:   remaining.length,
-                message: `${remaining.length} students from group "${k}" could not be seated. Add ${Math.ceil(remaining.length / roomRows)} more room(s).`
+                type:      'OVERFLOW',
+                group_key: k,
+                count:     remaining.length,
+                message:   `${remaining.length} students from group "${k}" could not be seated. Add ${Math.ceil(remaining.length / (roomRows * (effectiveSpb || 2)))} more room(s).`
             });
         }
     }
@@ -288,37 +439,29 @@ function planSubjectsToSlots(students, rooms) {
     return { roomPlans, validation };
 }
 
-// ── 5. PHYSICAL SEAT ASSIGNMENT FROM PLAN ────────────────────
-//
-//  slot.benches[idx] = physical bench for student[idx]
-//  → row_no, col_no, bench_label come directly from layout_data
+// ────────────────────────────────────────────────────────────────────────────
+//  SECTION 9 ── PHYSICAL SEAT ASSIGNMENT
+// ────────────────────────────────────────────────────────────────────────────
 
 function assignSeatsFromPlan(roomPlans, rooms) {
     const allocs = [];
 
     for (const room of rooms) {
-        const slots = roomPlans[room.room_id];
-        if (!slots) continue;
+        const entries = roomPlans[room.room_id];
+        if (!entries || !entries.length) continue;
 
         let serial = 1;
-
-        for (const slot of slots) {
-            if (!slot.students || !slot.students.length) continue;
-
-            slot.students.forEach((student, idx) => {
-                const bench = slot.benches[idx];
-                if (!bench) return;
-
-                allocs.push({
-                    ...student,
-                    room_id:        room.room_id,
-                    bench_label:    bench.label,
-                    row_no:         bench.row,
-                    col_no:         bench.col,
-                    seat_position:  slot.pos,
-                    seat_serial:    serial++,
-                    stud_per_bench: room.students_per_bench || 2
-                });
+        for (const entry of entries) {
+            if (!entry.student || !entry.bench) continue;
+            allocs.push({
+                ...entry.student,
+                room_id:        room.room_id,
+                bench_label:    entry.bench.label,
+                row_no:         entry.bench.row,
+                col_no:         entry.bench.col,
+                seat_position:  entry.pos,
+                seat_serial:    serial++,
+                stud_per_bench: room.students_per_bench || 2
             });
         }
     }
@@ -326,102 +469,95 @@ function assignSeatsFromPlan(roomPlans, rooms) {
     return allocs;
 }
 
-// ── 6. PRE-VALIDATE ──────────────────────────────────────────
-//
-//  Checks BEFORE any assignment:
-//    - Total students vs available seats (blocked excluded)
-//    - Per-room feasibility
-//    - Dominant group warnings
-//
-//  Returns { ok, errors[], warnings[], subject_summary[], room_summary[] }
+// ────────────────────────────────────────────────────────────────────────────
+//  SECTION 10 ── PRE-VALIDATION
+// ────────────────────────────────────────────────────────────────────────────
 
-function preValidate(students, rooms) {
+function preValidate(students, rooms, effectiveSpb, detection) {
     const errors   = [];
     const warnings = [];
 
-    const subjectCounts = {};
+    const groupCounts = {};
     for (const s of students) {
-        const k = (s.ref_code || 'GRP').toUpperCase().trim();
-        subjectCounts[k] = (subjectCounts[k] || 0) + 1;
+        const k = s.group_key || 'GRP';
+        groupCounts[k] = (groupCounts[k] || 0) + 1;
     }
 
-    rooms.forEach(r => { r._cap = calcCapacity(r); });
+    // calcCapacity already caps per-room spb internally
+    rooms.forEach(r => { r._cap = calcCapacity(r, effectiveSpb); });
     const totalCap      = rooms.reduce((s, r) => s + r._cap, 0);
     const totalStudents = students.length;
+    const buffer        = totalCap - totalStudents;
 
     if (totalStudents > totalCap) {
+        const shortfall     = totalStudents - totalCap;
+        const benchesNeeded = Math.ceil(shortfall / effectiveSpb);
         errors.push({
             type:    'CAPACITY',
-            message: `Not enough seats. ${totalStudents} students, ${totalCap} available. Need ${totalStudents - totalCap} more seats.`
+            message: `Not enough seats. ${totalStudents} students need ${totalCap} seats (${effectiveSpb} per bench). Need ${benchesNeeded} more benches / rooms.`
         });
-    } else if (totalCap - totalStudents < 5) {
+    } else if (buffer < 5) {
         warnings.push({
             type:    'LOW_BUFFER',
-            message: `Only ${totalCap - totalStudents} buffer seats. Consider adding 1 more room.`
+            message: `Only ${buffer} buffer seats remaining. Consider adding 1 more room.`
         });
     }
 
-    const subject_summary = Object.entries(subjectCounts)
-        .sort((a, b) => b[1] - a[1])
-        .map(([ref_code, count]) => {
-            const pct      = Math.round((count / totalStudents) * 100);
-            const dominant = pct > 50;
-            if (dominant) {
-                warnings.push({
-                    type:    'DOMINANT_GROUP',
-                    subject: ref_code,
-                    pct,
-                    message: `"${ref_code}" is ${pct}% of students (${count}). Same-column adjacency unavoidable but acceptable — students face same direction.`
-                });
-            }
-            return {
-                ref_code,
-                count,
-                pct,
-                slots_needed: Math.ceil(count / (rooms[0]?.total_rows || 7))
-            };
+    if (detection?.is_single_group) {
+        warnings.push({
+            type:    'SINGLE_GROUP',
+            message: `Single exam group detected — 1 student per bench enforced. Anti-copy check = N/A.`
         });
+    }
 
-    const room_summary = rooms.map(r => {
-        const { slots, batch_cap } = buildSlotMap(r);
-        const usable = slots.reduce((s, sl) => s + sl.capacity, 0);
-        if (usable === 0) {
-            errors.push({
-                type:    'ROOM_FULLY_BLOCKED',
-                room:    r.room_number || r.room_id,
-                message: `Room ${r.room_number} has 0 available benches. Remove it or unblock seats.`
-            });
-        }
-        return {
-            room_id:       r.room_id,
-            room_number:   r.room_number,
-            batch_cap,
-            total_slots:   slots.length,
-            usable_seats:  usable,
-            blocked_seats: (r.total_capacity || 0) - usable
-        };
-    });
+    const group_summary = Object.entries(groupCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([group_key, count]) => ({
+            group_key,
+            count,
+            pct:          Math.round((count / totalStudents) * 100),
+            slots_needed: Math.ceil(count / (rooms[0]?.total_rows || 7))
+        }));
+
+    const room_summary = rooms.map(r => ({
+        room_id:      r.room_id,
+        room_number:  r.room_number,
+        usable_seats: r._cap
+    }));
 
     return {
         ok:              errors.length === 0,
         errors,
         warnings,
-        subject_summary,
+        group_summary,
         room_summary,
         total_students:  totalStudents,
         total_seats:     totalCap,
-        buffer_seats:    totalCap - totalStudents
+        buffer_seats:    buffer,
+        effective_spb:   effectiveSpb,
+        is_single_group: detection?.is_single_group ?? false
     };
 }
 
-// ── 7. ANTI-COPY SCORE ────────────────────────────────────────
-//  Weighted checks:
-//    A (×3): Same bench LEFT ≠ RIGHT       ← critical
-//    B (×2): Adjacent bench LEFT ≠ LEFT
-//    C (×2): Adjacent bench RIGHT ≠ RIGHT
-//    D (×1): Diagonal RIGHT ≠ next LEFT
+// ────────────────────────────────────────────────────────────────────────────
+//  SECTION 11 ── ANTI-COPY SCORER
+// ────────────────────────────────────────────────────────────────────────────
 
-function scoreAntiCopy(allocations) {
+function scoreAntiCopy(allocations, isSingleGroup) {
+    if (isSingleGroup) {
+        return {
+            score:           100,
+            total_checks:    0,
+            passed_checks:   0,
+            violations:      [],
+            violation_count: 0,
+            room_scores:     {},
+            grade:           'N/A',
+            can_save:        true,
+            note:            'Single exam group — 1 student per bench enforced. Anti-copy check not applicable.'
+        };
+    }
+
     const byRoom = {};
     for (const a of allocations) {
         if (!byRoom[a.room_id]) byRoom[a.room_id] = [];
@@ -433,78 +569,67 @@ function scoreAntiCopy(allocations) {
     const roomScores = {};
 
     for (const [roomId, seats] of Object.entries(byRoom)) {
-        const bMap = {};
+        const grid = {};
         for (const s of seats) {
-            if (!bMap[s.bench_label]) bMap[s.bench_label] = {};
-            if (s.seat_position === 1) bMap[s.bench_label].p1 = s;
-            if (s.seat_position === 2) bMap[s.bench_label].p2 = s;
+            const col = s.col_no, row = s.row_no;
+            if (!grid[col])      grid[col] = {};
+            if (!grid[col][row]) grid[col][row] = {};
+            if (s.seat_position === 1) grid[col][row].p1 = s;
+            if (s.seat_position === 2) grid[col][row].p2 = s;
         }
 
-        const orderedLabels = Object.keys(bMap)
-            .filter(k => bMap[k].p1)
-            .sort((a, b) => (bMap[a].p1?.seat_serial || 0) - (bMap[b].p1?.seat_serial || 0));
-
+        const cols = Object.keys(grid).map(Number).sort((a, b) => a - b);
         let rChecks = 0, rPassed = 0;
 
-        orderedLabels.forEach((lbl, i) => {
-            const b    = bMap[lbl];
-            const next = bMap[orderedLabels[i + 1]];
+        for (const col of cols) {
+            const rows = Object.keys(grid[col]).map(Number).sort((a, b) => a - b);
 
-            // A — Same bench (weight 3)
-            if (b.p1 && b.p2) {
-                rChecks += 3; totalChecks += 3;
-                if (b.p1.ref_code !== b.p2.ref_code) {
-                    rPassed += 3; totalPassed += 3;
-                } else {
-                    violations.push({
-                        type: 'SAME_BENCH', room_id: roomId, bench: lbl,
-                        ref_code: b.p1.ref_code,
-                        students: [b.p1.register_number, b.p2.register_number]
-                    });
+            for (const row of rows) {
+                const bench = grid[col][row];
+
+                // A: Same bench LEFT ≠ RIGHT (weight 4)
+                if (bench.p1 && bench.p2) {
+                    rChecks += 4; totalChecks += 4;
+                    if (bench.p1.group_key !== bench.p2.group_key) {
+                        rPassed += 4; totalPassed += 4;
+                    } else {
+                        violations.push({
+                            type:      'SAME_BENCH',
+                            room_id:   roomId, col, row,
+                            group_key: bench.p1.group_key,
+                            students:  [bench.p1.register_number, bench.p2.register_number]
+                        });
+                    }
+                }
+
+                // B: Cross-column RIGHT → next col LEFT, same row (weight 3)
+                const nextColBench = grid[col + 1]?.[row];
+                if (bench.p2 && nextColBench?.p1) {
+                    rChecks += 3; totalChecks += 3;
+                    if (bench.p2.group_key !== nextColBench.p1.group_key) {
+                        rPassed += 3; totalPassed += 3;
+                    } else {
+                        violations.push({
+                            type:      'CROSS_COL',
+                            room_id:   roomId, col, row,
+                            group_key: bench.p2.group_key,
+                            students:  [bench.p2.register_number, nextColBench.p1.register_number]
+                        });
+                    }
+                }
+
+                // C: Diagonal (weight 1)
+                const nextColNextRow = grid[col + 1]?.[row + 1];
+                if (bench.p2 && nextColNextRow?.p1) {
+                    rChecks += 1; totalChecks += 1;
+                    if (bench.p2.group_key !== nextColNextRow.p1.group_key) {
+                        rPassed += 1; totalPassed += 1;
+                    }
                 }
             }
+        }
 
-            if (!next) return;
-
-            // B — Adj LEFT (weight 2)
-            if (b.p1 && next.p1) {
-                rChecks += 2; totalChecks += 2;
-                if (b.p1.ref_code !== next.p1.ref_code) {
-                    rPassed += 2; totalPassed += 2;
-                } else {
-                    violations.push({
-                        type: 'ADJ_LEFT', room_id: roomId, bench: lbl,
-                        ref_code: b.p1.ref_code,
-                        students: [b.p1.register_number, next.p1.register_number]
-                    });
-                }
-            }
-
-            // C — Adj RIGHT (weight 2)
-            if (b.p2 && next.p2) {
-                rChecks += 2; totalChecks += 2;
-                if (b.p2.ref_code !== next.p2.ref_code) {
-                    rPassed += 2; totalPassed += 2;
-                } else {
-                    violations.push({
-                        type: 'ADJ_RIGHT', room_id: roomId, bench: lbl,
-                        ref_code: b.p2.ref_code,
-                        students: [b.p2.register_number, next.p2.register_number]
-                    });
-                }
-            }
-
-            // D — Diagonal (weight 1)
-            if (b.p2 && next.p1) {
-                rChecks += 1; totalChecks += 1;
-                if (b.p2.ref_code !== next.p1.ref_code) {
-                    rPassed += 1; totalPassed += 1;
-                }
-            }
-        });
-
-        const rScore = rChecks > 0 ? Math.round((rPassed / rChecks) * 100) : 100;
-        roomScores[roomId] = rScore;
+        roomScores[roomId] = rChecks > 0 ? Math.round((rPassed / rChecks) * 100) : 100;
     }
 
     const score = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 100;
@@ -515,23 +640,20 @@ function scoreAntiCopy(allocations) {
         violations:      violations.slice(0, 30),
         violation_count: violations.length,
         room_scores:     roomScores,
-        grade:    score >= 95 ? 'EXCELLENT'
-                : score >= 80 ? 'GOOD'
-                : score >= 60 ? 'ACCEPTABLE'
-                : 'POOR',
+        grade:    score >= 95 ? 'EXCELLENT' : score >= 80 ? 'GOOD' : score >= 60 ? 'ACCEPTABLE' : 'POOR',
         can_save: score >= 60
     };
 }
 
-// ════════════════════════════════════════════════════════════
-//  EXPRESS ROUTER
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+//  SECTION 12 ── EXPRESS ROUTER
+// ════════════════════════════════════════════════════════════════════════════
 
 function initializeRouter(pool) {
     const router = express.Router();
     const db     = pool;
 
-    // ── GET /api/seating/notifications ──────────────────────
+    // ── GET /api/seating/notifications ──────────────────────────────────────
 
     router.get('/notifications', async (req, res) => {
         try {
@@ -539,30 +661,31 @@ function initializeRouter(pool) {
             if (!date || !session)
                 return res.status(400).json({ error: 'date and session required' });
 
+            const { session_order } = await resolveSession(db, session);
+
             const [rows] = await db.query(`
                 SELECT
-                    ese.notification_id                                      AS notification_id,
+                    ese.notification_id,
                     ese.notification_ref,
-                    COUNT(DISTINCT ese.student_id)                           AS student_count,
-                    COUNT(DISTINCT ese.subject_id)                           AS subject_count,
+                    COUNT(DISTINCT ese.student_id)                                AS student_count,
+                    COUNT(DISTINCT ese.subject_id)                                AS subject_count,
                     GROUP_CONCAT(DISTINCT COALESCE(sm.ref_code, sm.syllabus_code, 'GRP')
-                        ORDER BY sm.ref_code SEPARATOR ',')                  AS ref_codes,
+                        ORDER BY sm.ref_code SEPARATOR ',')                       AS ref_codes,
                     GROUP_CONCAT(DISTINCT sm.subject_name
-                        ORDER BY sm.subject_name SEPARATOR ', ')             AS subject_names,
+                        ORDER BY sm.subject_name SEPARATOR ', ')                  AS subject_names,
                     en.notification_title,
                     en.exam_type,
                     en.batch_name
                 FROM exam_student_entries ese
-                LEFT JOIN subject_master sm
-                    ON sm.subject_id = ese.subject_id
+                LEFT JOIN subject_master sm ON sm.subject_id = ese.subject_id
                 LEFT JOIN exam_notifications en
-                    ON CAST(en.notification_id AS CHAR) = CAST(ese.notification_id AS CHAR)
+                    ON CAST(en.notification_id AS CHAR) = CAST(ese.notification_ref AS CHAR)
                 WHERE DATE(ese.exam_date) = ?
                   AND ese.session_order   = ?
                 GROUP BY ese.notification_id, ese.notification_ref,
                          en.notification_title, en.exam_type, en.batch_name
                 ORDER BY ese.notification_ref
-            `, [date, session]);
+            `, [date, session_order]);
 
             res.json({ notifications: rows });
         } catch (err) {
@@ -571,7 +694,7 @@ function initializeRouter(pool) {
         }
     });
 
-    // ── GET /api/seating/room-availability ──────────────────
+    // ── GET /api/seating/room-availability ──────────────────────────────────
 
     router.get('/room-availability', async (req, res) => {
         try {
@@ -579,80 +702,54 @@ function initializeRouter(pool) {
             if (!date || !session)
                 return res.status(400).json({ error: 'date and session required' });
 
+            const { session_order, grp } = await resolveSession(db, session);
             const dayIdx = new Date(date + 'T12:00:00Z').getUTCDay();
-            const dayCol = DAY_COL[dayIdx][parseInt(session) === 1 ? 0 : 1];
-            const excl   = exclude_plan_id
-                ? `AND esp.plan_id != ${parseInt(exclude_plan_id)}` : '';
+            const dayCol = DAY_COL[dayIdx][grp === 'FN' ? 0 : 1];
+            const excl   = exclude_plan_id ? `AND esp.plan_id != ${parseInt(exclude_plan_id)}` : '';
 
             const [rooms] = await db.query(`
-                SELECT
-                    rm.room_id,
-                    rm.room_code            AS room_number,
-                    rm.room_name,
-                    rm.block_id,
-                    rm.floor_number,
-                    rm.total_rows,
-                    rm.total_columns,
-                    rm.students_per_bench,
-                    rm.total_capacity,
-                    rm.layout_data,
-                    rm.is_active,
-                    rm.exam_status,
-                    bm.block_code,
-                    bm.block_name,
-                    IFNULL(rws.\`${dayCol}\`, 0)  AS weekly_blocked,
-                    rbs.block_id                  AS date_blocked_id,
-                    rbs.reason                    AS date_blocked_reason,
-                    rbs.reason_note               AS date_blocked_note,
-                    occ.plan_id                   AS occ_plan_id,
-                    occ.exam_names                AS occ_exam_names
+                SELECT rm.room_id, rm.room_code AS room_number, rm.room_name,
+                    rm.block_id, rm.floor_number, rm.total_rows, rm.total_columns,
+                    rm.students_per_bench, rm.total_capacity, rm.layout_data,
+                    rm.is_active, rm.exam_status, bm.block_code, bm.block_name,
+                    IFNULL(rws.\`${dayCol}\`, 0) AS weekly_blocked,
+                    rbs.block_id AS date_blocked_id,
+                    rbs.reason AS date_blocked_reason, rbs.reason_note AS date_blocked_note,
+                    occ.plan_id AS occ_plan_id, occ.exam_names AS occ_exam_names
                 FROM room_master rm
                 LEFT JOIN block_master bm ON bm.block_id = rm.block_id
                 LEFT JOIN room_weekly_schedule rws ON rws.room_id = rm.room_id
                 LEFT JOIN room_blocked_slots rbs
-                    ON  rbs.room_id       = rm.room_id
-                    AND rbs.block_date    = ?
-                    AND rbs.session_order = ?
-                    AND rbs.is_active     = 1
+                    ON rbs.room_id = rm.room_id AND rbs.block_date = ? AND rbs.session_order = ? AND rbs.is_active = 1
                 LEFT JOIN (
-                    SELECT espr.room_id,
-                        MIN(esp.plan_id) AS plan_id,
-                        GROUP_CONCAT(DISTINCT en.notification_title
-                            SEPARATOR ' + ')       AS exam_names
+                    SELECT espr.room_id, MIN(esp.plan_id) AS plan_id,
+                        GROUP_CONCAT(DISTINCT en.notification_title SEPARATOR ' + ') AS exam_names
                     FROM exam_seating_plan_rooms espr
                     JOIN exam_seating_plan esp
-                        ON  esp.plan_id      = espr.plan_id
-                        AND esp.exam_date     = ?
-                        AND esp.session_order = ?
-                        AND esp.status       != 'Draft'
-                        ${excl}
-                    LEFT JOIN exam_seating_plan_notifications espn
-                        ON espn.plan_id = esp.plan_id
-                    LEFT JOIN exam_notifications en
-                        ON en.notification_id = espn.notification_id
+                        ON esp.plan_id = espr.plan_id AND esp.exam_date = ? AND esp.session_order = ? AND esp.status != 'Draft' ${excl}
+                    LEFT JOIN exam_seating_plan_notifications espn ON espn.plan_id = esp.plan_id
+                    LEFT JOIN exam_notifications en ON en.notification_id = espn.notification_id
                     GROUP BY espr.room_id
                 ) occ ON occ.room_id = rm.room_id
                 WHERE rm.deleted_at IS NULL
                 ORDER BY bm.block_code, rm.floor_number, rm.room_code
-            `, [date, session, date, session]);
+            `, [date, session_order, date, session_order]);
 
             const result = rooms.map(r => {
-                const cap = calcCapacity(r);
-                let status = 'FREE', statusNote = '';
+                // Display capacity uses room's own spb (effectiveSpb unknown here)
+                const cap = calcCapacity(r, r.students_per_bench);
 
+                let status = 'FREE', statusNote = '';
                 if (!r.is_active || r.exam_status === 'Not Available') {
-                    status = 'INACTIVE';
-                    statusNote = 'Room not available for exams';
+                    status = 'INACTIVE'; statusNote = 'Not available';
                 } else if (r.weekly_blocked) {
-                    status = 'BLOCKED';
-                    statusNote = `Weekly blocked (${dayCol.replace('_', ' ').toUpperCase()})`;
+                    status = 'BLOCKED'; statusNote = `Weekly blocked (${dayCol.replace('_', ' ').toUpperCase()})`;
                 } else if (r.date_blocked_id) {
                     status = 'BLOCKED';
-                    statusNote = r.date_blocked_reason || 'Blocked for this session';
+                    statusNote = r.date_blocked_reason || 'Blocked';
                     if (r.date_blocked_note) statusNote += ` — ${r.date_blocked_note}`;
                 } else if (r.occ_plan_id) {
-                    status = 'OCCUPIED';
-                    statusNote = r.occ_exam_names || `Plan #${r.occ_plan_id}`;
+                    status = 'OCCUPIED'; statusNote = r.occ_exam_names || `Plan #${r.occ_plan_id}`;
                 }
 
                 return {
@@ -682,18 +779,15 @@ function initializeRouter(pool) {
             });
 
             res.json({
-                date, session,
-                rooms:   result,
-                grouped: Object.values(grouped)
-                               .sort((a, b) => a.block_code.localeCompare(b.block_code)),
+                date, session, rooms: result,
+                grouped: Object.values(grouped).sort((a, b) => a.block_code.localeCompare(b.block_code)),
                 summary: {
                     total:         result.length,
                     free:          result.filter(r => r.status === 'FREE').length,
                     blocked:       result.filter(r => r.status === 'BLOCKED').length,
                     occupied:      result.filter(r => r.status === 'OCCUPIED').length,
                     inactive:      result.filter(r => r.status === 'INACTIVE').length,
-                    free_capacity: result.filter(r => r.status === 'FREE')
-                                        .reduce((s, r) => s + r.usable_capacity, 0)
+                    free_capacity: result.filter(r => r.status === 'FREE').reduce((s, r) => s + r.usable_capacity, 0)
                 }
             });
         } catch (err) {
@@ -702,19 +796,19 @@ function initializeRouter(pool) {
         }
     });
 
-    // ── POST /api/seating/pre-validate ──────────────────────
-    // Dry-run: returns validation report + slot plan per room.
-    // Call this after room selection to show user what will happen.
+    // ── POST /api/seating/pre-validate ──────────────────────────────────────
 
     router.post('/pre-validate', async (req, res) => {
         try {
-            const { exam_date, session_order, notification_ids, room_ids } = req.body;
-            if (!exam_date || !session_order || !notification_ids?.length || !room_ids?.length)
-                return res.status(400).json({
-                    error: 'exam_date, session_order, notification_ids, room_ids required'
-                });
+            const { exam_date, session_order: rawSession, notification_ids, room_ids } = req.body;
+            if (!exam_date || !rawSession || !notification_ids?.length || !room_ids?.length)
+                return res.status(400).json({ error: 'exam_date, session_order, notification_ids, room_ids required' });
+
+            const { session_order } = await resolveSession(db, rawSession);
 
             const notPH = notification_ids.map(() => '?').join(',');
+
+            // ✅ KEY FIX: filter by notification_id (not notification_ref)
             const [rawRows] = await db.query(`
                 SELECT ese.student_id, ese.notification_id, ese.subject_id,
                     COALESCE(sm.ref_code, sm.syllabus_code, 'GRP') AS ref_code,
@@ -724,13 +818,13 @@ function initializeRouter(pool) {
                     ese.exam_date, ese.session_order, ese.notification_ref,
                     bm.branch_name, sem.semester_name AS sem_name
                 FROM exam_student_entries ese
-                LEFT JOIN subject_master sm  ON sm.subject_id  = ese.subject_id
-                LEFT JOIN branch_master  bm  ON bm.branch_id   = ese.branch_id
-                LEFT JOIN student_master stm ON stm.student_id = ese.student_id
+                LEFT JOIN subject_master  sm  ON sm.subject_id  = ese.subject_id
+                LEFT JOIN branch_master   bm  ON bm.branch_id   = ese.branch_id
+                LEFT JOIN student_master  stm ON stm.student_id = ese.student_id
                 LEFT JOIN semester_master sem ON sem.semester_id = ese.semester_id
                 WHERE ese.notification_id IN (${notPH})
-                  AND ese.exam_date     = ?
-                  AND ese.session_order = ?
+                  AND DATE(ese.exam_date) = ?
+                  AND ese.session_order   = ?
             `, [...notification_ids, exam_date, session_order]);
 
             const students = deduplicateStudents(rawRows);
@@ -738,19 +832,27 @@ function initializeRouter(pool) {
             const roomPH = room_ids.map(() => '?').join(',');
             const [rooms] = await db.query(`
                 SELECT DISTINCT room_id, room_code AS room_number, room_name,
-                    total_capacity, total_rows, total_columns,
-                    students_per_bench, layout_data
+                    total_capacity, total_rows, total_columns, students_per_bench, layout_data
                 FROM room_master
                 WHERE room_id IN (${roomPH}) AND is_active = 1
                 ORDER BY FIELD(room_id, ${roomPH})
             `, [...room_ids, ...room_ids]);
 
-            rooms.forEach(r => { r.usable_capacity = calcCapacity(r); });
+            const maxSpb       = Math.max(...rooms.map(r => r.students_per_bench || 2));
+            const detect       = detectGrouping(students, maxSpb);
+            const effectiveSpb = detect.effective_spb;
 
-            const preCheck                      = preValidate(students, rooms);
-            const { validation: planVal }        = planSubjectsToSlots(students, rooms);
+            // calcCapacity caps per-room internally
+            rooms.forEach(r => { r.usable_capacity = calcCapacity(r, effectiveSpb); });
 
-            res.json({ ...preCheck, slot_plan: planVal.room_slot_plans });
+            const preCheck                = preValidate(students, rooms, effectiveSpb, detect);
+            const { validation: planVal } = planSubjectsToSlots(students, rooms, effectiveSpb);
+
+            res.json({
+                ...preCheck,
+                slot_plan:  planVal.room_slot_plans,
+                detection:  detect
+            });
 
         } catch (err) {
             console.error('[/pre-validate]', err.message);
@@ -758,42 +860,30 @@ function initializeRouter(pool) {
         }
     });
 
-    // ── POST /api/seating/generate ───────────────────────────
-    // Runs slot-based algorithm. Returns preview + score. Does NOT save.
+    // ── POST /api/seating/generate ──────────────────────────────────────────
 
     router.post('/generate', async (req, res) => {
         try {
-            const { exam_date, session_order, notification_ids, room_ids } = req.body;
-            if (!exam_date || !session_order || !notification_ids?.length || !room_ids?.length)
-                return res.status(400).json({
-                    error: 'exam_date, session_order, notification_ids, room_ids all required'
-                });
+            const { exam_date, session_order: rawSession, notification_ids, room_ids } = req.body;
+            if (!exam_date || !rawSession || !notification_ids?.length || !room_ids?.length)
+                return res.status(400).json({ error: 'exam_date, session_order, notification_ids, room_ids all required' });
 
-            // Detect ESE
-            let isESE = false;
-            try {
-                const [[typeRow]] = await db.query(`
-                    SELECT exam_type FROM exam_notifications
-                    WHERE notification_id IN (${notification_ids.map(() => '?').join(',')})
-                    LIMIT 1
-                `, notification_ids);
-                isESE = (typeRow?.exam_type || '').toUpperCase().includes('ESE');
-            } catch (_) {}
+            const { session_order, session_name } = await resolveSession(db, rawSession);
 
-            // Fetch students
             const notPH = notification_ids.map(() => '?').join(',');
+
+            // ✅ KEY FIX: filter by notification_id (not notification_ref)
             const [rawRows] = await db.query(`
-                SELECT
-                    ese.entry_id, ese.notification_id, ese.notification_ref,
+                SELECT ese.entry_id, ese.notification_id, ese.notification_ref,
                     ese.student_id, ese.branch_id, ese.semester_id,
                     ese.regulation_id, ese.batch_id, ese.subject_id,
                     ese.exam_date, ese.session_order,
-                    COALESCE(sm.subject_name, '')                        AS subject_name,
+                    COALESCE(sm.subject_name, '')                       AS subject_name,
                     sm.syllabus_code,
                     COALESCE(sm.ref_code, sm.syllabus_code, 'GRP')      AS ref_code,
                     bm.branch_code, bm.branch_name,
-                    stm.full_name    AS student_name,
-                    stm.ht_number    AS register_number,
+                    stm.full_name   AS student_name,
+                    stm.ht_number   AS register_number,
                     sem.semester_name AS sem_name
                 FROM exam_student_entries ese
                 LEFT JOIN subject_master  sm  ON sm.subject_id  = ese.subject_id
@@ -801,8 +891,8 @@ function initializeRouter(pool) {
                 LEFT JOIN student_master  stm ON stm.student_id = ese.student_id
                 LEFT JOIN semester_master sem ON sem.semester_id = ese.semester_id
                 WHERE ese.notification_id IN (${notPH})
-                  AND ese.exam_date      = ?
-                  AND ese.session_order  = ?
+                  AND DATE(ese.exam_date) = ?
+                  AND ese.session_order   = ?
                 ORDER BY ese.student_id, ese.entry_id
             `, [...notification_ids, exam_date, session_order]);
 
@@ -811,7 +901,6 @@ function initializeRouter(pool) {
 
             const students = deduplicateStudents(rawRows);
 
-            // Fetch rooms
             const roomPH = room_ids.map(() => '?').join(',');
             const [rooms] = await db.query(`
                 SELECT DISTINCT room_id,
@@ -823,67 +912,54 @@ function initializeRouter(pool) {
                 ORDER BY FIELD(room_id, ${roomPH})
             `, [...room_ids, ...room_ids]);
 
-            rooms.forEach(r => { r.usable_capacity = calcCapacity(r); });
+            const maxSpb       = Math.max(...rooms.map(r => r.students_per_bench || 2));
+            const detect       = detectGrouping(students, maxSpb);
+            const effectiveSpb = detect.effective_spb;
 
-            // Pre-validate
-            const preCheck = preValidate(students, rooms);
+            console.log(
+                `[/generate] Date=${exam_date} Session=${session_order} | ` +
+                `Scenario ${detect.scenario}: ${detect.scenario_detail} | ` +
+                `effectiveSpb=${effectiveSpb} | Students=${students.length} | ` +
+                `Rooms=${rooms.length} (spb mix: ${[...new Set(rooms.map(r=>r.students_per_bench))].join(',')})`
+            );
+
+            // calcCapacity caps per-room internally
+            rooms.forEach(r => { r.usable_capacity = calcCapacity(r, effectiveSpb); });
+
+            const preCheck = preValidate(students, rooms, effectiveSpb, detect);
             if (!preCheck.ok) {
                 return res.status(400).json({
                     error:      preCheck.errors[0]?.message || 'Validation failed',
-                    validation: preCheck
+                    validation: preCheck,
+                    detection:  detect
                 });
             }
 
-            // ESE → force 1 per bench (override spb=1)
-            const assignRooms = isESE
-                ? rooms.map(r => ({ ...r, students_per_bench: 1 }))
-                : rooms;
-
-            // Slot-based assignment
-            const { roomPlans, validation: planVal } = planSubjectsToSlots(students, assignRooms);
-
+            const { roomPlans, validation: planVal } = planSubjectsToSlots(students, rooms, effectiveSpb);
             if (planVal.errors.length) {
-                return res.status(400).json({
-                    error:      planVal.errors[0].message,
-                    validation: planVal
-                });
+                return res.status(400).json({ error: planVal.errors[0].message, validation: planVal });
             }
 
-            const allocations = assignSeatsFromPlan(roomPlans, assignRooms);
+            const allocations = assignSeatsFromPlan(roomPlans, rooms);
+            const validation  = scoreAntiCopy(allocations, detect.is_single_group);
 
-            // Anti-copy score
-            const validation = scoreAntiCopy(allocations);
-
-            // Subject groups summary
-            const refGroups = {};
+            const groupSummary = {};
             students.forEach(s => {
-                const k = (s.ref_code || 'GRP').toUpperCase().trim();
-                refGroups[k] = (refGroups[k] || 0) + 1;
+                const k = s.group_key;
+                groupSummary[k] = (groupSummary[k] || 0) + 1;
             });
-            const uniqueRefCodes = Object.keys(refGroups);
 
-            // Per-room preview
             const roomPreviewMap = {};
             rooms.forEach(r => {
-                const { slots } = buildSlotMap(r);
-                const usable    = slots.reduce((s, sl) => s + sl.capacity, 0);
-                // unique subjects assigned to this room
-                const roomSlotPlan = planVal.room_slot_plans?.find(p => p.room_id === r.room_id);
-                const subjectsInRoom = roomSlotPlan
-                    ? [...new Set(roomSlotPlan.slots.map(s => s.subject)
-                        .filter(s => s && s !== '(blocked)' && s !== '(empty)'))]
-                    : [];
-
                 roomPreviewMap[r.room_id] = {
-                    room_id:          r.room_id,
-                    room_number:      r.room_number,
-                    room_name:        r.room_name,
-                    usable_capacity:  usable,
-                    anti_copy_score:  validation.room_scores[r.room_id] ?? 100,
-                    subjects_in_room: subjectsInRoom,
-                    students:         [],
-                    branch_summary:   {},
-                    ref_code_summary: {}
+                    room_id:         r.room_id,
+                    room_number:     r.room_number,
+                    room_name:       r.room_name,
+                    usable_capacity: r.usable_capacity,
+                    anti_copy_score: validation.room_scores[r.room_id] ?? 100,
+                    students:        [],
+                    branch_summary:  {},
+                    group_summary:   {}
                 };
             });
 
@@ -891,36 +967,38 @@ function initializeRouter(pool) {
                 const rp = roomPreviewMap[a.room_id];
                 if (!rp) return;
                 rp.students.push(a);
-                rp.branch_summary[a.branch_code || '?'] =
-                    (rp.branch_summary[a.branch_code || '?'] || 0) + 1;
-                rp.ref_code_summary[a.ref_code || 'GRP'] =
-                    (rp.ref_code_summary[a.ref_code || 'GRP'] || 0) + 1;
+                rp.branch_summary[a.branch_code || '?'] = (rp.branch_summary[a.branch_code || '?'] || 0) + 1;
+                rp.group_summary[a.group_key || 'GRP']  = (rp.group_summary[a.group_key || 'GRP']  || 0) + 1;
             });
 
             const totalCap  = rooms.reduce((s, r) => s + r.usable_capacity, 0);
             const roomsPrev = Object.values(roomPreviewMap).map(r => ({
                 ...r,
                 student_count:  r.students.length,
-                stud_per_bench: r.students[0]?.stud_per_bench || 1,
-                branch_display: Object.entries(r.branch_summary)
-                                      .map(([k, v]) => `${k}:${v}`).join(' | '),
-                ref_display:    Object.entries(r.ref_code_summary)
-                                      .map(([k, v]) => `${k}:${v}`).join(' | ')
+                stud_per_bench: effectiveSpb,
+                branch_display: Object.entries(r.branch_summary).map(([k, v]) => `${k}:${v}`).join(' | '),
+                group_display:  Object.entries(r.group_summary).map(([k, v]) => `${k}:${v}`).join(' | ')
             }));
 
             res.json({
                 success:               true,
                 exam_date,
                 session_order,
-                is_ese:                isESE,
-                batch_mode:            `Slot-based anti-copy (${uniqueRefCodes.length} groups)`,
+                session_name,
+                batch_mode: detect.is_single_group
+                    ? `Scenario A — Single group (${detect.group_keys[0]}) — 1 student per bench`
+                    : `Scenario ${detect.scenario} — ${detect.group_count} groups — ${effectiveSpb} per bench`,
+                effective_spb:         effectiveSpb,
+                detection:             detect,
                 total_students_raw:    rawRows.length,
                 total_students_unique: students.length,
                 total_rooms:           rooms.length,
                 total_capacity:        totalCap,
                 buffer_seats:          totalCap - students.length,
-                ref_code_groups:       refGroups,
-                unique_ref_codes:      uniqueRefCodes.length,
+                group_summary:         groupSummary,
+                group_count:           detect.group_count,
+                unique_ref_codes:      detect.unique_ref_codes,
+                ref_code_groups:       groupSummary,
                 pre_validation:        preCheck,
                 slot_plan:             planVal.room_slot_plans,
                 validation,
@@ -934,7 +1012,7 @@ function initializeRouter(pool) {
         }
     });
 
-    // ── POST /api/seating/save ───────────────────────────────
+    // ── POST /api/seating/save ───────────────────────────────────────────────
 
     router.post('/save', async (req, res) => {
         let conn;
@@ -947,31 +1025,44 @@ function initializeRouter(pool) {
         try {
             await beginTx();
             const {
-                exam_date, session_order, notification_ids, room_ids,
+                exam_date, session_order: rawSession, notification_ids, room_ids,
                 allocations, generated_by, notes, anti_copy_score
             } = req.body;
 
+            const { session_order } = await resolveSession(db, rawSession);
+
+            const [oldPlans] = await cq(`
+                SELECT plan_id FROM exam_seating_plan
+                WHERE DATE(exam_date) = ? AND session_order = ?
+            `, [exam_date, session_order]);
+
+            for (const old of oldPlans) {
+                await cq(`DELETE FROM exam_seat_allocation            WHERE plan_id = ?`, [old.plan_id]);
+                await cq(`DELETE FROM exam_seating_plan_rooms         WHERE plan_id = ?`, [old.plan_id]);
+                await cq(`DELETE FROM exam_seating_plan_notifications WHERE plan_id = ?`, [old.plan_id]);
+                await cq(`DELETE FROM exam_seating_plan              WHERE plan_id = ?`, [old.plan_id]);
+            }
+            if (oldPlans.length) {
+                console.log(`[/save] Replaced ${oldPlans.length} old plan(s) for ${exam_date} session ${session_order}`);
+            }
+
             const [planRes] = await cq(`
                 INSERT INTO exam_seating_plan
-                    (exam_date, session_order, total_students, total_rooms,
-                     status, generated_by, notes)
-                VALUES (?,?,?,?,'Draft',?,?)
-            `, [exam_date, session_order, allocations.length, room_ids.length,
-                generated_by || 'Admin', notes || null]);
+                    (exam_date, session_order, total_students, total_rooms, status, generated_by, notes)
+                VALUES (?, ?, ?, ?, 'Draft', ?, ?)
+            `, [exam_date, session_order, allocations.length, room_ids.length, generated_by || 'Admin', notes || null]);
 
             const planId = planRes.insertId;
 
             const uniqueNotifIds = [...new Set(notification_ids)];
             const nCounts = {};
-            allocations.forEach(a => {
-                nCounts[a.notification_id] = (nCounts[a.notification_id] || 0) + 1;
-            });
+            allocations.forEach(a => { nCounts[a.notification_id] = (nCounts[a.notification_id] || 0) + 1; });
             for (const nid of uniqueNotifIds) {
                 const ref = allocations.find(a => a.notification_id === nid)?.notification_ref || '';
                 await cq(`
                     INSERT INTO exam_seating_plan_notifications
                         (plan_id, notification_id, notification_ref, student_count)
-                    VALUES (?,?,?,?)
+                    VALUES (?, ?, ?, ?)
                     ON DUPLICATE KEY UPDATE student_count = VALUES(student_count)
                 `, [planId, nid, ref, nCounts[nid] || 0]);
             }
@@ -979,31 +1070,18 @@ function initializeRouter(pool) {
             const rCounts = {};
             allocations.forEach(a => { rCounts[a.room_id] = (rCounts[a.room_id] || 0) + 1; });
             for (let i = 0; i < room_ids.length; i++) {
-                await cq(`
-                    INSERT INTO exam_seating_plan_rooms
-                        (plan_id, room_id, capacity_used, room_order)
-                    VALUES (?,?,?,?)
-                `, [planId, room_ids[i], rCounts[room_ids[i]] || 0, i + 1]);
+                await cq(`INSERT INTO exam_seating_plan_rooms (plan_id, room_id, capacity_used, room_order) VALUES (?, ?, ?, ?)`,
+                    [planId, room_ids[i], rCounts[room_ids[i]] || 0, i + 1]);
             }
 
             if (allocations.length > 0) {
                 const rows = allocations.map(a => [
-                    planId,
-                    a.notification_id,
-                    a.student_id,
-                    a.branch_id,
-                    a.semester_id,
+                    planId, a.notification_id, a.student_id, a.branch_id, a.semester_id,
                     a.subject_id,
                     (a.subjects || []).map(s => s.subject_name).join(' | ') || a.subject_name || null,
                     (a.subjects || []).map(s => s.syllabus_code).join(' | ') || a.syllabus_code || null,
-                    a.room_id,
-                    a.bench_label   || null,
-                    a.row_no        || 1,
-                    a.col_no        || 1,
-                    a.seat_position || 1,
-                    a.seat_serial   || 1,
-                    exam_date,
-                    session_order
+                    a.room_id, a.bench_label || null, a.row_no || 1, a.col_no || 1,
+                    a.seat_position || 1, a.seat_serial || 1, exam_date, session_order
                 ]);
                 await cq(`
                     INSERT INTO exam_seat_allocation
@@ -1021,7 +1099,7 @@ function initializeRouter(pool) {
                 total_students: allocations.length,
                 total_rooms:    room_ids.length,
                 anti_copy_score,
-                message: `✅ ${allocations.length} students seated across ${room_ids.length} room(s). Anti-copy: ${anti_copy_score || 'N/A'}%`
+                message:        `✅ ${allocations.length} students seated across ${room_ids.length} room(s).`
             });
 
         } catch (err) {
@@ -1033,7 +1111,7 @@ function initializeRouter(pool) {
         }
     });
 
-    // ── POST /api/seating/block-room ─────────────────────────
+    // ── POST /api/seating/block-room ────────────────────────────────────────
 
     router.post('/block-room', async (req, res) => {
         try {
@@ -1044,6 +1122,7 @@ function initializeRouter(pool) {
             const rows  = [];
             const start = new Date(from_date + 'T00:00:00');
             const end   = new Date((to_date || from_date) + 'T00:00:00');
+
             for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
                 const ds = d.toISOString().split('T')[0];
                 for (const s of sessions)
@@ -1051,90 +1130,113 @@ function initializeRouter(pool) {
             }
 
             await db.query(`
-                INSERT INTO room_blocked_slots
-                    (room_id, block_date, session_order, reason, reason_note, blocked_by)
+                INSERT INTO room_blocked_slots (room_id, block_date, session_order, reason, reason_note, blocked_by)
                 VALUES ?
-                ON DUPLICATE KEY UPDATE
-                    reason      = VALUES(reason),
-                    reason_note = VALUES(reason_note),
-                    blocked_by  = VALUES(blocked_by),
-                    is_active   = 1
+                ON DUPLICATE KEY UPDATE reason = VALUES(reason), reason_note = VALUES(reason_note),
+                    blocked_by = VALUES(blocked_by), is_active = 1
             `, [rows]);
 
             res.json({ success: true, slots_blocked: rows.length });
-        } catch (err) {
-            res.status(500).json({ error: err.message });
-        }
+        } catch (err) { res.status(500).json({ error: err.message }); }
     });
 
-    // ── PUT /api/seating/unblock-room/:id ───────────────────
+    // ── PUT /api/seating/unblock-room/:id ───────────────────────────────────
 
     router.put('/unblock-room/:id', async (req, res) => {
         try {
-            await db.query(
-                `UPDATE room_blocked_slots SET is_active=0 WHERE block_id=?`,
-                [req.params.id]
-            );
+            await db.query(`UPDATE room_blocked_slots SET is_active = 0 WHERE block_id = ?`, [req.params.id]);
             res.json({ success: true });
         } catch (err) { res.status(500).json({ error: err.message }); }
     });
 
-    // ── GET /api/seating/plans ──────────────────────────────
+    // ── GET /api/seating/plans ──────────────────────────────────────────────
 
     router.get('/plans', async (req, res) => {
         try {
             const [rows] = await db.query(`
                 SELECT esp.*,
-                    GROUP_CONCAT(DISTINCT en.notification_title SEPARATOR ' + ') AS exam_names,
-                    GROUP_CONCAT(DISTINCT espn.notification_ref  SEPARATOR ', ')  AS notif_refs,
-                    GROUP_CONCAT(DISTINCT rm.room_code           SEPARATOR ', ')  AS rooms_list,
-                    COUNT(DISTINCT espr.room_id)                                  AS room_count
+                    DATE_FORMAT(esp.exam_date, '%Y-%m-%d')                           AS exam_date_str,
+                    GROUP_CONCAT(DISTINCT en.notification_title SEPARATOR ' + ')     AS exam_names,
+                    GROUP_CONCAT(DISTINCT espn.notification_ref  SEPARATOR ', ')     AS notif_refs,
+                    GROUP_CONCAT(DISTINCT rm.room_code           SEPARATOR ', ')     AS rooms_list,
+                    COUNT(DISTINCT espr.room_id)                                     AS room_count,
+                    COALESCE(
+                        (SELECT sm2.session_name FROM sessions_master sm2
+                         WHERE sm2.is_active = 1
+                           AND CASE WHEN esp.session_order = 1
+                                    THEN COALESCE(sm2.session_group, sm2.session_name) = 'FN'
+                                    ELSE COALESCE(sm2.session_group, sm2.session_name) != 'FN'
+                               END
+                         ORDER BY sm2.session_id ASC LIMIT 1),
+                        CASE esp.session_order WHEN 1 THEN 'FN' ELSE 'AN' END
+                    ) AS session_label_db
                 FROM exam_seating_plan esp
-                LEFT JOIN exam_seating_plan_notifications espn ON espn.plan_id    = esp.plan_id
-                LEFT JOIN exam_notifications en   ON en.notification_id           = espn.notification_id
-                LEFT JOIN exam_seating_plan_rooms espr ON espr.plan_id            = esp.plan_id
-                LEFT JOIN room_master rm           ON rm.room_id                  = espr.room_id
+                LEFT JOIN exam_seating_plan_notifications espn ON espn.plan_id = esp.plan_id
+                LEFT JOIN exam_notifications en   ON en.notification_id = espn.notification_id
+                LEFT JOIN exam_seating_plan_rooms espr ON espr.plan_id = esp.plan_id
+                LEFT JOIN room_master rm ON rm.room_id = espr.room_id
                 GROUP BY esp.plan_id
                 ORDER BY esp.exam_date DESC, esp.session_order
             `);
+
             res.json({
-                plans: rows.map(r => ({
-                    ...r,
-                    exam_date_display: formatDateDisplay(r.exam_date),
-                    session_label:     r.session_order === 1 ? 'FN' : 'AN'
-                }))
+                plans: rows.map(r => {
+                    const dateStr = r.exam_date_str || '';
+                    return {
+                        ...r,
+                        exam_date:         dateStr,
+                        exam_date_display: formatDateDisplay(dateStr),
+                        session_label:     r.session_label_db || (r.session_order === 1 ? 'FN' : 'AN'),
+                        notification_ids:  r.notif_refs ? r.notif_refs.split(', ') : []
+                    };
+                })
             });
+        } catch (err) { res.status(500).json({ error: err.message }); }
+    });
+
+    // ── GET /api/seating/plan-by-date ───────────────────────────────────────
+
+    router.get('/plan-by-date', async (req, res) => {
+        try {
+            const { exam_date, session_order } = req.query;
+            const [[plan]] = await db.query(`
+                SELECT plan_id,
+                    DATE_FORMAT(exam_date, '%Y-%m-%d') AS exam_date,
+                    session_order, total_students, status, total_rooms
+                FROM exam_seating_plan
+                WHERE DATE(exam_date) = ? AND session_order = ?
+                ORDER BY plan_id DESC
+                LIMIT 1
+            `, [exam_date, session_order]);
+
+            if (!plan) return res.json({ success: false, error: 'No plan found' });
+            res.json({ success: true, plan_id: plan.plan_id, plan });
         } catch (err) {
-            res.status(500).json({ error: err.message });
+            res.status(500).json({ success: false, error: err.message });
         }
     });
 
-    // ── GET /api/seating/preview/:planId ────────────────────
+    // ── GET /api/seating/preview/:planId ────────────────────────────────────
 
     router.get('/preview/:planId', async (req, res) => {
         try {
             const [[plan]] = await db.query(`
                 SELECT esp.*,
+                    DATE_FORMAT(esp.exam_date, '%Y-%m-%d') AS exam_date_str,
                     GROUP_CONCAT(DISTINCT en.notification_title SEPARATOR ' + ') AS exam_names
                 FROM exam_seating_plan esp
                 LEFT JOIN exam_seating_plan_notifications espn ON espn.plan_id = esp.plan_id
                 LEFT JOIN exam_notifications en ON en.notification_id = espn.notification_id
-                WHERE esp.plan_id = ?
-                GROUP BY esp.plan_id
+                WHERE esp.plan_id = ? GROUP BY esp.plan_id
             `, [req.params.planId]);
             if (!plan) return res.status(404).json({ error: 'Plan not found' });
+            plan.exam_date = plan.exam_date_str || plan.exam_date;
 
             const [seats] = await db.query(`
-                SELECT esa.*,
-                    rm.room_code AS room_number, rm.room_name,
-                    rm.layout_data, rm.total_rows, rm.total_columns,
-                    rm.students_per_bench,
-                    bm.block_code,
-                    stm.full_name  AS student_name,
-                    stm.ht_number  AS register_number,
-                    br.branch_code, br.branch_name,
-                    sem.semester_name AS sem_name,
-                    sm.ref_code
+                SELECT esa.*, rm.room_code AS room_number, rm.room_name,
+                    rm.layout_data, rm.total_rows, rm.total_columns, rm.students_per_bench,
+                    bm.block_code, stm.full_name AS student_name, stm.ht_number AS register_number,
+                    br.branch_code, br.branch_name, sem.semester_name AS sem_name, sm.ref_code
                 FROM exam_seat_allocation esa
                 LEFT JOIN room_master     rm  ON rm.room_id     = esa.room_id
                 LEFT JOIN block_master    bm  ON bm.block_id    = rm.block_id
@@ -1143,7 +1245,7 @@ function initializeRouter(pool) {
                 LEFT JOIN semester_master sem ON sem.semester_id = esa.semester_id
                 LEFT JOIN subject_master  sm  ON sm.subject_id  = esa.subject_id
                 WHERE esa.plan_id = ?
-                ORDER BY esa.room_id, esa.seat_serial
+                ORDER BY esa.room_id, esa.row_no ASC, esa.col_no ASC, esa.seat_position ASC
             `, [req.params.planId]);
 
             const roomMap = {};
@@ -1162,11 +1264,45 @@ function initializeRouter(pool) {
                 roomMap[s.room_id].students.push(s);
             });
 
+            let college = { college_name: '', college_subtitle: 'EXAMINATION BRANCH', college_address: '' };
+            try {
+                const [csR] = await db.query(`SELECT * FROM college_settings LIMIT 1`).catch(() => [[]]);
+                const cs = csR?.[0];
+                if (cs && (cs.college_name || cs.name)) {
+                    college.college_name     = cs.college_name || cs.name;
+                    college.college_subtitle = cs.college_subtitle || cs.department_name || 'EXAMINATION BRANCH';
+                    college.college_address  = cs.address || '';
+                } else {
+                    const [cmR] = await db.query(
+                        `SELECT * FROM college_master
+                         WHERE is_active = 1 AND (email IS NOT NULL OR website IS NOT NULL)
+                         ORDER BY college_id ASC LIMIT 1`
+                    ).catch(() => [[]]);
+                    const cm = cmR?.[0]
+                        || (await db.query(`SELECT * FROM college_master WHERE is_active = 1 ORDER BY college_id ASC LIMIT 1`).catch(() => [[]]))[0]?.[0];
+                    if (cm && (cm.college_name || cm.name)) {
+                        college.college_name     = cm.college_name || cm.name;
+                        college.college_subtitle = cm.department_name || cm.department || 'EXAMINATION BRANCH';
+                        college.college_address  = cm.address || '';
+                    } else {
+                        const [stR] = await db.query(
+                            `SELECT setting_key, setting_value FROM settings
+                             WHERE setting_key IN ('college_name','institution_name','department_name') LIMIT 5`
+                        ).catch(() => [[]]);
+                        if (stR?.length) {
+                            const m = {};
+                            stR.forEach(r => { m[r.setting_key] = r.setting_value; });
+                            college.college_name     = m.college_name || m.institution_name || '';
+                            college.college_subtitle = m.department_name || 'EXAMINATION BRANCH';
+                        }
+                    }
+                }
+            } catch (_) {}
+
             res.json({
-                plan,
-                rooms: Object.values(roomMap).map(r => ({
-                    ...r, student_count: r.students.length
-                }))
+                plan, college,
+                rooms:          Object.values(roomMap),
+                total_students: seats.length
             });
         } catch (err) {
             console.error('[/preview]', err.message);
@@ -1174,35 +1310,281 @@ function initializeRouter(pool) {
         }
     });
 
-    // ── PATCH /api/seating/plan/:id/status ──────────────────
+    // ── PATCH /api/seating/plan/:id/status ──────────────────────────────────
 
     router.patch('/plan/:id/status', async (req, res) => {
         try {
             const { status } = req.body;
             if (!['Draft', 'Confirmed', 'Published'].includes(status))
                 return res.status(400).json({ error: 'Invalid status' });
-            await db.query(
-                `UPDATE exam_seating_plan SET status=? WHERE plan_id=?`,
-                [status, req.params.id]
-            );
+            await db.query(`UPDATE exam_seating_plan SET status = ? WHERE plan_id = ?`, [status, req.params.id]);
             res.json({ success: true });
         } catch (err) { res.status(500).json({ error: err.message }); }
     });
 
-    // ── DELETE /api/seating/plan/:id ────────────────────────
+    // ── DELETE /api/seating/plan/:id ────────────────────────────────────────
 
     router.delete('/plan/:id', async (req, res) => {
         try {
-            const [[plan]] = await db.query(
-                `SELECT status FROM exam_seating_plan WHERE plan_id=?`,
-                [req.params.id]
-            );
+            const [[plan]] = await db.query(`SELECT status FROM exam_seating_plan WHERE plan_id = ?`, [req.params.id]);
             if (!plan) return res.status(404).json({ error: 'Plan not found' });
             if (plan.status !== 'Draft')
-                return res.status(400).json({ error: 'Only Draft plans can be deleted' });
-            await db.query(`DELETE FROM exam_seating_plan WHERE plan_id=?`, [req.params.id]);
+                return res.status(400).json({ error: 'Only Draft plans can be deleted here. Use force-delete for Confirmed/Published.' });
+
+            await db.query(`DELETE FROM exam_seat_allocation            WHERE plan_id = ?`, [req.params.id]);
+            await db.query(`DELETE FROM exam_seating_plan_rooms         WHERE plan_id = ?`, [req.params.id]);
+            await db.query(`DELETE FROM exam_seating_plan_notifications WHERE plan_id = ?`, [req.params.id]);
+            await db.query(`DELETE FROM exam_seating_plan              WHERE plan_id = ?`, [req.params.id]);
             res.json({ success: true });
         } catch (err) { res.status(500).json({ error: err.message }); }
+    });
+
+    // ── DELETE /api/seating/plan/:id/force ──────────────────────────────────
+
+    const ADMIN_DELETE_PASSWORD = process.env.ADMIN_DELETE_PASSWORD || 'Admin@123';
+    router.delete('/plan/:id/force', async (req, res) => {
+        try {
+            const { password } = req.body;
+            if (!password || password !== ADMIN_DELETE_PASSWORD)
+                return res.status(403).json({ error: 'Invalid password. Contact your system administrator.' });
+
+            const [[plan]] = await db.query(`SELECT plan_id, status FROM exam_seating_plan WHERE plan_id = ?`, [req.params.id]);
+            if (!plan) return res.status(404).json({ error: 'Plan not found' });
+
+            await db.query(`DELETE FROM exam_seat_allocation            WHERE plan_id = ?`, [req.params.id]);
+            await db.query(`DELETE FROM exam_seating_plan_rooms         WHERE plan_id = ?`, [req.params.id]);
+            await db.query(`DELETE FROM exam_seating_plan_notifications WHERE plan_id = ?`, [req.params.id]);
+            await db.query(`DELETE FROM exam_seating_plan              WHERE plan_id = ?`, [req.params.id]);
+
+            console.log(`[force-delete] Plan #${req.params.id} (was ${plan.status}) deleted by admin`);
+            res.json({ success: true, message: `Plan #${req.params.id} permanently deleted.` });
+        } catch (err) {
+            console.error('[/force-delete]', err.message);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // ── GET /api/seating/attendance/:planId ─────────────────────────────────
+
+    router.get('/attendance/:planId', async (req, res) => {
+        try {
+            const planId = req.params.planId;
+
+            const [[plan]] = await db.query(`
+                SELECT esp.*,
+                    GROUP_CONCAT(DISTINCT espn.notification_ref SEPARATOR ',') AS notif_refs
+                FROM exam_seating_plan esp
+                LEFT JOIN exam_seating_plan_notifications espn ON espn.plan_id = esp.plan_id
+                WHERE esp.plan_id = ?
+                GROUP BY esp.plan_id
+            `, [planId]);
+            if (!plan) return res.status(404).json({ error: 'Plan not found' });
+
+            let notifDetails = null;
+            if (plan.notif_refs) {
+                const firstRef = plan.notif_refs.split(',')[0].trim();
+                const [[nd]] = await db.query(`
+                    SELECT en.*,
+                        pm.programme_name,
+                        mym.display_name AS month_year_display,
+                        et.exam_type_name AS exam_type_label
+                    FROM exam_notifications en
+                    LEFT JOIN programme_master  pm  ON pm.programme_id   = en.programme_id
+                    LEFT JOIN month_year_master mym ON mym.month_year_id = en.month_year_id
+                    LEFT JOIN exam_types_master et  ON et.exam_type_id   = en.exam_type_id
+                    WHERE en.notification_id = ?
+                `, [firstRef]).catch(() => [[null]]);
+                notifDetails = nd;
+            }
+
+            const [seats] = await db.query(`
+                SELECT
+                    esa.seat_id, esa.room_id, esa.seat_serial, esa.bench_label, esa.seat_position,
+                    rm.room_code AS room_number, rm.room_name, bm.block_code,
+                    stm.ht_number AS roll_no, stm.full_name AS student_name,
+                    br.branch_id, br.branch_code, br.branch_name,
+                    sem.semester_id, sem.semester_name,
+                    sm.subject_id, sm.subject_name, sm.syllabus_code, sm.ref_code
+                FROM exam_seat_allocation esa
+                LEFT JOIN room_master     rm  ON rm.room_id     = esa.room_id
+                LEFT JOIN block_master    bm  ON bm.block_id    = rm.block_id
+                LEFT JOIN student_master  stm ON stm.student_id = esa.student_id
+                LEFT JOIN branch_master   br  ON br.branch_id   = esa.branch_id
+                LEFT JOIN semester_master sem ON sem.semester_id = esa.semester_id
+                LEFT JOIN subject_master  sm  ON sm.subject_id  = esa.subject_id
+                WHERE esa.plan_id = ?
+                  AND COALESCE(esa.is_blocked, 0) = 0
+                ORDER BY esa.room_id, br.branch_code, sem.semester_id, stm.ht_number
+            `, [planId]);
+
+            const roomMap = {};
+            for (const s of seats) {
+                const rk  = s.room_id;
+                const bsk = `${s.branch_id}_${s.semester_id}`;
+
+                if (!roomMap[rk]) {
+                    roomMap[rk] = {
+                        room_id:     s.room_id,
+                        room_number: s.room_number,
+                        room_name:   s.room_name,
+                        block_code:  s.block_code,
+                        groups:      {}
+                    };
+                }
+                if (!roomMap[rk].groups[bsk]) {
+                    roomMap[rk].groups[bsk] = {
+                        branch_id:     s.branch_id,
+                        branch_code:   s.branch_code,
+                        branch_name:   s.branch_name,
+                        semester_id:   s.semester_id,
+                        semester_name: s.semester_name,
+                        subject_name:  s.subject_name,
+                        syllabus_code: s.syllabus_code,
+                        students:      []
+                    };
+                }
+
+                roomMap[rk].groups[bsk].students.push({
+                    roll_no:      s.roll_no,
+                    student_name: s.student_name,
+                    seat_serial:  s.seat_serial,
+                    bench_label:  s.bench_label
+                });
+            }
+
+            const rooms = Object.values(roomMap).map(r => ({
+                ...r,
+                groups: Object.values(r.groups).map(g => ({
+                    ...g,
+                    students: g.students.sort((a, b) => (a.roll_no || '').localeCompare(b.roll_no || ''))
+                }))
+            }));
+
+            res.json({
+                success:        true,
+                plan,
+                notif:          notifDetails,
+                rooms,
+                total_rooms:    rooms.length,
+                total_students: seats.length
+            });
+        } catch (err) {
+            console.error('[/attendance]', err.message);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // ── GET /api/seating/noticeboard/:planId ────────────────────────────────
+
+    router.get('/noticeboard/:planId', async (req, res) => {
+        try {
+            const planId = req.params.planId;
+
+            const [[plan]] = await db.query(`
+                SELECT esp.*,
+                    GROUP_CONCAT(DISTINCT espn.notification_ref SEPARATOR ',') AS notif_refs
+                FROM exam_seating_plan esp
+                LEFT JOIN exam_seating_plan_notifications espn ON espn.plan_id = esp.plan_id
+                WHERE esp.plan_id = ?
+                GROUP BY esp.plan_id
+            `, [planId]);
+            if (!plan) return res.status(404).json({ error: 'Plan not found' });
+
+            let notifDetails = null;
+            if (plan.notif_refs) {
+                const firstRef = plan.notif_refs.split(',')[0].trim();
+                const [[nd]] = await db.query(`
+                    SELECT en.*,
+                        pm.programme_name,
+                        mym.display_name AS month_year_display,
+                        et.exam_type_name AS exam_type_label
+                    FROM exam_notifications en
+                    LEFT JOIN programme_master  pm  ON pm.programme_id   = en.programme_id
+                    LEFT JOIN month_year_master mym ON mym.month_year_id = en.month_year_id
+                    LEFT JOIN exam_types_master et  ON et.exam_type_id   = en.exam_type_id
+                    WHERE en.notification_id = ?
+                `, [firstRef]).catch(() => [[null]]);
+                notifDetails = nd;
+            }
+
+            const isMSE = (notifDetails?.exam_type || '').toLowerCase().includes('internal')
+                       || (notifDetails?.exam_type || '').toUpperCase().includes('MSE');
+
+            const [rows2] = await db.query(`
+                SELECT
+                    esa.room_id,
+                    rm.room_code  AS room_number,
+                    bm_room.block_code,
+                    stm.ht_number AS roll_no,
+                    br.branch_code, br.branch_name,
+                    sec.section_name,
+                    sem.semester_id, sem.semester_name,
+                    pm.programme_name, pm.programme_id
+                FROM exam_seat_allocation esa
+                LEFT JOIN room_master     rm      ON rm.room_id      = esa.room_id
+                LEFT JOIN block_master    bm_room ON bm_room.block_id = rm.block_id
+                LEFT JOIN student_master  stm     ON stm.student_id  = esa.student_id
+                LEFT JOIN section_master  sec     ON sec.section_id  = stm.section_id
+                LEFT JOIN branch_master   br      ON br.branch_id    = esa.branch_id
+                LEFT JOIN semester_master sem     ON sem.semester_id = esa.semester_id
+                LEFT JOIN programme_master pm     ON pm.programme_id = stm.programme_id
+                WHERE esa.plan_id = ?
+                  AND COALESCE(esa.is_blocked, 0) = 0
+                ORDER BY pm.programme_name, sem.semester_id, br.branch_code, sec.section_id, stm.ht_number
+            `, [planId]);
+
+            const grouped = {};
+            for (const r of rows2) {
+                const progKey = r.programme_name || 'B.TECH';
+                const semKey  = r.semester_name  || `Sem ${r.semester_id}`;
+
+                let secNum = '';
+                if (isMSE && r.section_name) {
+                    const match = r.section_name.match(/\d+/);
+                    secNum = match ? `-${match[0]}` : '';
+                }
+                const branchLabel = `${r.branch_code}${secNum}`;
+                const roomLabel   = r.room_number || String(r.room_id);
+
+                if (!grouped[progKey])                              grouped[progKey] = {};
+                if (!grouped[progKey][semKey])                      grouped[progKey][semKey] = {};
+                if (!grouped[progKey][semKey][branchLabel])         grouped[progKey][semKey][branchLabel] = {};
+                if (!grouped[progKey][semKey][branchLabel][roomLabel])
+                    grouped[progKey][semKey][branchLabel][roomLabel] = [];
+
+                if (r.roll_no) grouped[progKey][semKey][branchLabel][roomLabel].push(r.roll_no);
+            }
+
+            const entries = [];
+            for (const [prog, sems] of Object.entries(grouped)) {
+                for (const [sem, branches] of Object.entries(sems)) {
+                    const semEntries = [];
+                    for (const [branch, rooms] of Object.entries(branches).sort()) {
+                        for (const [room, rolls] of Object.entries(rooms)) {
+                            semEntries.push({
+                                branch,
+                                room,
+                                rolls: [...new Set(rolls)].sort(),
+                                count: [...new Set(rolls)].length
+                            });
+                        }
+                    }
+                    entries.push({ programme: prog, semester: sem, rows: semEntries });
+                }
+            }
+
+            res.json({
+                success:        true,
+                plan,
+                notif:          notifDetails,
+                is_mse:         isMSE,
+                entries,
+                total_students: rows2.length
+            });
+        } catch (err) {
+            console.error('[/noticeboard]', err.message);
+            res.status(500).json({ error: err.message });
+        }
     });
 
     return router;

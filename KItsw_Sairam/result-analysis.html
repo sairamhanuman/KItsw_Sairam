@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Result Analysis - Engineering College</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="js/auth.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+    body { background: #f4f6f9; }
+
+    /* ── Header (matches index.html) ── */
+    .header {
+      background: #004d40; color: white; padding: 20px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .header h1 { font-size: 22px; }
+    .header-actions { display: flex; align-items: center; gap: 15px; }
+    .logout-btn { background: #ff5252; color: white; border: none; padding: 10px 16px; cursor: pointer; border-radius: 6px; font-size: 15px; }
+    .logout-btn:hover { background: #e53935; }
+    .back-btn { background: #546e7a; color: white; border: none; padding: 10px 16px; cursor: pointer; border-radius: 6px; font-size: 15px; text-decoration: none; }
+    .back-btn:hover { background: #37474f; }
+
+    /* ── Page Container ── */
+    .page-container { max-width: 1400px; margin: 24px auto; padding: 0 20px 40px; }
+
+    /* ── Page Title ── */
+    .page-title {
+      background: linear-gradient(135deg, #004d40, #00796b);
+      color: white; padding: 20px 24px; border-radius: 10px;
+      margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,77,64,0.25);
+    }
+    .page-title h2 { font-size: 24px; margin-bottom: 4px; }
+    .page-title p { font-size: 14px; opacity: 0.85; }
+
+    /* ── Module Tabs ── */
+    .tabs {
+      display: flex; gap: 6px; flex-wrap: wrap;
+      background: white; padding: 12px; border-radius: 10px;
+      margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .tab-btn {
+      padding: 8px 16px; border: 2px solid #cfd8dc; background: #eceff1;
+      border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;
+      color: #546e7a; transition: all 0.2s;
+    }
+    .tab-btn:hover { background: #b2dfdb; border-color: #004d40; color: #004d40; }
+    .tab-btn.active { background: #004d40; border-color: #004d40; color: white; }
+
+    /* ── Filter Panel ── */
+    .filter-panel {
+      background: white; padding: 20px; border-radius: 10px;
+      margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;
+    }
+    .filter-group { display: flex; flex-direction: column; gap: 5px; min-width: 180px; }
+    .filter-group label { font-size: 12px; font-weight: 700; color: #546e7a; text-transform: uppercase; letter-spacing: 0.5px; }
+    .filter-group select {
+      padding: 9px 12px; border: 1.5px solid #cfd8dc; border-radius: 6px;
+      font-size: 14px; background: #f8f9fa; cursor: pointer;
+    }
+    .filter-group select:focus { outline: none; border-color: #004d40; }
+    .btn-load {
+      background: #004d40; color: white; border: none; padding: 10px 24px;
+      border-radius: 6px; font-size: 14px; font-weight: 700; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-load:hover { background: #00695c; }
+    .btn-load:disabled { background: #b0bec5; cursor: not-allowed; }
+
+    /* ── Results Area ── */
+    .results-area { background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; }
+    .results-header { background: #37474f; color: white; padding: 14px 20px; }
+    .results-header h3 { font-size: 16px; margin-bottom: 2px; }
+    .results-header p { font-size: 13px; opacity: 0.8; }
+    .results-body { padding: 20px; overflow-x: auto; }
+
+    /* ── Tables ── */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #004d40; color: white; padding: 10px 12px; text-align: center; white-space: nowrap; }
+    td { padding: 9px 12px; text-align: center; border-bottom: 1px solid #eceff1; }
+    tr:hover td { background: #e8f5e9; }
+    .td-branch { text-align: left; font-weight: 600; color: #263238; }
+    .td-total { font-weight: 700; background: #e8f5e9; color: #1b5e20; }
+    .grand-row td { background: #004d40; color: white; font-weight: 700; }
+
+    /* ── Admin Action Cards ── */
+    .admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; padding: 20px; }
+    .admin-card {
+      border: 1.5px solid #cfd8dc; border-radius: 8px; padding: 18px;
+      cursor: pointer; transition: all 0.2s; background: #f8f9fa;
+    }
+    .admin-card:hover { border-color: #004d40; background: #e8f5e9; }
+    .admin-card h4 { font-size: 15px; color: #263238; margin-bottom: 6px; }
+    .admin-card p { font-size: 12px; color: #78909c; line-height: 1.5; }
+    .admin-card button {
+      margin-top: 12px; background: #004d40; color: white; border: none;
+      padding: 8px 18px; border-radius: 5px; font-size: 13px; cursor: pointer; width: 100%;
+    }
+    .admin-card button:hover { background: #00695c; }
+    .admin-card button:disabled { background: #b0bec5; cursor: not-allowed; }
+
+    /* ── Upload Section ── */
+    .upload-section { padding: 20px; }
+    .upload-card {
+      border: 2px dashed #b0bec5; border-radius: 10px; padding: 24px;
+      text-align: center; margin-bottom: 16px; cursor: pointer; transition: all 0.2s;
+    }
+    .upload-card:hover { border-color: #004d40; background: #e8f5e9; }
+    .upload-card h4 { color: #263238; margin-bottom: 6px; font-size: 15px; }
+    .upload-card p { font-size: 12px; color: #90a4ae; }
+    .upload-card input[type="file"] { display: none; }
+    .btn-upload {
+      margin-top: 10px; background: #1565c0; color: white; border: none;
+      padding: 9px 20px; border-radius: 5px; font-size: 13px; cursor: pointer;
+    }
+
+    /* ── Empty / Loading ── */
+    .empty-state { text-align: center; padding: 50px 20px; color: #90a4ae; }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+    .loading-spinner { text-align: center; padding: 40px; color: #546e7a; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+      background: #263238; color: white; padding: 12px 20px; border-radius: 8px;
+      font-size: 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    #toast.show { opacity: 1; pointer-events: auto; }
+    #toast.success { background: #1b5e20; }
+    #toast.error { background: #b71c1c; }
+
+    /* ── Section hidden ── */
+    .module-section { display: none; }
+    .module-section.active { display: block; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <h1>ENGINEERING COLLEGE — Result Analysis</h1>
+  <div class="header-actions">
+    <a href="index.html" class="back-btn">← Back to Menu</a>
+    <span id="user-display" style="font-size:16px;">Admin</span>
+    <button class="logout-btn" onclick="handleLogout()">🚪 Logout</button>
+  </div>
+</header>
+
+<div class="page-container">
+
+  <!-- Page Title -->
+  <div class="page-title">
+    <h2>📊 Result Analysis Portal</h2>
+    <p>Comprehensive result analysis, statistics, SGPA/CGPA divisions, NBA course data, and graduant reports</p>
+  </div>
+
+  <!-- Module Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('result')">📋 Result Analysis</button>
+    <button class="tab-btn" onclick="switchTab('stats')">📈 Semester Statistics</button>
+    <button class="tab-btn" onclick="switchTab('sgpa')">🎯 SGPA Analysis</button>
+    <button class="tab-btn" onclick="switchTab('sgpadiv')">🏅 SGPA Division</button>
+    <button class="tab-btn" onclick="switchTab('nba')">📚 NBA Course Wise</button>
+    <button class="tab-btn" onclick="switchTab('graduants')">🎓 Graduants</button>
+    <button class="tab-btn" onclick="switchTab('notice')">📄 Result Notice</button>
+    <button class="tab-btn" onclick="switchTab('upload')">⬆️ Upload Data</button>
+    <button class="tab-btn" onclick="switchTab('admin')">⚙️ Admin Actions</button>
+  </div>
+
+  <!-- ══════════════ 1. RESULT ANALYSIS ══════════════ -->
+  <div class="module-section active" id="sec-result">
+    <div class="filter-panel">
+      <div class="filter-group">
+        <label>Programme</label>
+        <select id="ra-prog"><option value="">-- Select --</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Batch</label>
+        <select id="ra-batch"><option value="">-- Select --</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Semester</label>
+        <select id="ra-sem"><option value="">-- Select --</option></select>
+      </div>
+      <button class="btn-load" onclick="loadResultAnalysis()">Load Report</button>
+    </div>
+    <div class="results-area" id="ra-result">
+      <div class="empty-state"><div class="icon">📋</div><p>Select filters and click Load Report</p></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ 2. SEMESTER STATISTICS ══════════════ -->
+  <div class="module-section" id="sec-stats">
+    <div class="filter-panel">
+      <div class="filter-group">
+        <label>Programme</label>
+        <select id="st-prog"><option value="">-- Select --</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Batch</label>
+        <select id="st-batch"><option value="">-- Select --</option></select>
+      </div>
+      <button class="btn-load" onclick="loadStats()">Load Statistics</button>
+    </div>
+    <div class="results-area" id="st-result">
+      <div class="empty-state"><div class="icon">📈</div><p>Select filters and click Load Statistics</p></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ 3. SGPA ANALYSIS ══════════════ -->
+  <div class="module-section" id="sec-sgpa">
+    <div class="filter-panel">
+      <div class="filter-group">
+        <label>Programme</label>
+        <select id="sg-prog"><option value="">-- Select --</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Batch</label>
+        <select id="sg-batch"><option value="">-- Select --</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Semester</label>
+        <select id="sg-sem"><option value="">-- Select --</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Candidate Status</label>
+        <select id="sg-status"><option value="">-- Select --</option></select>
+      </div>
+      <button class="btn-load" onclick="loadSgpa()">Load SGPA</button>
+    </div>
+    <div class="results-area" id="sg-result">
+      <div class="empty-state"><div class="icon">🎯</div><p>Select filters and click Load SGPA</p></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ 4. SGPA DIVISION ══════════════ -->
+  <div class="module-section" id="sec-sgpadiv">
+    <div class="filter-panel">
+      <div class="filter-group">
+        <label>Programme</label>
+        <select id="sd-prog"><option value="">-- Select --</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Batch</label>
+        <select id="sd-batch"><option value="">-- Select --</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Semester</label>
+        <select id="sd-sem"><option value="">-- Select --</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Candidate Status</label>
+        <select id="sd-status"><option value="">-- Select --</option></select>
+      </div>
+      <button class="btn-load" onclick="loadSgpaDiv()">Load Division</button>
+    </div>
+    <div class="results-area" id="sd-result">
+      <div class="empty-state"><div class="icon">🏅</div><p>Select filters and click Load Division</p></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ 5. NBA COURSE WISE ══════════════ -->
+  <div class="module-section" id="sec-nba">
+    <div class="filter-panel">
+      <div class="filter-group">
+        <label>Batch</label>
+        <select id="nb-batch"><option value="">-- Select --</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Semester</label>
+        <select id="nb-sem"><option value="">-- Select --</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Branch</label>
+        <select id="nb-branch"><option value="">-- Select --</option></select>
+      </div>
+      <button class="btn-load" onclick="loadNba()">Load Course Data</button>
+    </div>
+    <div class="results-area" id="nb-result">
+      <div class="empty-state"><div class="icon">📚</div><p>Select filters and click Load Course Data</p></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ 6. GRADUANTS ══════════════ -->
+  <div class="module-section" id="sec-graduants">
+    <div class="filter-panel">
+      <div class="filter-group">
+        <label>Programme</label>
+        <select id="gr-prog"><option value="">-- Select --</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Academic Year</label>
+        <select id="gr-ay"><option value="">-- Select --</option></select>
+      </div>
+      <button class="btn-load" onclick="loadGraduants()">Load Graduants</button>
+    </div>
+    <div class="results-area" id="gr-result">
+      <div class="empty-state"><div class="icon">🎓</div><p>Select filters and click Load Graduants</p></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ 7. RESULT NOTICE ══════════════ -->
+  <div class="module-section" id="sec-notice">
+    <div class="filter-panel">
+      <div class="filter-group">
+        <label>Programme</label>
+        <select id="nt-prog"><option value="">-- Select --</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Batch</label>
+        <select id="nt-batch"><option value="">-- Select --</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Semester</label>
+        <select id="nt-sem"><option value="">-- Select --</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Candidate Status</label>
+        <select id="nt-status"><option value="">-- Select --</option></select>
+      </div>
+      <button class="btn-load" onclick="loadNotice()">Generate Notice</button>
+      <button class="btn-load" style="background:#1565c0;" onclick="printNotice()">🖨️ Print</button>
+    </div>
+    <div class="results-area" id="nt-result">
+      <div class="empty-state"><div class="icon">📄</div><p>Select filters and click Generate Notice</p></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ 8. UPLOAD DATA ══════════════ -->
+  <div class="module-section" id="sec-upload">
+    <div class="results-area">
+      <div style="padding:14px 20px; background:#37474f; color:white; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <h3 style="font-size:16px;">⬆️ Upload Result Data</h3>
+          <p style="font-size:12px; opacity:0.8;">Select Programme, Batch, Semester & Exam Month — then choose your CSV. Download a sample CSV first if needed.</p>
+        </div>
+        <button onclick="loadUploadMasters()" style="background:#00695c;color:white;border:none;padding:7px 14px;border-radius:5px;cursor:pointer;font-size:13px;">🔄 Refresh Masters</button>
+      </div>
+
+      <div class="upload-section">
+
+        <!-- ── Global filter selectors ── -->
+        <div style="background:#eceff1; border-radius:8px; padding:16px 18px; margin-bottom:20px;">
+          <p style="font-size:13px; font-weight:700; color:#37474f; margin-bottom:12px;">📌 Select Filter Values (these will be injected into your sample CSV and validated on upload)</p>
+          <div style="display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end;">
+            <div class="filter-group" style="min-width:160px;">
+              <label>Programme <span style="color:#e53935;">*</span></label>
+              <select id="up-prog">
+                <option value="">-- Loading... --</option>
+              </select>
+            </div>
+            <div class="filter-group" style="min-width:140px;">
+              <label>Batch <span style="color:#e53935;">*</span></label>
+              <select id="up-batch">
+                <option value="">-- Loading... --</option>
+              </select>
+            </div>
+            <div class="filter-group" style="min-width:130px;">
+              <label>Semester <span style="color:#e53935;">*</span></label>
+              <select id="up-sem">
+                <option value="">-- Loading... --</option>
+              </select>
+            </div>
+            <div class="filter-group" style="min-width:200px;">
+              <label>Exam Month <span style="color:#e53935;">*</span></label>
+              <select id="up-month">
+                <option value="">-- Select --</option>
+                <option>January 2024</option><option>February 2024</option>
+                <option>March 2024</option><option>April 2024</option>
+                <option>May 2024</option><option>June 2024</option>
+                <option>July 2024</option><option>August 2024</option>
+                <option>September 2024</option><option>October 2024</option>
+                <option>November 2024</option><option>December 2024</option>
+                <option>January 2025</option><option>February 2025</option>
+                <option>March 2025</option><option>April 2025</option>
+                <option>May 2025</option><option>June 2025</option>
+                <option>July 2025</option><option>August 2025</option>
+                <option>September 2025</option><option>October 2025</option>
+                <option>November 2025</option><option>December 2025</option>
+              </select>
+            </div>
+            <div class="filter-group" style="min-width:140px;">
+              <label>Branch (for Course Wise)</label>
+              <select id="up-branch">
+                <option value="">-- Loading... --</option>
+              </select>
+            </div>
+          </div>
+          <p id="up-filter-warn" style="color:#e53935;font-size:12px;margin-top:8px;display:none;">⚠️ Please select all required fields before downloading a sample or uploading.</p>
+        </div>
+
+        <!-- ── Upload cards ── -->
+
+        <!-- result_data -->
+        <div class="upload-card" style="cursor:default;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+            <div>
+              <div style="font-size:28px; margin-bottom:6px;">📄</div>
+              <h4>Result Data <span style="font-size:12px; color:#78909c; font-weight:400;">(result_data)</span></h4>
+              <p style="text-align:left; margin-top:4px;">
+                <b>Required:</b> roll_no, batch, semester, branch, programme<br>
+                <b>Key fields:</b> exam_month (text e.g. November 2024), appeared (A), pf_status (P/F), student_name, sgpa, cgpa<br>
+                <b>Accepts:</b> .xlsx or .csv
+              </p>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px; min-width:160px;">
+              <button class="btn-upload" style="background:#00695c;" onclick="downloadSample('result_data')">⬇️ Excel Template</button>
+              <button class="btn-upload" onclick="document.getElementById('file-result').click()">📂 Choose CSV</button>
+              <input type="file" id="file-result" accept=".csv,.xlsx" onchange="uploadCSV(this,'result_data')" style="display:none;">
+            </div>
+          </div>
+          <div id="status-result_data" style="margin-top:10px;"></div>
+        </div>
+
+        <!-- result_data_coursewise -->
+        <div class="upload-card" style="cursor:default;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+            <div>
+              <div style="font-size:28px; margin-bottom:6px;">📊</div>
+              <h4>Course Wise Data <span style="font-size:12px; color:#78909c; font-weight:400;">(result_data_coursewise)</span></h4>
+              <p style="text-align:left; margin-top:4px;">
+                <b>Required:</b> roll_no, batch, semester, branch, subject_name<br>
+                <b>Key fields:</b> grade (O/A+/A/B+/B/C/F/AB), ta_marks, mse_marks, ext_marks, total_marks, exam_month, curriculum
+              </p>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px; min-width:160px;">
+              <button class="btn-upload" style="background:#00695c;" onclick="downloadSample('result_data_coursewise')">⬇️ Excel Template</button>
+              <button class="btn-upload" onclick="document.getElementById('file-cw').click()">📂 Choose CSV</button>
+              <input type="file" id="file-cw" accept=".csv,.xlsx" onchange="uploadCSV(this,'result_data_coursewise')" style="display:none;">
+            </div>
+          </div>
+          <div id="status-result_data_coursewise" style="margin-top:10px;"></div>
+        </div>
+
+        <!-- graduants -->
+        <div class="upload-card" style="cursor:default;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+            <div>
+              <div style="font-size:28px; margin-bottom:6px;">🎓</div>
+              <h4>Graduants Data <span style="font-size:12px; color:#78909c; font-weight:400;">(graduants)</span></h4>
+              <p style="text-align:left; margin-top:4px;">
+                <b>Required:</b> programme, academic_year, current_batch, branch, htno<br>
+                <b>Key fields:</b> student_name, division (FIRST CLASS / SECOND DIVISION / PASS CLASS), backlog_status
+              </p>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px; min-width:160px;">
+              <button class="btn-upload" style="background:#00695c;" onclick="downloadSample('graduants')">⬇️ Excel Template</button>
+              <button class="btn-upload" onclick="document.getElementById('file-grad').click()">📂 Choose CSV</button>
+              <input type="file" id="file-grad" accept=".csv,.xlsx" onchange="uploadCSV(this,'graduants')" style="display:none;">
+            </div>
+          </div>
+          <div id="status-graduants" style="margin-top:10px;"></div>
+        </div>
+
+        <!-- result_admissions -->
+        <div class="upload-card" style="cursor:default;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+            <div>
+              <div style="font-size:28px; margin-bottom:6px;">📝</div>
+              <h4>Admissions Data <span style="font-size:12px; color:#78909c; font-weight:400;">(result_admissions)</span></h4>
+              <p style="text-align:left; margin-top:4px;">
+                <b>Required:</b> roll_no<br>
+                <b>Key fields:</b> admission_type (Regular In Take / Regular Lateral In Take / EWS / EWS_L)
+              </p>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px; min-width:160px;">
+              <button class="btn-upload" style="background:#00695c;" onclick="downloadSample('result_admissions')">⬇️ Excel Template</button>
+              <button class="btn-upload" onclick="document.getElementById('file-adm').click()">📂 Choose CSV</button>
+              <input type="file" id="file-adm" accept=".csv,.xlsx" onchange="uploadCSV(this,'result_admissions')" style="display:none;">
+            </div>
+          </div>
+          <div id="status-result_admissions" style="margin-top:10px;"></div>
+        </div>
+
+        <!-- Upload log -->
+        <div style="margin-top:24px; border-top:1px solid #eceff1; padding-top:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h4 style="color:#37474f; font-size:14px;">📋 Recent Upload History</h4>
+            <button onclick="loadUploadLogs()" style="background:#546e7a;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;">Refresh Logs</button>
+          </div>
+          <div id="upload-logs"></div>
+        </div>
+
+      </div><!-- /upload-section -->
+    </div>
+  </div>
+
+  <!-- ══════════════ 9. ADMIN ACTIONS ══════════════ -->
+  <div class="module-section" id="sec-admin">
+    <div class="results-area">
+      <div style="padding:16px 20px; background:#37474f; color:white;">
+        <h3 style="font-size:16px;">⚙️ Admin Maintenance Actions</h3>
+        <p style="font-size:13px; opacity:0.8;">Run these after uploading result data to compute derived fields</p>
+      </div>
+      <div class="admin-grid">
+        <div class="admin-card">
+          <h4>🔄 Update Admissions & Candidate Status</h4>
+          <p>Syncs admission_type from admissions table, classifies Regular/Repeaters, sets final_status and SGPA slabs.</p>
+          <button onclick="runAdminAction('/api/result-admin/update-admissions', this)">Run Update</button>
+        </div>
+        <div class="admin-card">
+          <h4>📊 Update SGPA/CGPA Divisions</h4>
+          <p>Recalculates Distinction / First Class / Second Class / Pass / Fail classifications for all result records.</p>
+          <button onclick="runAdminAction('/api/result-admin/update-sgpa-cgpa', this)">Run Update</button>
+        </div>
+        <div class="admin-card">
+          <h4>🎓 Update Graduants Backlog Status</h4>
+          <p>Sets "With Backlog" or "Without Any Backlog" for every graduant based on their result history.</p>
+          <button onclick="runAdminAction('/api/result-admin/update-backlog-status', this)">Run Update</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page-container -->
+
+<div id="toast"></div>
+
+<script>
+// ── Auth ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  if (!auth.requireAuth()) return;
+  const user = auth.getCurrentUser();
+  if (user) document.getElementById('user-display').textContent = user.username;
+  initAllFilters();
+});
+
+async function handleLogout() {
+  if (!confirm('Are you sure you want to logout?')) return;
+  try { await auth.logout(); } catch(e) {}
+  localStorage.removeItem('adminSession');
+  window.location.href = '/login.html';
+}
+
+// ── Tab Switching ─────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.module-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'show ' + type;
+  setTimeout(() => { t.className = ''; }, 3500);
+}
+
+// ── Populate a <select> ───────────────────────────────────────
+function populateSel(id, items) {
+  const sel = document.getElementById(id);
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">-- Select --</option>' +
+    items.map(i => `<option value="${i}">${i}</option>`).join('');
+  if (cur) sel.value = cur;
+}
+
+// ── Init all filters on load ──────────────────────────────────
+async function initAllFilters() {
+  try {
+    // Result Analysis filters
+    const ra = await (await fetch('/api/result/filters')).json();
+    populateSel('ra-prog', ra.programmes); populateSel('ra-batch', ra.batches); populateSel('ra-sem', ra.semesters);
+
+    // Stats filters
+    const st = await (await fetch('/api/stats/filters')).json();
+    populateSel('st-prog', st.programmes); populateSel('st-batch', st.batches);
+
+    // SGPA filters
+    const sg = await (await fetch('/api/sgpa/filters')).json();
+    populateSel('sg-prog', sg.programmes); populateSel('sg-batch', sg.batches);
+    populateSel('sg-sem', sg.semesters); populateSel('sg-status', sg.statuses);
+
+    // SGPA Div filters (same endpoint)
+    populateSel('sd-prog', sg.programmes); populateSel('sd-batch', sg.batches);
+    populateSel('sd-sem', sg.semesters); populateSel('sd-status', sg.statuses);
+
+    // NBA filters
+    const nb = await (await fetch('/api/nba/filters')).json();
+    populateSel('nb-batch', nb.batches); populateSel('nb-sem', nb.semesters); populateSel('nb-branch', nb.branches);
+
+    // Graduants filters
+    const gr = await (await fetch('/api/graduants/filters')).json();
+    populateSel('gr-prog', gr.programmes); populateSel('gr-ay', gr.academicYears);
+
+    // Notice filters (same as SGPA)
+    populateSel('nt-prog', sg.programmes); populateSel('nt-batch', sg.batches);
+    populateSel('nt-sem', sg.semesters); populateSel('nt-status', sg.statuses);
+
+  } catch(e) {
+    console.error('Filter init error:', e);
+  }
+
+  // Upload tab masters & logs
+  loadUploadMasters();
+  loadUploadLogs();
+}
+
+// ── 1. Result Analysis ────────────────────────────────────────
+async function loadResultAnalysis() {
+  const prog = document.getElementById('ra-prog').value;
+  const batch = document.getElementById('ra-batch').value;
+  const sem = document.getElementById('ra-sem').value;
+  if (!prog || !batch || !sem) { showToast('Please select all filters', 'error'); return; }
+
+  const el = document.getElementById('ra-result');
+  el.innerHTML = '<div class="loading-spinner">⏳ Loading...</div>';
+  try {
+    const data = await (await fetch(`/api/result/analysis?programme=${encodeURIComponent(prog)}&batch=${encodeURIComponent(batch)}&semester=${encodeURIComponent(sem)}`)).json();
+    if (data.error) throw new Error(data.error);
+
+    let html = `
+      <div class="results-header">
+        <h3>${data.headingLine1}</h3>
+        <p>${data.headingLine2}</p>
+      </div>
+      <div class="results-body">
+        <table>
+          <thead><tr>
+            <th>S.No</th><th>Branch</th><th>Appeared</th><th>Pass</th><th>% Pass</th>
+          </tr></thead><tbody>`;
+
+    data.rows.forEach((r, i) => {
+      html += `<tr>
+        <td>${i+1}</td><td class="td-branch">${r.branch}</td>
+        <td>${r.appeared}</td><td>${r.pass}</td>
+        <td><b>${r.percent}%</b></td>
+      </tr>`;
+    });
+
+    html += `</tbody><tfoot>
+      <tr class="grand-row">
+        <td colspan="2">TOTAL</td>
+        <td>${data.totalAppeared}</td><td>${data.totalPass}</td>
+        <td>${data.totalPercent}%</td>
+      </tr></tfoot></table>
+    </div>`;
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = `<div class="empty-state"><p>Error: ${e.message}</p></div>`; }
+}
+
+// ── 2. Semester Statistics ────────────────────────────────────
+async function loadStats() {
+  const prog = document.getElementById('st-prog').value;
+  const batch = document.getElementById('st-batch').value;
+  if (!prog || !batch) { showToast('Please select all filters', 'error'); return; }
+
+  const el = document.getElementById('st-result');
+  el.innerHTML = '<div class="loading-spinner">⏳ Loading...</div>';
+  try {
+    const data = await (await fetch(`/api/stats/semester-wise?programme=${encodeURIComponent(prog)}&batch=${encodeURIComponent(batch)}`)).json();
+    if (data.error) throw new Error(data.error);
+
+    let html = `<div class="results-header"><h3>${prog} — ${batch} Batch Semester-wise Statistics</h3></div>
+      <div class="results-body"><table><thead><tr>
+        <th>Branch</th>${data.semesters.map(s => `<th>Sem ${s}<br><small>Pass/App</small></th>`).join('')}
+        <th>Graduants</th><th>W/O Backlog</th>
+      </tr></thead><tbody>`;
+
+    data.rows.forEach(r => {
+      html += `<tr><td class="td-branch">${r.branch}</td>`;
+      data.semesters.forEach(s => { html += `<td>${r[s] || '-'}</td>`; });
+      html += `<td>${r.gradTotal}</td><td>${r.gradNoBacklog}</td></tr>`;
+    });
+    html += `</tbody></table></div>`;
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = `<div class="empty-state"><p>Error: ${e.message}</p></div>`; }
+}
+
+// ── 3. SGPA Analysis ──────────────────────────────────────────
+async function loadSgpa() {
+  const prog = document.getElementById('sg-prog').value;
+  const batch = document.getElementById('sg-batch').value;
+  const sem = document.getElementById('sg-sem').value;
+  const status = document.getElementById('sg-status').value;
+  if (!prog || !batch || !sem || !status) { showToast('Please select all filters', 'error'); return; }
+
+  const el = document.getElementById('sg-result');
+  el.innerHTML = '<div class="loading-spinner">⏳ Loading...</div>';
+  try {
+    const data = await (await fetch(`/api/sgpa/analysis?programme=${encodeURIComponent(prog)}&batch=${encodeURIComponent(batch)}&semester=${encodeURIComponent(sem)}&candStatus=${encodeURIComponent(status)}`)).json();
+    if (data.error) throw new Error(data.error);
+
+    let html = `<div class="results-header"><h3>SGPA Slab Analysis — ${prog} ${batch} Sem ${sem} (${status})</h3></div>
+      <div class="results-body"><table><thead><tr>
+        <th>Branch</th><th>Total</th>${data.slabs.map(s => `<th>${s}</th>`).join('')}
+      </tr></thead><tbody>`;
+
+    data.rows.forEach(r => {
+      html += `<tr><td class="td-branch">${r.branch}</td><td class="td-total">${r.total}</td>`;
+      data.slabs.forEach(s => { html += `<td>${r[s] || 0}</td>`; });
+      html += `</tr>`;
+    });
+    html += `</tbody></table></div>`;
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = `<div class="empty-state"><p>Error: ${e.message}</p></div>`; }
+}
+
+// ── 4. SGPA Division ──────────────────────────────────────────
+async function loadSgpaDiv() {
+  const prog = document.getElementById('sd-prog').value;
+  const batch = document.getElementById('sd-batch').value;
+  const sem = document.getElementById('sd-sem').value;
+  const status = document.getElementById('sd-status').value;
+  if (!prog || !batch || !sem || !status) { showToast('Please select all filters', 'error'); return; }
+
+  const el = document.getElementById('sd-result');
+  el.innerHTML = '<div class="loading-spinner">⏳ Loading...</div>';
+  try {
+    const data = await (await fetch(`/api/sgpadiv/analysis?programme=${encodeURIComponent(prog)}&batch=${encodeURIComponent(batch)}&semester=${encodeURIComponent(sem)}&candStatus=${encodeURIComponent(status)}`)).json();
+    if (data.error) throw new Error(data.error);
+
+    let html = `<div class="results-header"><h3>Division Analysis — ${prog} ${batch} Sem ${sem} (${status})</h3></div>
+      <div class="results-body"><table><thead><tr>
+        <th>Branch</th><th>Appeared</th><th>Pass</th><th>%</th>
+        ${data.divisions.map(d => `<th>${d}</th>`).join('')}
+      </tr></thead><tbody>`;
+
+    data.rows.forEach(r => {
+      html += `<tr><td class="td-branch">${r.branch}</td>
+        <td>${r.appeared}</td><td>${r.pass}</td><td><b>${r.percent}%</b></td>`;
+      data.divisions.forEach(d => { html += `<td>${r[d] || 0}</td>`; });
+      html += `</tr>`;
+    });
+    html += `<tr class="grand-row"><td>TOTAL</td><td>${data.totalAppeared}</td><td>${data.totalPass}</td><td>${data.totalPercent}%</td>${data.divisions.map(() => '<td>-</td>').join('')}</tr>`;
+    html += `</tbody></table></div>`;
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = `<div class="empty-state"><p>Error: ${e.message}</p></div>`; }
+}
+
+// ── 5. NBA Course Wise ────────────────────────────────────────
+async function loadNba() {
+  const batch = document.getElementById('nb-batch').value;
+  const sem = document.getElementById('nb-sem').value;
+  const branch = document.getElementById('nb-branch').value;
+  if (!batch || !sem || !branch) { showToast('Please select all filters', 'error'); return; }
+
+  const el = document.getElementById('nb-result');
+  el.innerHTML = '<div class="loading-spinner">⏳ Loading...</div>';
+  try {
+    const data = await (await fetch(`/api/nba/analysis?batch=${encodeURIComponent(batch)}&semester=${encodeURIComponent(sem)}&branch=${encodeURIComponent(branch)}`)).json();
+    if (data.error) throw new Error(data.error);
+
+    let html = `<div class="results-header"><h3>NBA Course Wise — ${branch} | Batch ${batch} | Sem ${sem}</h3></div>
+      <div class="results-body"><table><thead><tr>
+        <th>Subject</th><th>Total</th><th>Pass</th><th>%</th>
+        ${data.grades.map(g => `<th>${g}</th>`).join('')}
+      </tr></thead><tbody>`;
+
+    data.rows.forEach(r => {
+      html += `<tr><td class="td-branch" style="text-align:left;">${r.subject}</td>
+        <td>${r.total}</td><td>${r.pass}</td><td><b>${r.percent}%</b></td>`;
+      data.grades.forEach(g => { html += `<td>${r[g] || 0}</td>`; });
+      html += `</tr>`;
+    });
+    html += `</tbody></table></div>`;
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = `<div class="empty-state"><p>Error: ${e.message}</p></div>`; }
+}
+
+// ── 6. Graduants ──────────────────────────────────────────────
+async function loadGraduants() {
+  const prog = document.getElementById('gr-prog').value;
+  const ay = document.getElementById('gr-ay').value;
+  if (!prog || !ay) { showToast('Please select all filters', 'error'); return; }
+
+  const el = document.getElementById('gr-result');
+  el.innerHTML = '<div class="loading-spinner">⏳ Loading...</div>';
+  try {
+    const data = await (await fetch(`/api/graduants/analysis?programme=${encodeURIComponent(prog)}&academicYear=${encodeURIComponent(ay)}`)).json();
+    if (data.error) throw new Error(data.error);
+
+    let html = `<div class="results-header"><h3>Graduants — ${prog} | ${ay}</h3></div>
+      <div class="results-body"><table><thead><tr>
+        <th>Branch</th><th>Total</th><th>With Backlog</th><th>W/O Backlog</th>
+        ${data.divisions.map(d => `<th>${d}</th>`).join('')}
+      </tr></thead><tbody>`;
+
+    data.rows.forEach(r => {
+      html += `<tr><td class="td-branch">${r.branch}</td>
+        <td class="td-total">${r.total}</td><td>${r.withBacklog}</td><td>${r.noBacklog}</td>`;
+      data.divisions.forEach(d => { html += `<td>${r[d] || 0}</td>`; });
+      html += `</tr>`;
+    });
+    html += `</tbody></table></div>`;
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = `<div class="empty-state"><p>Error: ${e.message}</p></div>`; }
+}
+
+// ── 7. Result Notice ──────────────────────────────────────────
+async function loadNotice() {
+  const prog = document.getElementById('nt-prog').value;
+  const batch = document.getElementById('nt-batch').value;
+  const sem = document.getElementById('nt-sem').value;
+  const status = document.getElementById('nt-status').value;
+  if (!prog || !batch || !sem || !status) { showToast('Please select all filters', 'error'); return; }
+
+  const el = document.getElementById('nt-result');
+  el.innerHTML = '<div class="loading-spinner">⏳ Loading...</div>';
+  try {
+    const [noticeData, topperData, dateData] = await Promise.all([
+      fetch(`/api/notice/data?programme=${encodeURIComponent(prog)}&batch=${encodeURIComponent(batch)}&semester=${encodeURIComponent(sem)}&candStatus=${encodeURIComponent(status)}`).then(r => r.json()),
+      fetch(`/api/notice/toppers?programme=${encodeURIComponent(prog)}&batch=${encodeURIComponent(batch)}&semester=${encodeURIComponent(sem)}&candStatus=${encodeURIComponent(status)}`).then(r => r.json()),
+      fetch(`/api/notice/result-date?programme=${encodeURIComponent(prog)}&batch=${encodeURIComponent(batch)}&semester=${encodeURIComponent(sem)}&candStatus=${encodeURIComponent(status)}`).then(r => r.json())
+    ]);
+
+    let html = `<div class="results-header">
+      <h3>Result Notice — ${prog} ${batch} Sem ${sem} (${status})</h3>
+      <p>Result Month: ${noticeData.resultMonth || 'N/A'} | Academic Year: ${dateData.ay || 'N/A'} | Result Date: ${dateData.resultDeclDate || 'N/A'}</p>
+    </div><div class="results-body" id="notice-print-area">`;
+
+    noticeData.branches.forEach(br => {
+      html += `<div style="margin-bottom:28px; border:1px solid #e0e0e0; border-radius:8px; overflow:hidden;">
+        <div style="background:#37474f; color:white; padding:10px 16px; font-weight:700; font-size:15px;">
+          ${br.branch} &nbsp;|&nbsp; Appeared: ${br.appeared} &nbsp;|&nbsp; Passed: ${br.passed} &nbsp;|&nbsp; Pass%: ${br.passedPct}%
+        </div>
+        <div style="padding:12px 16px;">
+          <table style="width:100%; font-size:12px;">
+            <thead><tr>
+              <th style="background:#004d40;color:white;padding:7px;">Division</th>
+              <th style="background:#004d40;color:white;padding:7px;">Count</th>
+              <th style="background:#004d40;color:white;padding:7px;">%</th>
+              <th style="background:#004d40;color:white;padding:7px;">Roll Numbers</th>
+            </tr></thead><tbody>`;
+      br.divisions.forEach(d => {
+        html += `<tr>
+          <td style="padding:6px 10px;border-bottom:1px solid #eee;font-weight:600;">${d.label}</td>
+          <td style="padding:6px;text-align:center;border-bottom:1px solid #eee;">${d.count}</td>
+          <td style="padding:6px;text-align:center;border-bottom:1px solid #eee;">${d.pct}%</td>
+          <td style="padding:6px;border-bottom:1px solid #eee;font-size:11px;word-break:break-all;">${d.rolls.join(', ') || '-'}</td>
+        </tr>`;
+      });
+      html += `</tbody></table>`;
+      if (br.failSubjects.length) {
+        html += `<div style="margin-top:10px;"><b style="color:#b71c1c;">Failed Students (${br.totalFailed}):</b>`;
+        br.failSubjects.forEach(fs => {
+          html += `<div style="margin-top:6px;font-size:12px;"><em>${fs.subject}</em> (${fs.total}): ${fs.rolls.join(', ')}</div>`;
+        });
+        html += `</div>`;
+      }
+      html += `</div></div>`;
+    });
+
+    // Toppers
+    if (topperData.overallToppers && topperData.overallToppers.length) {
+      html += `<div style="margin-bottom:20px;"><h4 style="color:#004d40;margin-bottom:10px;">🏆 Overall Toppers</h4>
+        <table><thead><tr><th>Rank</th><th>Roll No</th><th>Name</th><th>Branch</th><th>SGPA</th></tr></thead><tbody>`;
+      topperData.overallToppers.forEach((s, i) => {
+        html += `<tr><td>${i+1}</td><td>${s.roll}</td><td>${s.name}</td><td>${s.branch}</td><td><b>${s.sgpa}</b></td></tr>`;
+      });
+      html += `</tbody></table></div>`;
+    }
+
+    html += `</div>`;
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = `<div class="empty-state"><p>Error: ${e.message}</p></div>`; }
+}
+
+function printNotice() {
+  const area = document.getElementById('notice-print-area');
+  if (!area) { showToast('Generate notice first', 'error'); return; }
+  const w = window.open('', '_blank');
+  w.document.write(`<html><head><title>Result Notice</title>
+    <style>body{font-family:Arial,sans-serif;padding:20px;font-size:13px;}
+    table{width:100%;border-collapse:collapse;}th,td{border:1px solid #ccc;padding:6px 10px;}
+    th{background:#004d40;color:white;}</style></head>
+    <body>${area.innerHTML}</body></html>`);
+  w.document.close(); w.print();
+}
+
+// ── 8. Upload — master data ────────────────────────────────────
+let _uploadMasters = null;
+
+async function loadUploadMasters() {
+  try {
+    const data = await (await fetch('/api/result-upload/masters')).json();
+    _uploadMasters = data;
+    const sel = (id, arr) => {
+      const el = document.getElementById(id);
+      const cur = el.value;
+      el.innerHTML = '<option value="">-- Select --</option>' +
+        arr.map(v => `<option value="${v}">${v}</option>`).join('');
+      if (cur) el.value = cur;
+    };
+    if (data.programmes) sel('up-prog',   data.programmes);
+    if (data.batches)    sel('up-batch',  data.batches);
+    if (data.semesters)  sel('up-sem',    data.semesters);
+    if (data.branches)   sel('up-branch', data.branches);
+  } catch(e) {
+    console.error('Upload master load error:', e);
+  }
+}
+
+function getUploadFilters(table) {
+  const prog   = document.getElementById('up-prog').value;
+  const batch  = document.getElementById('up-batch').value;
+  const sem    = document.getElementById('up-sem').value;
+  const month  = document.getElementById('up-month').value;
+  const branch = document.getElementById('up-branch').value;
+  const warn   = document.getElementById('up-filter-warn');
+  // result_data requires prog+batch+sem+month; coursewise also needs branch
+  const needBranch = table === 'result_data_coursewise';
+  const missing = (!prog || !batch || !sem || !month) || (needBranch && !branch);
+  if (warn) warn.style.display = missing ? 'block' : 'none';
+  return { prog, batch, sem, month, branch, valid: !missing };
+}
+
+function downloadSample(table) {
+  // Always download the combined Excel template (all 4 sheets in one file)
+  const link = document.createElement('a');
+  link.href  = '/api/result-upload/sample-template';
+  link.download = 'result_upload_template.xlsx';
+  document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  showToast('📥 Downloading Excel template (all 4 tables)...', 'success');
+}
+
+async function uploadCSV(input, tableName) {
+  if (!input.files.length) return;
+  const f = getUploadFilters(tableName);
+  if (!f.valid && tableName !== 'result_admissions') {
+    showToast('Select Programme, Batch, Semester & Exam Month before uploading', 'error');
+    input.value = '';
+    return;
+  }
+
+  const file = input.files[0];
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('table', tableName);
+  // Pass selected filters so server can do exact validation
+  formData.append('filter_programme', f.prog);
+  formData.append('filter_batch', f.batch);
+  formData.append('filter_semester', f.sem);
+  formData.append('filter_exam_month', f.month);
+  formData.append('filter_branch', f.branch);
+
+  const statusEl = document.getElementById('status-' + tableName);
+  if (statusEl) statusEl.innerHTML = `<div style="color:#1565c0;padding:8px;background:#e3f2fd;border-radius:5px;font-size:13px;">⏳ Uploading <b>${file.name}</b>...</div>`;
+
+  try {
+    const res  = await fetch('/api/result-upload', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (data.success) {
+      if (statusEl) statusEl.innerHTML = `
+        <div style="color:#1b5e20;padding:10px;background:#e8f5e9;border-radius:5px;font-size:13px;">
+          ✅ <b>${data.rowsInserted || 0} rows</b> inserted into <b>${tableName}</b>
+          <span style="color:#546e7a;"> — ${file.name}</span>
+        </div>`;
+      showToast(`✅ ${data.rowsInserted || 0} rows uploaded to ${tableName}`, 'success');
+      loadUploadLogs();
+    } else {
+      throw new Error(data.error || 'Upload failed');
+    }
+  } catch(e) {
+    const msg = e.message || 'Upload failed';
+    if (statusEl) statusEl.innerHTML = `
+      <div style="color:#b71c1c;padding:10px;background:#ffebee;border-radius:5px;font-size:13px;white-space:pre-wrap;">
+        ❌ <b>Error:</b> ${msg}
+      </div>`;
+    showToast('Upload failed', 'error');
+  }
+  input.value = '';
+}
+
+async function loadUploadLogs() {
+  const el = document.getElementById('upload-logs');
+  if (!el) return;
+  try {
+    const data = await (await fetch('/api/result-upload/logs')).json();
+    if (!data.data || !data.data.length) {
+      el.innerHTML = '<p style="color:#90a4ae;font-size:13px;">No uploads yet.</p>'; return;
+    }
+    let html = `<table style="width:100%;font-size:12px;border-collapse:collapse;">
+      <thead><tr>
+        <th style="background:#546e7a;color:white;padding:7px 10px;text-align:left;">Time</th>
+        <th style="background:#546e7a;color:white;padding:7px 10px;text-align:left;">Table</th>
+        <th style="background:#546e7a;color:white;padding:7px 10px;text-align:left;">File</th>
+        <th style="background:#546e7a;color:white;padding:7px 10px;text-align:center;">Rows</th>
+        <th style="background:#546e7a;color:white;padding:7px 10px;text-align:left;">By</th>
+      </tr></thead><tbody>`;
+    data.data.forEach((r, i) => {
+      const bg = i % 2 === 0 ? '#f8f9fa' : '#fff';
+      const dt = new Date(r.uploaded_at).toLocaleString('en-IN');
+      html += `<tr style="background:${bg};">
+        <td style="padding:6px 10px;border-bottom:1px solid #eceff1;">${dt}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #eceff1;"><b>${r.table_name}</b></td>
+        <td style="padding:6px 10px;border-bottom:1px solid #eceff1;">${r.file_name}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #eceff1;text-align:center;">${r.rows_inserted}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #eceff1;">${r.uploaded_by}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = `<p style="color:#b71c1c;font-size:13px;">Could not load logs: ${e.message}</p>`;
+  }
+}
+
+// ── 9. Admin Actions ──────────────────────────────────────────
+async function runAdminAction(url, btn) {
+  const origText = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Running...';
+  try {
+    const res = await fetch(url, { method: 'POST' });
+    const data = await res.json();
+    if (data.success || data.message) {
+      showToast(data.message || '✅ Done', 'success');
+    } else {
+      throw new Error(data.error || 'Action failed');
+    }
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+  btn.disabled = false; btn.textContent = origText;
+}
+</script>
+
+</body>
+</html>

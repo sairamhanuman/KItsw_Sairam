@@ -314,7 +314,7 @@ async function loadPlan() {
         allRooms = data.rooms || [];
         selRooms = new Set(allRooms.map(r => r.room_id));
 
-        renderPlanInfo(data.plan, data.rooms);
+        renderPlanInfo(data.plan, data.rooms, data.college);
         document.getElementById('planInfoSection').style.display = 'block';
         document.getElementById('btnDownloadAll').disabled = false;
 
@@ -328,13 +328,30 @@ async function loadPlan() {
 // ════════════════════════════════════════════════════════════
 //  RENDER PLAN INFO
 // ════════════════════════════════════════════════════════════
-function renderPlanInfo(plan, rooms) {
-    const dateStr = plan.exam_date
-        ? new Date(plan.exam_date + 'T00:00:00')
-            .toLocaleDateString('en-IN', { weekday:'short', day:'2-digit', month:'short', year:'numeric' })
+function renderPlanInfo(plan, rooms, college) {
+    const rawDate = (plan.exam_date || '').toString().substring(0, 10);
+    const dateStr = rawDate
+        ? new Date(rawDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday:'short', day:'2-digit', month:'short', year:'numeric' })
         : '—';
     const session = plan.session_order === 1 ? 'FN — Forenoon' : 'AN — Afternoon';
-
+    if (college?.college_name) {
+        const h1 = document.querySelector('.page-hdr h1');
+        if (h1) h1.innerHTML = `<i class="bi bi-file-pdf me-2"></i>${college.college_name}`;
+        const hdrP = document.querySelector('.page-hdr p');
+        if (hdrP) hdrP.textContent = (college.college_subtitle||'EXAMINATION BRANCH') + ' — Seating Plan Export';
+    }
+    if (!document.getElementById('collegeBanner')) {
+        const sb = document.querySelector('.status-bar');
+        if (sb) {
+            const d = document.createElement('div');
+            d.id = 'collegeBanner';
+            d.style.cssText = 'background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px 20px;margin-bottom:14px;text-align:center;';
+            d.innerHTML = `<div style="font-size:18px;font-weight:900;color:#1e293b;">${college?.college_name||''}</div>
+                <div style="font-size:12px;font-weight:700;color:#667eea;margin-top:4px;text-transform:uppercase;">${college?.college_subtitle||'EXAMINATION BRANCH'}</div>
+                ${college?.college_address?`<div style="font-size:11px;color:#64748b;margin-top:3px;">${college.college_address}</div>`:''}`;
+            sb.parentNode.insertBefore(d, sb);
+        }
+    }
     document.getElementById('hdrSub').textContent =
         `Plan #${plan.plan_id} · ${dateStr} · ${plan.session_order===1?'FN':'AN'}`;
     document.getElementById('sbDate').textContent     = dateStr;
@@ -513,47 +530,46 @@ function renderWebPreview() {
             benchMap[s.bench_label][s.seat_position] = s;
         });
         const labels = Object.keys(benchMap).sort((a,b) => {
-            const sa = students.find(x => x.bench_label===a);
-            const sb = students.find(x => x.bench_label===b);
-            return (sa?.seat_serial||0) - (sb?.seat_serial||0);
+            const ra = students.find(x=>x.bench_label===a), rb = students.find(x=>x.bench_label===b);
+            if((ra?.row_no||0)!==(rb?.row_no||0)) return (ra?.row_no||0)-(rb?.row_no||0);
+            return (ra?.col_no||0)-(rb?.col_no||0);
         });
-
+        const rowMap={};
+        labels.forEach(lbl=>{
+            const s=students.find(x=>x.bench_label===lbl);
+            const rn=s?.row_no||0; if(!rowMap[rn]) rowMap[rn]=[]; rowMap[rn].push(lbl);
+        });
+        const sortedRows=Object.keys(rowMap).map(Number).sort((a,b)=>a-b);
+        const maxCols=Math.max(...sortedRows.map(rn=>rowMap[rn].length),1);
+        let colHdrs=`<th style="padding:6px 8px;border:1px solid #e2e8f0;width:46px;background:#f0f4ff;font-size:11px;color:#64748b;text-align:center;">Row</th>`;
+        for(let c=1;c<=maxCols;c++) colHdrs+=`<th colspan="${spb}" style="padding:7px 8px;border:1px solid #e2e8f0;text-align:center;background:#f0f4ff;font-size:11px;font-weight:800;">Col ${c}</th>`;
+        let subHdrs=`<th style="border:1px solid #e2e8f0;background:#f8fafc;"></th>`;
+        for(let c=1;c<=maxCols;c++){
+            subHdrs+=`<th style="padding:4px 6px;border:1px solid #e2e8f0;font-size:10px;color:#2563eb;background:#f8fafc;text-align:center;">Left</th>`;
+            if(spb===2) subHdrs+=`<th style="padding:4px 6px;border:1px solid #e2e8f0;font-size:10px;color:#7c3aed;background:#f8fafc;text-align:center;">Right</th>`;
+        }
+        const dataRows=sortedRows.map((rn,ri)=>{
+            const rb2=rowMap[rn]; const bg=ri%2===0?'#fff':'#fafbff';
+            let cells=`<td style="padding:7px;border:1px solid #e2e8f0;text-align:center;font-weight:800;color:#667eea;background:#f0f4ff;font-size:12px;">R${rn}</td>`;
+            for(let ci=0;ci<maxCols;ci++){
+                const lbl=rb2[ci];
+                const p1=lbl?benchMap[lbl]?.[1]:null; const p2=lbl?benchMap[lbl]?.[2]:null;
+                cells+=`<td style="padding:7px 8px;border:1px solid #e2e8f0;vertical-align:top;">${p1?studentCell(p1):'<span style="color:#cbd5e1;">—</span>'}</td>`;
+                if(spb===2) cells+=`<td style="padding:7px 8px;border:1px solid #e2e8f0;vertical-align:top;">${p2?studentCell(p2):'<span style="color:#cbd5e1;">—</span>'}</td>`;
+            }
+            return `<tr style="background:${bg};">${cells}</tr>`;
+        }).join('');
         html += `
         <div class="room-section">
             <div class="room-title-bar">
                 <h4><i class="bi bi-building me-1"></i>${room.room_number} — ${room.room_name}</h4>
-                <div style="font-size:12px;opacity:.8;">
-                    ${room.student_count} students · ${spb}/bench
-                </div>
+                <div style="font-size:12px;opacity:.8;">${room.student_count} students · ${spb}/bench · Row-first</div>
             </div>
             <div style="overflow-x:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:12px;">
-                <thead style="background:#f8fafc;">
-                    <tr>
-                        <th style="padding:8px 10px;border:1px solid #e2e8f0;width:60px;text-align:center;color:#64748b;font-size:11px;">Bench</th>
-                        <th style="padding:8px 10px;border:1px solid #e2e8f0;color:#2563eb;font-size:11px;">← LEFT (Pos 1)</th>
-                        ${spb===2?`<th style="padding:8px 10px;border:1px solid #e2e8f0;color:#7c3aed;font-size:11px;">RIGHT (Pos 2) →</th>`:''}
-                    </tr>
-                </thead>
-                <tbody>
-                ${labels.map((lbl,i) => {
-                    const p1 = benchMap[lbl][1];
-                    const p2 = benchMap[lbl][2];
-                    const bg = i%2===0 ? '#fff' : '#fafbff';
-                    return `<tr style="background:${bg};">
-                        <td style="padding:8px;border:1px solid #e2e8f0;text-align:center;
-                            font-weight:800;color:#667eea;background:#f0f4ff;">${lbl}</td>
-                        <td style="padding:8px;border:1px solid #e2e8f0;">
-                            ${p1 ? studentCell(p1) : '<span style="color:#cbd5e1;font-size:11px;">—</span>'}
-                        </td>
-                        ${spb===2?`<td style="padding:8px;border:1px solid #e2e8f0;">
-                            ${p2 ? studentCell(p2) : '<span style="color:#cbd5e1;font-size:11px;">—</span>'}
-                        </td>`:''}
-                    </tr>`;
-                }).join('')}
-                </tbody>
-            </table>
-            </div>
+            <table style="border-collapse:collapse;font-size:12px;min-width:100%;">
+                <thead><tr>${colHdrs}</tr><tr>${subHdrs}</tr></thead>
+                <tbody>${dataRows}</tbody>
+            </table></div>
         </div>`;
     }
     body.innerHTML = html;

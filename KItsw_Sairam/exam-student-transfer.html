@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Room Transfer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{background:#f1f5f9;font-family:'Segoe UI',sans-serif;min-height:100vh;}
+
+        .page-header{background:linear-gradient(135deg,#1e40af,#1d4ed8);padding:18px 32px;
+            display:flex;align-items:center;justify-content:space-between;}
+        .page-header h1{color:#fff;font-size:18px;font-weight:800;display:flex;align-items:center;gap:10px;}
+        .back-btn{color:#bfdbfe;text-decoration:none;font-size:13px;display:flex;align-items:center;gap:6px;}
+        .back-btn:hover{color:#fff;}
+
+        .container{max-width:1400px;margin:24px auto;padding:0 20px;}
+
+        /* Filter card */
+        .filter-card{background:#fff;border-radius:14px;padding:20px 24px;
+            box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:20px;}
+        .filter-card h3{font-size:14px;font-weight:700;color:#1e293b;margin-bottom:16px;
+            display:flex;align-items:center;gap:8px;}
+        .filter-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;align-items:end;}
+        .field-label{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;
+            letter-spacing:.5px;margin-bottom:5px;}
+        .field-input{width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;
+            font-size:13px;color:#1e293b;outline:none;transition:border-color .2s;background:#fff;}
+        .field-input:focus{border-color:#1d4ed8;}
+        .field-input:disabled{background:#f8fafc;color:#94a3b8;}
+
+        .btn-load{background:linear-gradient(135deg,#1d4ed8,#1e40af);color:#fff;border:none;
+            border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;
+            height:40px;display:flex;align-items:center;gap:8px;transition:all .2s;white-space:nowrap;}
+        .btn-load:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(29,78,216,.4);}
+        .btn-load:disabled{opacity:.5;pointer-events:none;}
+
+        /* Room info bar */
+        .room-bar{background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;
+            padding:10px 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px;}
+        .room-bar .rb-item{font-size:12px;color:#1e40af;}
+        .room-bar .rb-item strong{font-size:14px;font-weight:800;}
+        .room-bar.target{background:#f0fdf4;border-color:#86efac;}
+        .room-bar.target .rb-item{color:#166534;}
+
+        /* Transfer layout */
+        .transfer-layout{display:grid;grid-template-columns:1fr 70px 1fr;gap:0;
+            background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.06);
+            overflow:hidden;margin-bottom:20px;}
+
+        .panel-col{display:flex;flex-direction:column;}
+        .panel-hdr{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;
+            border-bottom:1px solid #f1f5f9;}
+        .panel-hdr.source{background:linear-gradient(135deg,#eff6ff,#dbeafe);}
+        .panel-hdr.target{background:linear-gradient(135deg,#f0fdf4,#dcfce7);}
+        .panel-hdr h4{font-size:13px;font-weight:700;margin:0;}
+        .panel-hdr.source h4{color:#1d4ed8;}
+        .panel-hdr.target h4{color:#16a34a;}
+
+        .count-badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+        .count-badge.source{background:#dbeafe;color:#1d4ed8;}
+        .count-badge.target{background:#dcfce7;color:#16a34a;}
+
+        .panel-search{padding:8px 12px;border-bottom:1px solid #f1f5f9;position:relative;}
+        .panel-search input{width:100%;padding:7px 10px 7px 32px;border:1.5px solid #e2e8f0;
+            border-radius:8px;font-size:12px;outline:none;background:#f8fafc;}
+        .panel-search input:focus{border-color:#667eea;background:#fff;}
+        .panel-search i{position:absolute;left:20px;top:50%;transform:translateY(-50%);
+            color:#94a3b8;font-size:13px;}
+
+        .panel-body{flex:1;overflow-y:auto;max-height:440px;}
+        .student-item{padding:9px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;
+            border-bottom:1px solid #f8fafc;transition:background .1s;user-select:none;}
+        .student-item:hover{background:#f0f4ff;}
+        .student-item.selected{background:#dbeafe;}
+        .student-item.target-item:hover{background:#f0fdf4;}
+        .student-item.target-item.selected{background:#dcfce7;}
+        .student-item.blocked{opacity:.5;cursor:not-allowed;}
+
+        .item-check{width:16px;height:16px;border-radius:4px;border:1.5px solid #cbd5e1;
+            flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+        .student-item.selected .item-check{background:#1d4ed8;border-color:#1d4ed8;color:#fff;}
+        .student-item.target-item.selected .item-check{background:#16a34a;border-color:#16a34a;}
+        .item-bench{font-size:10px;background:#f1f5f9;padding:2px 6px;border-radius:4px;
+            color:#64748b;font-weight:700;min-width:32px;text-align:center;}
+        .item-roll{font-weight:700;font-size:12px;color:#1e293b;min-width:85px;}
+        .item-name{font-size:11px;color:#64748b;flex:1;white-space:nowrap;
+            overflow:hidden;text-overflow:ellipsis;}
+        .item-sub{font-size:10px;color:#667eea;white-space:nowrap;}
+
+        .panel-footer{padding:10px 14px;background:#f8fafc;border-top:1px solid #f1f5f9;
+            display:flex;align-items:center;justify-content:space-between;gap:8px;}
+        .sel-count{font-size:11px;color:#64748b;}
+        .footer-btn{padding:5px 12px;border-radius:8px;font-size:11px;font-weight:600;
+            cursor:pointer;border:1.5px solid #e2e8f0;background:#fff;color:#334155;transition:all .15s;}
+        .footer-btn:hover{border-color:#667eea;color:#667eea;}
+
+        /* Transfer buttons */
+        .xfer-col{display:flex;flex-direction:column;align-items:center;justify-content:center;
+            gap:12px;padding:16px 8px;background:#f8fafc;
+            border-left:1px solid #f1f5f9;border-right:1px solid #f1f5f9;}
+        .xfer-btn{width:42px;height:42px;border-radius:50%;border:2px solid;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;font-size:16px;
+            transition:all .15s;background:#fff;}
+        .xfer-btn.to-target{border-color:#1d4ed8;color:#1d4ed8;}
+        .xfer-btn.to-target:hover{background:#1d4ed8;color:#fff;}
+        .xfer-btn.to-source{border-color:#dc2626;color:#dc2626;}
+        .xfer-btn.to-source:hover{background:#dc2626;color:#fff;}
+        .xfer-btn:disabled{opacity:.3;cursor:not-allowed;}
+
+        /* Target room selector */
+        .target-selector{background:#fff;border-radius:14px;padding:20px 24px;
+            box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:20px;}
+        .target-selector h3{font-size:14px;font-weight:700;color:#1e293b;margin-bottom:14px;
+            display:flex;align-items:center;gap:8px;}
+        .room-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+        .room-option{border:1.5px solid #e2e8f0;border-radius:10px;padding:12px;cursor:pointer;
+            transition:all .2s;text-align:center;background:#fff;}
+        .room-option:hover{border-color:#1d4ed8;transform:translateY(-2px);}
+        .room-option.selected{border-color:#16a34a;background:#f0fdf4;}
+        .room-option.full{border-color:#fca5a5;background:#fff5f5;cursor:not-allowed;opacity:.7;}
+        .ro-num{font-weight:800;font-size:13px;color:#1e293b;}
+        .ro-block{font-size:10px;color:#64748b;margin-top:2px;}
+        .ro-seats{font-size:11px;margin-top:4px;}
+        .ro-seats.ok{color:#16a34a;font-weight:700;}
+        .ro-seats.warn{color:#f59e0b;font-weight:700;}
+        .ro-seats.full{color:#dc2626;font-weight:700;}
+        .room-search{margin-bottom:12px;position:relative;}
+        .room-search input{width:100%;max-width:300px;padding:8px 12px 8px 34px;
+            border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;outline:none;}
+        .room-search input:focus{border-color:#1d4ed8;}
+        .room-search i{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#94a3b8;}
+
+        /* Reason + Save bar */
+        .save-bar{background:#fff;border-radius:14px;padding:18px 24px;
+            box-shadow:0 2px 12px rgba(0,0,0,.06);display:flex;align-items:center;
+            justify-content:space-between;flex-wrap:wrap;gap:14px;}
+        .reason-wrap{display:flex;gap:12px;align-items:end;flex-wrap:wrap;flex:1;}
+        .btn-save{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;
+            border-radius:10px;padding:12px 32px;font-size:14px;font-weight:700;cursor:pointer;
+            display:flex;align-items:center;gap:8px;transition:all .2s;white-space:nowrap;}
+        .btn-save:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(22,163,74,.4);}
+        .btn-save:disabled{opacity:.5;pointer-events:none;}
+
+        .transfer-summary{background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;
+            padding:10px 16px;font-size:13px;color:#1e40af;display:flex;align-items:center;gap:8px;}
+
+        .empty-state{text-align:center;padding:40px;color:#94a3b8;}
+        .empty-state i{font-size:36px;display:block;margin-bottom:8px;}
+
+        .toast-c{position:fixed;top:16px;right:16px;z-index:9999;}
+        .toast-m{background:#1e293b;color:#fff;padding:10px 16px;border-radius:10px;
+            font-size:13px;margin-bottom:6px;box-shadow:0 4px 16px rgba(0,0,0,.2);
+            border-left:4px solid #667eea;animation:slideIn .3s ease;}
+        @keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+    </style>
+</head>
+<body>
+
+<div class="page-header">
+    <h1><i class="bi bi-arrow-left-right" style="color:#bfdbfe;"></i> Student Room Transfer</h1>
+    <a href="index.html" class="back-btn"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+</div>
+
+<div class="toast-c" id="toastC"></div>
+
+<div class="container">
+
+    <!-- ── FILTER PANEL ── -->
+    <div class="filter-card">
+        <h3><i class="bi bi-funnel" style="color:#1d4ed8;"></i> Select Source</h3>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+            <!-- Step 1 -->
+            <div>
+                <div class="field-label">Notification Type</div>
+                <select id="fType" class="field-input" style="min-width:160px;" onchange="onTypeChange()">
+                    <option value="">— Select —</option>
+                    <option value="Internal">MSE (Internal)</option>
+                    <option value="ESE">ESE (External)</option>
+                </select>
+            </div>
+            <!-- Step 2 -->
+            <div id="wrapNotif" style="display:none;">
+                <div class="field-label">Notification</div>
+                <select id="fNotif" class="field-input" style="min-width:200px;" onchange="onNotifChange()">
+                    <option value="">— Select —</option>
+                </select>
+            </div>
+            <!-- Step 3 -->
+            <div id="wrapDate" style="display:none;">
+                <div class="field-label">Exam Date</div>
+                <input type="date" id="fDate" class="field-input" onchange="onDateSessionChange()"/>
+            </div>
+            <div id="wrapSession" style="display:none;">
+                <div class="field-label">Session</div>
+                <select id="fSession" class="field-input" onchange="onDateSessionChange()">
+                    <option value="">— Session —</option>
+                    <option value="1">FN</option>
+                    <option value="2">AN</option>
+                </select>
+            </div>
+            <!-- Step 5: Programme -->
+            <div id="wrapProg" style="display:none;">
+                <div class="field-label">Programme</div>
+                <select id="fProg" class="field-input" onchange="onProgChange()">
+                    <option value="">— Select Programme —</option>
+                </select>
+            </div>
+
+            <!-- Step 6: Semester -->
+            <div id="wrapSem" style="display:none;">
+                <div class="field-label">Semester</div>
+                <select id="fSem" class="field-input" onchange="onSemChange()">
+                    <option value="">— Select Semester —</option>
+                </select>
+            </div>
+
+            <!-- Step 7: Branch -->
+            <div id="wrapBranch" style="display:none;">
+                <div class="field-label">Branch</div>
+                <select id="fBranch" class="field-input" onchange="onBranchChange()">
+                    <option value="">— Select Branch —</option>
+                </select>
+            </div>
+            <!-- Step 5: Subject (for selected branch) -->
+            <div id="wrapSubject" style="display:none;">
+                <div class="field-label">Subject</div>
+                <select id="fSubject" class="field-input" onchange="onSubjectChange()">
+                    <option value="">— Select Subject —</option>
+                </select>
+            </div>
+            <!-- Step 6: Room (where that subject sits) -->
+            <div id="wrapRoom" style="display:none;">
+                <div class="field-label">Source Room</div>
+                <select id="fRoom" class="field-input" onchange="checkLoad()">
+                    <option value="">— Select Room —</option>
+                </select>
+            </div>
+            <div id="wrapLoad" style="display:none;">
+                <button class="btn-load" onclick="loadSourceStudents()" id="loadBtn" disabled>
+                    <i class="bi bi-search"></i> Load Students
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── TARGET ROOM SELECTOR ── -->
+    <div class="target-selector" id="targetSelector" style="display:none;">
+        <h3><i class="bi bi-building-check" style="color:#16a34a;"></i>
+            Select Target Room
+            <span style="font-size:11px;color:#94a3b8;font-weight:400;margin-left:6px;">
+                — pick any room from master (shows available seats)
+            </span>
+        </h3>
+        <div class="room-search">
+            <i class="bi bi-search"></i>
+            <input type="text" id="roomSearch" placeholder="Search room number…"
+                   oninput="filterRooms()"/>
+        </div>
+        <div class="room-grid" id="roomGrid"></div>
+    </div>
+
+    <!-- ── TRANSFER DUAL PANEL ── -->
+    <div class="transfer-layout" id="transferLayout" style="display:none;">
+
+        <!-- SOURCE -->
+        <div class="panel-col">
+            <div class="panel-hdr source">
+                <h4><i class="bi bi-door-open me-2"></i>Source Room: <span id="sourceRoomLabel">—</span></h4>
+                <span class="count-badge source" id="sourceCount">0</span>
+            </div>
+            <div id="sourceRoomBar"></div>
+            <div class="panel-search">
+                <i class="bi bi-search"></i>
+                <input type="text" id="srcSearch" placeholder="Search roll no or name…"
+                       oninput="filterSource()"/>
+            </div>
+            <div class="panel-body" id="sourceList"></div>
+            <div class="panel-footer">
+                <span class="sel-count" id="srcSelCount">0 selected</span>
+                <div style="display:flex;gap:6px;">
+                    <button class="footer-btn" onclick="selectAll('src')">Select All</button>
+                    <button class="footer-btn" onclick="clearSel('src')">Clear</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TRANSFER BUTTONS -->
+        <div class="xfer-col">
+            <button class="xfer-btn to-target" id="btnToTarget" onclick="transfer('toTarget')"
+                    title="Move selected to target room" disabled>
+                <i class="bi bi-chevron-right"></i>
+            </button>
+            <button class="xfer-btn to-source" id="btnToSource" onclick="transfer('toSource')"
+                    title="Move selected back to source" disabled>
+                <i class="bi bi-chevron-left"></i>
+            </button>
+        </div>
+
+        <!-- TARGET -->
+        <div class="panel-col">
+            <div class="panel-hdr target">
+                <h4><i class="bi bi-door-closed me-2"></i>Target Room: <span id="targetRoomLabel">— select above —</span></h4>
+                <span class="count-badge target" id="targetCount">0</span>
+            </div>
+            <div id="targetRoomBar"></div>
+            <div class="panel-search">
+                <i class="bi bi-search"></i>
+                <input type="text" id="tgtSearch" placeholder="Search roll no or name…"
+                       oninput="filterTarget()"/>
+            </div>
+            <div class="panel-body" id="targetList">
+                <div class="empty-state">
+                    <i class="bi bi-building-add"></i>
+                    Select a target room above
+                </div>
+            </div>
+            <div class="panel-footer">
+                <span class="sel-count" id="tgtSelCount">0 selected</span>
+                <div style="display:flex;gap:6px;">
+                    <button class="footer-btn" onclick="selectAll('tgt')">Select All</button>
+                    <button class="footer-btn" onclick="clearSel('tgt')">Clear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── SAVE BAR ── -->
+    <div class="save-bar" id="saveBar" style="display:none;">
+        <div class="reason-wrap">
+            <div>
+                <div class="field-label">Reason for Transfer</div>
+                <select id="transferReason" class="field-input" style="min-width:200px;">
+                    <option value="Medical">🏥 Medical</option>
+                    <option value="Administrative">📋 Administrative</option>
+                    <option value="Room Change">🏢 Room Change</option>
+                    <option value="Other">✏️ Other</option>
+                </select>
+            </div>
+            <div id="transferSummary" class="transfer-summary" style="display:none;">
+                <i class="bi bi-arrow-right-circle-fill"></i>
+                <span id="transferSummaryText"></span>
+            </div>
+        </div>
+        <button class="btn-save" id="saveBtn" onclick="executeTransfer()" disabled>
+            <i class="bi bi-send-check"></i> Execute Transfer
+        </button>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+
+const S = {
+    planId:      null,
+    sourceRoom:  null,
+    targetRoom:  null,
+    source:      [],   // students in source room (available to transfer)
+    toTransfer:  [],   // selected from source to move to target
+    target:      [],   // students already in target + newly transferred
+    srcSel:      new Set(),
+    tgtSel:      new Set(),
+    allRooms:    []
+};
+
+// ── Init ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => { loadDropdowns(); });
+
+async function loadDropdowns() {
+    try {
+        const [pr, sr, br, subr] = await Promise.all([
+            fetch('/api/programmes').then(r=>r.json()),
+            fetch('/api/semesters').then(r=>r.json()),
+            fetch('/api/branches').then(r=>r.json()),
+            fetch('/api/subjects').then(r=>r.json()).catch(()=>({data:[]}))
+        ]);
+        // Programme and semester auto-detected from notification/slot data
+        fill('fBranch', br.data||br.branches||[], 'branch_id', 'branch_name', 'branch_code');
+    } catch(_) {}
+}
+
+function fill(id, arr, valKey, lblKey, prefixKey) {
+    const sel = document.getElementById(id);
+    arr.forEach(x => {
+        const opt = document.createElement('option');
+        opt.value = x[valKey];
+        opt.textContent = prefixKey ? `${x[prefixKey]} — ${x[lblKey]}` : x[lblKey];
+        sel.appendChild(opt);
+    });
+}
+
+// ── Dependent dropdown chain ─────────────────────────────────
+// Type → Notification → Date → Session → Branch → Subject → Room
+
+async function onTypeChange() {
+    const type = document.getElementById('fType').value;
+    // Reset all downstream
+    ['wrapNotif','wrapDate','wrapSession','wrapBranch','wrapSubject','wrapRoom','wrapLoad']
+        .forEach(id => document.getElementById(id).style.display='none');
+    document.getElementById('transferLayout').style.display='none';
+    document.getElementById('targetSelector').style.display='none';
+
+    if (!type) return;
+
+    const res  = await fetch('/api/exam-notifications');
+    const data = await res.json();
+    const list = (data.data||data.notifications||[])
+        .filter(n => n.exam_type === type);
+
+    const sel = document.getElementById('fNotif');
+    sel.innerHTML = '<option value="">— Select Notification —</option>' +
+        list.map(n=>`<option value="${n.notification_id}">${n.notification_title}</option>`).join('');
+    document.getElementById('wrapNotif').style.display='block';
+}
+
+async function onNotifChange() {
+    const notif = document.getElementById('fNotif').value;
+    // Reset downstream
+    ['wrapDate','wrapSession','wrapBranch','wrapSubject','wrapRoom','wrapLoad']
+        .forEach(id => document.getElementById(id).style.display='none');
+
+    if (!notif) return;
+
+    try {
+        const res  = await fetch(`/api/exam-notifications/${notif}`);
+        const data = await res.json();
+        const n    = data.data || data;
+        // Pre-fill date from notification
+        if (n.start_date)
+            document.getElementById('fDate').value = n.start_date.substring(0,10);
+    } catch(_) {}
+
+    document.getElementById('wrapDate').style.display   = 'block';
+    document.getElementById('wrapSession').style.display= 'block';
+}
+
+async function onDateSessionChange() {
+    const date    = document.getElementById('fDate').value;
+    const session = document.getElementById('fSession').value;
+    // Reset downstream
+    ['wrapProg','wrapSem','wrapBranch','wrapSubject','wrapRoom','wrapLoad']
+        .forEach(id => document.getElementById(id).style.display='none');
+
+    if (!date || !session) return;
+
+    // Get plan directly from DB by date+session - most reliable
+    try {
+        const res  = await fetch(`/api/seating/plan-by-date?exam_date=${date}&session_order=${session}`);
+        const data = await res.json();
+
+        if (data.success && data.plan_id) {
+            S.planId = data.plan_id;
+            console.log(`[Transfer] plan_id=${S.planId} date=${date} session=${session}`);
+        } else {
+            toast('No seating plan found for this date+session', 'warning');
+            return;
+        }
+    } catch(e) {
+        toast('Error finding plan: '+e.message, 'error'); return;
+    }
+
+    // Load PROGRAMMES in this slot
+    try {
+        const res  = await fetch(`/api/transfer/slot-programmes?plan_id=${S.planId||0}`);
+        const data = await res.json();
+        const sel  = document.getElementById('fProg');
+        sel.innerHTML = '<option value="">— Select Programme —</option>' +
+            (data.programmes||[]).map(p=>`<option value="${p.programme_id}">${p.programme_name}</option>`).join('');
+        // If only 1 programme, auto-select
+        if ((data.programmes||[]).length === 1) {
+            sel.value = data.programmes[0].programme_id;
+            await onProgChange();
+        } else {
+            document.getElementById('wrapProg').style.display = 'block';
+        }
+    } catch(e) { toast('Error loading programmes: '+e.message,'error'); }
+}
+
+async function onProgChange() {
+    const prog = document.getElementById('fProg').value;
+    ['wrapSem','wrapBranch','wrapSubject','wrapRoom','wrapLoad']
+        .forEach(id => document.getElementById(id).style.display='none');
+    if (!prog) return;
+    document.getElementById('wrapProg').style.display = 'block';
+
+    // Load SEMESTERS for this programme in this slot
+    try {
+        const res  = await fetch(`/api/transfer/slot-semesters?plan_id=${S.planId||0}&programme_id=${prog}`);
+        const data = await res.json();
+        const sel  = document.getElementById('fSem');
+        sel.innerHTML = '<option value="">— Select Semester —</option>' +
+            (data.semesters||[]).map(s=>`<option value="${s.semester_id}">${s.semester_name}</option>`).join('');
+        if ((data.semesters||[]).length === 1) {
+            sel.value = data.semesters[0].semester_id;
+            await onSemChange();
+        } else {
+            document.getElementById('wrapSem').style.display = 'block';
+        }
+    } catch(e) { toast('Error loading semesters: '+e.message,'error'); }
+}
+
+async function onSemChange() {
+    const sem  = document.getElementById('fSem').value;
+    const prog = document.getElementById('fProg').value;
+    ['wrapBranch','wrapSubject','wrapRoom','wrapLoad']
+        .forEach(id => document.getElementById(id).style.display='none');
+    if (!sem) return;
+    document.getElementById('wrapSem').style.display = 'block';
+
+    // Load BRANCHES for this programme+semester in this slot
+    try {
+        const res  = await fetch(`/api/transfer/slot-branches?plan_id=${S.planId||0}&programme_id=${prog}&semester_id=${sem}`);
+        const data = await res.json();
+        const sel  = document.getElementById('fBranch');
+        sel.innerHTML = '<option value="">— Select Branch —</option>' +
+            (data.branches||[]).map(b=>`<option value="${b.branch_id}">${b.branch_code} — ${b.branch_name}</option>`).join('');
+        document.getElementById('wrapBranch').style.display = 'block';
+    } catch(e) { toast('Error loading branches: '+e.message,'error'); }
+}
+
+async function onBranchChange() {
+    const branch  = document.getElementById('fBranch').value;
+    const sem     = document.getElementById('fSem').value;
+    const date    = document.getElementById('fDate').value;
+    const session = document.getElementById('fSession').value;
+    // Reset downstream
+    ['wrapSubject','wrapRoom','wrapLoad']
+        .forEach(id => document.getElementById(id).style.display='none');
+
+    if (!branch) return;
+    document.getElementById('wrapBranch').style.display = 'block';
+
+    // Load SUBJECTS for this branch+semester in this plan
+    try {
+        const res  = await fetch(`/api/transfer/slot-subjects?plan_id=${S.planId||0}&branch_id=${branch}&semester_id=${sem}&exam_date=${date}&session_order=${session}`);
+        const data = await res.json();
+
+        const sel = document.getElementById('fSubject');
+        sel.innerHTML = '<option value="">— Select Subject —</option>' +
+            (data.subjects||[]).map(s=>`<option value="${s.subject_id}">${s.syllabus_code} — ${s.subject_name}</option>`).join('');
+        document.getElementById('wrapSubject').style.display = 'block';
+    } catch(e) { toast('Error loading subjects: '+e.message,'error'); }
+}
+
+async function onSubjectChange() {
+    const subject = document.getElementById('fSubject').value;
+    const branch  = document.getElementById('fBranch').value;
+    const date    = document.getElementById('fDate').value;
+    const session = document.getElementById('fSession').value;
+    // Reset downstream
+    ['wrapRoom','wrapLoad'].forEach(id => document.getElementById(id).style.display='none');
+
+    if (!subject) return;
+
+    // Load ROOMS for this branch+subject in this plan
+    try {
+        const res  = await fetch(`/api/transfer/slot-rooms?plan_id=${S.planId||0}&branch_id=${branch}&subject_id=${subject}&exam_date=${date}&session_order=${session}`);
+        const data = await res.json();
+
+        const sel = document.getElementById('fRoom');
+        sel.innerHTML = '<option value="">— Select Room —</option>' +
+            (data.rooms||[]).map(r=>`<option value="${r.room_id}">${r.room_number} (${r.student_count} students)</option>`).join('');
+        document.getElementById('wrapRoom').style.display = 'block';
+        document.getElementById('wrapLoad').style.display = 'block';
+    } catch(e) { toast('Error loading rooms: '+e.message,'error'); }
+}
+
+function onFilterChange() { checkLoad(); }
+
+async function loadSubjectsForSlot() {
+    const notif   = document.getElementById('fNotif').value;
+    const date    = document.getElementById('fDate').value;
+    const session = document.getElementById('fSession').value;
+    if (!date || !session) return;
+
+    try {
+        const params = new URLSearchParams({ exam_date: date, session_order: session });
+        if (notif) params.append('notification_id', notif);
+
+        const res  = await fetch(`/api/transfer/subjects-for-slot?${params}`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const subSel = document.getElementById('fSubject');
+        const curVal = subSel.value;
+        subSel.innerHTML = '<option value="">— All Subjects —</option>' +
+            (data.subjects||[]).map(s =>
+                `<option value="${s.subject_id}" ${s.subject_id==curVal?'selected':''}>
+                    ${s.syllabus_code} — ${s.subject_name}
+                </option>`
+            ).join('');
+    } catch(_) {}
+}
+
+async function loadRoomOptions() {
+    const date    = document.getElementById('fDate').value;
+    const session = document.getElementById('fSession').value;
+    if (!date || !session) return;
+
+    try {
+        // Get plan directly from DB by date+session
+        const pr   = await fetch(`/api/seating/plan-by-date?exam_date=${date}&session_order=${session}`);
+        const pd   = await pr.json();
+        if (!pd.success) return;
+
+        S.planId   = pd.plan_id;
+        const plan = pd.plan;
+
+        if (plan) {
+            S.planId = plan.plan_id;
+            // Load rooms in this plan
+            const rr   = await fetch(`/api/seating/preview/${plan.plan_id}`);
+            const rd   = await rr.json();
+            const rooms = rd.rooms || [];
+
+            const rSel = document.getElementById('fRoom');
+            rSel.innerHTML = '<option value="">— Select Source Room —</option>' +
+                rooms.map(r=>`<option value="${r.room_id}">${r.room_number} (${r.student_count} students)</option>`).join('');
+            rSel.disabled = false;
+        }
+    } catch(_) {}
+}
+
+function checkLoad() {
+    const type = document.getElementById('fType').value;
+    const date = document.getElementById('fDate').value;
+    const sess = document.getElementById('fSession').value;
+    const room = document.getElementById('fRoom').value;
+    document.getElementById('loadBtn').disabled = !(type && date && sess && room);
+}
+
+// ── Load source students ───────────────────────────────────────
+async function loadSourceStudents() {
+    const room    = document.getElementById('fRoom').value;
+    const date    = document.getElementById('fDate').value;
+    const session = document.getElementById('fSession').value;
+    const branch  = document.getElementById('fBranch')?.value || '';
+    const subject = document.getElementById('fSubject')?.value || '';
+    const sem     = document.getElementById('fSem')?.value     || '';
+    const prog    = document.getElementById('fProg')?.value    || '';
+
+    if (!room || !date || !session) {
+        toast('Please complete all filters first', 'warning'); return;
+    }
+
+    const params = new URLSearchParams({
+        plan_id: S.planId||'', room_id:room,
+        exam_date:date, session_order:session
+    });
+    if (branch)  params.append('branch_id',   branch);
+    if (subject) params.append('subject_id',  subject);
+    if (sem)     params.append('semester_id', sem);
+    if (prog)    params.append('programme_id',prog);
+
+    document.getElementById('loadBtn').disabled = true;
+    document.getElementById('loadBtn').innerHTML = '<i class="bi bi-hourglass-split"></i> Loading…';
+
+    try {
+        const res  = await fetch(`/api/transfer/source-students?${params}`);
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+
+        S.planId     = data.plan_id;
+        S.sourceRoom = data.room;
+        S.source     = data.students;
+        S.toTransfer = [];
+        S.srcSel     = new Set();
+        S.tgtSel     = new Set();
+
+        document.getElementById('sourceRoomLabel').textContent = data.room?.room_code || room;
+        document.getElementById('transferLayout').style.display = 'grid';
+        document.getElementById('targetSelector').style.display = 'block';
+        document.getElementById('saveBar').style.display = 'flex';
+
+        renderSourceBar(data.room);
+        renderSource();
+        await loadAllRooms();
+        toast(`Loaded ${data.students.length} students from ${data.room?.room_code}`, 'success');
+
+    } catch(e) {
+        toast('Error: ' + e.message, 'error');
+    } finally {
+        document.getElementById('loadBtn').disabled = false;
+        document.getElementById('loadBtn').innerHTML = '<i class="bi bi-search"></i> Load Students';
+    }
+}
+
+function renderSourceBar(room) {
+    if (!room) return;
+    const actualCap     = room.actual_capacity || room.total_capacity || 0;
+    const totalOccupied = room.used_seats || 0;
+    const showing       = S.source.length;
+    const showingNote   = showing < totalOccupied
+        ? `<div class="rb-item" style="color:#f59e0b;">📋 Showing: <strong>${showing}</strong> (filtered by branch/subject)</div>` : '';
+
+    document.getElementById('sourceRoomBar').innerHTML = `
+        <div class="room-bar">
+            <div class="rb-item">🏢 <strong>${room.room_code}</strong></div>
+            <div class="rb-item">🪑 Capacity: <strong>${actualCap}</strong></div>
+            <div class="rb-item">👥 Occupied: <strong>${totalOccupied}</strong></div>
+            <div class="rb-item">✅ Free: <strong>${Math.max(0, actualCap - totalOccupied)}</strong></div>
+            ${showingNote}
+        </div>`;
+}
+
+// ── Load all rooms ─────────────────────────────────────────────
+async function loadAllRooms() {
+    try {
+        const date    = document.getElementById('fDate').value;
+        const session = document.getElementById('fSession').value;
+        const params  = new URLSearchParams({
+            plan_id:         S.planId||0,
+            exclude_room_id: S.sourceRoom?.room_id||0,
+            exam_date:       date,
+            session_order:   session
+        });
+        const res  = await fetch(`/api/transfer/free-rooms?${params}`);
+        const data = await res.json();
+        S.allRooms = data.rooms || [];
+        renderRoomGrid(S.allRooms);
+    } catch(_) {}
+}
+
+function filterRooms() {
+    const q = document.getElementById('roomSearch').value.toLowerCase();
+    const filtered = S.allRooms.filter(r =>
+        !q || r.room_number.toLowerCase().includes(q) ||
+        (r.block_code||'').toLowerCase().includes(q)
+    );
+    renderRoomGrid(filtered);
+}
+
+function renderRoomGrid(rooms) {
+    const grid = document.getElementById('roomGrid');
+    if (!rooms.length) {
+        grid.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:12px;">No rooms found</div>';
+        return;
+    }
+    grid.innerHTML = rooms.map(r => {
+        const free = r.free_seats;
+        const cls  = free <= 0 ? 'full' : free <= 5 ? 'warn' : 'ok';
+        const sel  = S.targetRoom?.room_id === r.room_id ? 'selected' : '';
+        const otherNote = r.other_plans_used > 0
+            ? `<div style="font-size:9px;color:#f59e0b;">+${r.other_plans_used} other plan</div>` : '';
+        return `<div class="room-option ${cls} ${sel}" onclick="${free>0?`selectTargetRoom(${r.room_id})`:''}">
+            <div class="ro-num">${r.room_number}</div>
+            <div class="ro-block">${r.block_code||''}</div>
+            <div style="font-size:9px;color:#64748b;margin-top:2px;">Cap: ${r.actual_capacity}</div>
+            <div style="font-size:9px;color:#94a3b8;">Used: ${r.this_plan_used}${r.other_plans_used>0?' +'+r.other_plans_used:''}  </div>
+            <div class="ro-seats ${cls}">
+                ${free > 0 ? `${free} free` : 'FULL'}
+            </div>
+            ${otherNote}
+        </div>`;
+    }).join('');
+}
+
+async function selectTargetRoom(roomId) {
+    S.targetRoom = S.allRooms.find(r => r.room_id === roomId);
+    S.toTransfer = [];
+    S.tgtSel     = new Set();
+
+    // Re-render room grid to show selection
+    filterRooms();
+    document.getElementById('targetRoomLabel').textContent = S.targetRoom?.room_number || '—';
+
+    // Load existing students in target room
+    try {
+        const res  = await fetch(`/api/transfer/target-students?plan_id=${S.planId}&room_id=${roomId}`);
+        const data = await res.json();
+        S.target   = data.students || [];
+        renderTargetBar(data.room);
+        renderTarget();
+    } catch(_) {
+        S.target = [];
+        renderTarget();
+    }
+
+    document.getElementById('btnToTarget').disabled = false;
+    updateSummary();
+}
+
+function renderTargetBar(room) {
+    if (!room) return;
+    const used    = S.target.length;
+    const actCap  = S.targetRoom?.actual_capacity || room.total_capacity || 0;
+    const rawCap  = room.total_capacity || 0;
+    document.getElementById('targetRoomBar').innerHTML = `
+        <div class="room-bar target">
+            <div class="rb-item">🏢 <strong>${room.block_code||''}${room.block_code?'-':''}${room.room_code||S.targetRoom?.room_number}</strong></div>
+            <div class="rb-item">🪑 Actual Capacity: <strong>${actCap}</strong></div>
+            <div class="rb-item">👥 In This Plan: <strong>${S.targetRoom?.this_plan_used||used}</strong></div>
+            <div class="rb-item">📋 Other Plans: <strong>${S.targetRoom?.other_plans_used||0}</strong></div>
+            <div class="rb-item" style="color:${S.targetRoom?.free_seats>0?'#16a34a':'#dc2626'}">
+                ✅ Free: <strong>${S.targetRoom?.free_seats??actCap-used}</strong>
+            </div>
+        </div>`;
+}
+
+// ── Render lists ──────────────────────────────────────────────
+function renderSource() {
+    const q = document.getElementById('srcSearch').value.toLowerCase();
+    const filtered = S.source.filter(s =>
+        !q || s.roll_no.toLowerCase().includes(q) ||
+        s.student_name.toLowerCase().includes(q)
+    );
+    const container = document.getElementById('sourceList');
+
+    if (!filtered.length) {
+        container.innerHTML = '<div class="empty-state"><i class="bi bi-people"></i>No students found</div>';
+    } else {
+        container.innerHTML = filtered.map(s => {
+            const sel = S.srcSel.has(s.student_id);
+            const blk = s.is_blocked;
+            return `<div class="student-item ${sel?'selected':''} ${blk?'blocked':''}"
+                ${!blk?`onclick="toggleSel('src',${s.student_id})"`:'title="Student is blocked"'}>
+                <div class="item-check">${sel?'<i class="bi bi-check" style="font-size:10px;"></i>':''}</div>
+                <span class="item-bench">${s.bench_label||'—'}</span>
+                <div class="item-roll">${s.roll_no}</div>
+                <div class="item-name">${s.student_name}</div>
+                <div class="item-sub">${s.subject_code||''}</div>
+            </div>`;
+        }).join('');
+    }
+
+    document.getElementById('sourceCount').textContent = S.source.length;
+    document.getElementById('srcSelCount').textContent = `${S.srcSel.size} selected`;
+}
+
+function renderTarget() {
+    const q = document.getElementById('tgtSearch').value.toLowerCase();
+    const allTarget = [...S.target, ...S.toTransfer];
+    const filtered  = allTarget.filter(s =>
+        !q || s.roll_no.toLowerCase().includes(q) ||
+        s.student_name.toLowerCase().includes(q)
+    );
+    const container = document.getElementById('targetList');
+
+    if (!filtered.length) {
+        container.innerHTML = '<div class="empty-state"><i class="bi bi-building-add"></i>No students yet</div>';
+    } else {
+        container.innerHTML = filtered.map(s => {
+            const sel    = S.tgtSel.has(s.student_id);
+            const isNew  = S.toTransfer.find(x=>x.student_id===s.student_id);
+            return `<div class="student-item target-item ${sel?'selected':''}"
+                onclick="toggleSel('tgt',${s.student_id})"
+                style="${isNew?'border-left:3px solid #16a34a;':''}" title="${isNew?'Newly transferred':'Already here'}">
+                <div class="item-check">${sel?'<i class="bi bi-check" style="font-size:10px;"></i>':''}</div>
+                <span class="item-bench">${s.bench_label||'new'}</span>
+                <div class="item-roll">${s.roll_no}</div>
+                <div class="item-name">${s.student_name}</div>
+                <div class="item-sub">${s.subject_code||''}</div>
+            </div>`;
+        }).join('');
+    }
+
+    document.getElementById('targetCount').textContent = allTarget.length;
+    document.getElementById('tgtSelCount').textContent = `${S.tgtSel.size} selected`;
+    updateSummary();
+}
+
+function filterSource() { renderSource(); }
+function filterTarget() { renderTarget(); }
+
+// ── Selection ─────────────────────────────────────────────────
+function toggleSel(side, id) {
+    const sel = side === 'src' ? S.srcSel : S.tgtSel;
+    if (sel.has(id)) sel.delete(id); else sel.add(id);
+    side === 'src' ? renderSource() : renderTarget();
+    document.getElementById('btnToSource').disabled = S.tgtSel.size === 0;
+}
+
+function selectAll(side) {
+    if (side === 'src') {
+        S.source.filter(s=>!s.is_blocked).forEach(s => S.srcSel.add(s.student_id));
+        renderSource();
+    } else {
+        [...S.target, ...S.toTransfer].forEach(s => S.tgtSel.add(s.student_id));
+        renderTarget();
+        document.getElementById('btnToSource').disabled = false;
+    }
+}
+
+function clearSel(side) {
+    if (side === 'src') { S.srcSel.clear(); renderSource(); }
+    else { S.tgtSel.clear(); renderTarget(); document.getElementById('btnToSource').disabled=true; }
+}
+
+// ── Transfer ──────────────────────────────────────────────────
+function transfer(direction) {
+    if (direction === 'toTarget') {
+        if (!S.targetRoom) { toast('Select a target room first', 'warning'); return; }
+        const moving = S.source.filter(s => S.srcSel.has(s.student_id));
+        if (!moving.length) { toast('Select students to transfer', 'warning'); return; }
+
+        // Check capacity
+        const totalInTarget = S.target.length + S.toTransfer.length + moving.length;
+        const cap           = S.targetRoom.total_capacity || 999;
+        if (totalInTarget > cap) {
+            toast(`Target room only has ${cap - S.target.length - S.toTransfer.length} seats free`, 'error');
+            return;
+        }
+
+        S.toTransfer = [...S.toTransfer, ...moving];
+        S.source     = S.source.filter(s => !S.srcSel.has(s.student_id));
+        S.srcSel.clear();
+
+    } else {
+        // Move back to source
+        const moving = [...S.toTransfer].filter(s => S.tgtSel.has(s.student_id));
+        S.source     = [...S.source, ...moving];
+        S.toTransfer = S.toTransfer.filter(s => !S.tgtSel.has(s.student_id));
+        S.tgtSel.clear();
+    }
+
+    renderSource();
+    renderTarget();
+    document.getElementById('btnToSource').disabled = true;
+}
+
+function updateSummary() {
+    const summary = document.getElementById('transferSummary');
+    const text    = document.getElementById('transferSummaryText');
+    const btn     = document.getElementById('saveBtn');
+
+    if (S.toTransfer.length > 0 && S.targetRoom) {
+        summary.style.display = 'flex';
+        text.textContent =
+            `${S.toTransfer.length} student(s) → ${S.targetRoom.room_number}`;
+        btn.disabled = false;
+    } else {
+        summary.style.display = 'none';
+        btn.disabled = true;
+    }
+}
+
+// ── Execute Transfer ──────────────────────────────────────────
+async function executeTransfer() {
+    if (!S.toTransfer.length || !S.targetRoom) return;
+
+    const confirm = await Swal.fire({
+        title: 'Confirm Transfer',
+        html: `Transfer <b>${S.toTransfer.length}</b> student(s) to <b>${S.targetRoom.room_number}</b>?<br>
+               <small style="color:#64748b;">Bench positions will be auto-assigned in target room.</small>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: '⚡ Transfer Now',
+        confirmButtonColor: '#16a34a'
+    });
+    if (!confirm.isConfirmed) return;
+
+    document.getElementById('saveBtn').disabled = true;
+
+    try {
+        const res  = await fetch('/api/transfer/execute', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({
+                plan_id:       S.planId,
+                from_room_id:  S.sourceRoom.room_id,
+                to_room_id:    S.targetRoom.room_id,
+                student_ids:   S.toTransfer.map(s => s.student_id),
+                exam_date:     document.getElementById('fDate').value,
+                session_order: document.getElementById('fSession').value,
+                reason:        document.getElementById('transferReason').value,
+                transferred_by:'Admin'
+            })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            await Swal.fire({
+                icon:'success', title:'Transfer Complete!',
+                html:`<b>${data.transferred}</b> student(s) moved to <b>${data.to_room}</b>`,
+                timer:2500, showConfirmButton:false
+            });
+            // Reload to reflect changes
+            S.toTransfer = [];
+            await loadSourceStudents();
+            if (S.targetRoom) await selectTargetRoom(S.targetRoom.room_id);
+        } else {
+            throw new Error(data.error);
+        }
+    } catch(e) {
+        Swal.fire({ icon:'error', title:'Transfer Failed', text:e.message });
+    } finally {
+        document.getElementById('saveBtn').disabled = false;
+    }
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+function toast(msg, type='success') {
+    const colors = { success:'#16a34a', warning:'#f59e0b', error:'#dc2626', info:'#6366f1' };
+    const el = document.createElement('div');
+    el.className = 'toast-m';
+    el.style.borderLeftColor = colors[type]||'#667eea';
+    el.textContent = msg;
+    document.getElementById('toastC').appendChild(el);
+    setTimeout(()=>el.remove(), 3500);
+}
+</script>
+</body>
+</html>

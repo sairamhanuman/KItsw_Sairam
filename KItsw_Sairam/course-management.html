@@ -1276,7 +1276,20 @@ async function exportToExcel() {
 }
 
 async function generateSampleExcel() {
-    const f = window.currentFilters || {};
+    // Always read fresh from dropdowns — never use stale currentFilters
+    const f = {
+        programme_id:  document.getElementById('filterProgramme').value,
+        branch_id:     document.getElementById('filterBranch').value,
+        semester_id:   document.getElementById('filterSemester').value,
+        regulation_id: document.getElementById('filterRegulation').value,
+    };
+    // Remove empty values
+    Object.keys(f).forEach(k => { if (!f[k]) delete f[k]; });
+
+    if (!f.branch_id) {
+        showAlert('Please select a Branch before generating the template', 'warning');
+        return;
+    }
     window.location.href = '/api/subjects/sample-excel?' + new URLSearchParams(f);
 }
 

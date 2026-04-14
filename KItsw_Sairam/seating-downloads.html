@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download Seating Plans</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{background:#f1f5f9;font-family:'Segoe UI',sans-serif;min-height:100vh;}
+
+        .page-header{background:linear-gradient(135deg,#1e293b,#334155);padding:20px 32px;
+            display:flex;align-items:center;justify-content:space-between;}
+        .page-header h1{color:#fff;font-size:20px;font-weight:800;display:flex;align-items:center;gap:10px;}
+        .page-header .back-btn{color:#94a3b8;text-decoration:none;font-size:13px;display:flex;align-items:center;gap:6px;}
+        .page-header .back-btn:hover{color:#fff;}
+
+        .container{max-width:900px;margin:32px auto;padding:0 20px;}
+
+        /* Search card */
+        .search-card{background:#fff;border-radius:16px;padding:28px;box-shadow:0 2px 16px rgba(0,0,0,.06);
+            margin-bottom:24px;}
+        .search-card h2{font-size:15px;font-weight:700;color:#1e293b;margin-bottom:20px;
+            display:flex;align-items:center;gap:8px;}
+        .field-row{display:grid;grid-template-columns:1fr 1fr auto;gap:14px;align-items:end;}
+        .field-label{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;
+            letter-spacing:.5px;margin-bottom:6px;}
+        .field-input{width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;
+            font-size:14px;color:#1e293b;outline:none;transition:border-color .2s;}
+        .field-input:focus{border-color:#667eea;}
+        .btn-search{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;
+            border-radius:10px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;
+            white-space:nowrap;height:42px;display:flex;align-items:center;gap:8px;transition:all .2s;}
+        .btn-search:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(102,126,234,.4);}
+
+        /* Result states */
+        .result-area{min-height:200px;}
+        .empty-state{text-align:center;padding:60px 20px;color:#94a3b8;}
+        .empty-state i{font-size:48px;display:block;margin-bottom:12px;}
+
+        /* Plan found card */
+        .plan-card{background:#fff;border-radius:16px;overflow:hidden;
+            box-shadow:0 2px 16px rgba(0,0,0,.06);}
+        .plan-card-header{background:linear-gradient(135deg,#16a34a,#15803d);
+            padding:20px 24px;display:flex;align-items:center;justify-content:space-between;}
+        .plan-card-header .plan-title{color:#fff;}
+        .plan-card-header .plan-title h3{font-size:18px;font-weight:800;margin-bottom:4px;}
+        .plan-card-header .plan-title p{font-size:12px;opacity:.85;}
+        .plan-card-header .plan-badge{background:rgba(255,255,255,.2);color:#fff;
+            padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;}
+        .plan-meta{padding:16px 24px;background:#f8fafc;border-bottom:1px solid #f1f5f9;
+            display:flex;gap:24px;flex-wrap:wrap;}
+        .meta-item{display:flex;align-items:center;gap:6px;font-size:12px;color:#64748b;}
+        .meta-item strong{color:#1e293b;}
+
+        /* Download grid */
+        .download-section{padding:24px;}
+        .download-section h4{font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;
+            letter-spacing:.5px;margin-bottom:16px;display:flex;align-items:center;gap:6px;}
+        .download-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+        @media(max-width:700px){.download-grid{grid-template-columns:repeat(2,1fr);}}
+
+        .dl-card{border-radius:12px;padding:20px 14px;text-align:center;cursor:pointer;
+            transition:all .2s;border:1.5px solid transparent;position:relative;}
+        .dl-card:hover{transform:translateY(-3px);}
+        .dl-card .dl-icon{font-size:30px;margin-bottom:10px;}
+        .dl-card .dl-label{font-weight:700;font-size:13px;color:#1e293b;margin-bottom:3px;}
+        .dl-card .dl-desc{font-size:11px;color:#64748b;margin-bottom:12px;}
+        .dl-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 14px;
+            border-radius:20px;font-size:11px;font-weight:700;color:#fff;border:none;cursor:pointer;}
+        .dl-card.loading .dl-btn{opacity:.6;pointer-events:none;}
+        .dl-spinner{display:none;position:absolute;top:8px;right:8px;
+            width:16px;height:16px;border:2px solid rgba(0,0,0,.1);
+            border-top-color:#667eea;border-radius:50%;animation:spin .8s linear infinite;}
+        .dl-card.loading .dl-spinner{display:block;}
+        @keyframes spin{to{transform:rotate(360deg)}}
+
+        /* No plan found */
+        .no-plan{background:#fff;border-radius:16px;padding:40px;text-align:center;
+            box-shadow:0 2px 16px rgba(0,0,0,.06);}
+        .no-plan i{font-size:48px;color:#fbbf24;display:block;margin-bottom:12px;}
+
+        /* Recent plans list */
+        .recent-section{margin-top:28px;}
+        .recent-section h3{font-size:14px;font-weight:700;color:#64748b;margin-bottom:14px;
+            display:flex;align-items:center;gap:8px;}
+        .recent-list{display:flex;flex-direction:column;gap:8px;}
+        .recent-item{background:#fff;border-radius:10px;padding:12px 16px;display:flex;
+            align-items:center;gap:14px;cursor:pointer;transition:all .15s;
+            box-shadow:0 1px 4px rgba(0,0,0,.04);}
+        .recent-item:hover{box-shadow:0 4px 12px rgba(0,0,0,.1);transform:translateX(2px);}
+        .recent-date{font-weight:800;font-size:13px;color:#1e293b;min-width:100px;}
+        .recent-info{flex:1;font-size:12px;color:#64748b;}
+        .recent-badge{padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;}
+        .badge-confirmed{background:#d1fae5;color:#065f46;}
+        .badge-draft{background:#fef3c7;color:#92400e;}
+        .badge-published{background:#dbeafe;color:#1e40af;}
+        .recent-dl-btn{background:#f1f5f9;border:none;border-radius:8px;padding:6px 12px;
+            font-size:11px;font-weight:600;color:#334155;cursor:pointer;display:flex;
+            align-items:center;gap:5px;transition:all .15s;}
+        .recent-dl-btn:hover{background:#667eea;color:#fff;}
+    </style>
+</head>
+<body>
+
+<div class="page-header">
+    <h1>
+        <i class="bi bi-download" style="color:#a5b4fc;"></i>
+        Download Seating Plans
+    </h1>
+    <a href="index.html" class="back-btn">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+</div>
+
+<div class="container">
+
+    <!-- Search Card -->
+    <div class="search-card">
+        <h2><i class="bi bi-search" style="color:#667eea;"></i> Find Seating Plan</h2>
+        <div class="field-row">
+            <div>
+                <div class="field-label">Exam Date</div>
+                <input type="date" id="searchDate" class="field-input"
+                       onchange="onSearchChange()" />
+            </div>
+            <div>
+                <div class="field-label">Session</div>
+                <select id="searchSession" class="field-input" onchange="onSearchChange()">
+                    <option value="">— Select Session —</option>
+                    <option value="1">FN — Forenoon</option>
+                    <option value="2">AN — Afternoon</option>
+                </select>
+            </div>
+            <button class="btn-search" onclick="searchPlan()">
+                <i class="bi bi-search"></i> Search
+            </button>
+        </div>
+    </div>
+
+    <!-- Result Area -->
+    <div class="result-area" id="resultArea">
+        <div class="empty-state">
+            <i class="bi bi-calendar-search"></i>
+            <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Select a date and session</div>
+            <div style="font-size:13px;">to find and download seating plan documents</div>
+        </div>
+    </div>
+
+    <!-- Recent Plans -->
+    <div class="recent-section">
+        <h3><i class="bi bi-clock-history" style="color:#667eea;"></i> Recent Seating Plans</h3>
+        <div class="recent-list" id="recentList">
+            <div style="text-align:center;padding:20px;color:#94a3b8;font-size:13px;">
+                Loading recent plans…
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script>
+
+// ── State ────────────────────────────────────────────────────
+let currentPlan = null;
+
+// ── Init ─────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    // Pre-fill from URL params (e.g. from generator page after save)
+    const p = new URLSearchParams(window.location.search);
+    if (p.get('plan_id')) {
+        loadPlanById(p.get('plan_id'));
+    } else if (p.get('date') && p.get('session')) {
+        document.getElementById('searchDate').value    = p.get('date');
+        document.getElementById('searchSession').value = p.get('session');
+        searchPlan();
+    }
+    loadRecentPlans();
+
+    // Set default date to today
+    if (!document.getElementById('searchDate').value) {
+        const today = new Date();
+        document.getElementById('searchDate').value =
+            `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    }
+});
+
+function onSearchChange() {
+    const date    = document.getElementById('searchDate').value;
+    const session = document.getElementById('searchSession').value;
+    if (date && session) searchPlan();
+}
+
+// ── Search by date+session ────────────────────────────────────
+async function searchPlan() {
+    const date    = document.getElementById('searchDate').value;
+    const session = document.getElementById('searchSession').value;
+
+    if (!date || !session) {
+        showEmpty('Select both date and session to search.');
+        return;
+    }
+
+    showLoading();
+
+    try {
+        const res  = await fetch('/api/seating/plans');
+        const data = await res.json();
+
+        const plans = (data.plans || []).filter(p =>
+            p.exam_date && toLocalDate(p.exam_date) === date &&
+            parseInt(p.session_order) === parseInt(session)
+        );
+
+        if (!plans.length) {
+            showNoPlan(date, session);
+            return;
+        }
+
+        // Now only 1 plan per date+session (replaced on regenerate)
+        // Just pick the first (and only) one
+        const best = plans.sort((a,b) => {
+            const order = { Published:0, Confirmed:1, Draft:2 };
+            return (order[a.status]??3) - (order[b.status]??3);
+        })[0];
+
+        currentPlan = best;
+        renderPlanCard(best);
+
+    } catch(e) {
+        showEmpty('Error loading plans: ' + e.message);
+    }
+}
+
+async function loadPlanById(planId) {
+    showLoading();
+    try {
+        const res  = await fetch('/api/seating/plans');
+        const data = await res.json();
+        const plan = (data.plans||[]).find(p => p.plan_id == planId);
+        if (plan) {
+            currentPlan = plan;
+            document.getElementById('searchDate').value    = toLocalDate(plan.exam_date);
+            document.getElementById('searchSession').value = plan.session_order;
+            renderPlanCard(plan);
+        } else {
+            showEmpty('Plan not found.');
+        }
+    } catch(e) {
+        showEmpty('Error: ' + e.message);
+    }
+}
+
+// ── Render plan card ──────────────────────────────────────────
+function renderPlanCard(plan) {
+    const session = plan.session_order === 1 ? 'FN — Forenoon' : 'AN — Afternoon';
+    const date    = plan.exam_date_display || toLocalDate(plan.exam_date);
+    const saved   = plan.created_at ? new Date(plan.created_at).toLocaleString('en-IN',
+        { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+
+    const downloads = [
+        { key:'seating',    icon:'bi-grid-3x3-gap',       color:'#6366f1', bg:'#eef2ff', label:'Seating Plan',    desc:'Room-wise bench layout'  },
+        { key:'attendance', icon:'bi-check2-square',       color:'#10b981', bg:'#f0fdf4', label:'Attendance Sheet', desc:'Student sign-off sheet'  },
+        { key:'notice',     icon:'bi-pin-map',             color:'#f59e0b', bg:'#fffbeb', label:'Notice Board',     desc:'Room allocation display' },
+        { key:'dform',      icon:'bi-file-earmark-text',   color:'#ec4899', bg:'#fdf4ff', label:'D-Form',           desc:'Invigilator duty form'   }
+    ];
+
+    const dlCards = downloads.map(d => `
+        <div class="dl-card" id="dlcard_${d.key}"
+             style="background:${d.bg};border-color:${d.color}25;"
+             data-plan-id="${plan.plan_id}"
+             onclick="downloadDoc('${d.key}', this.dataset.planId || currentPlan?.plan_id)">
+            <div class="dl-spinner"></div>
+            <div class="dl-icon" style="color:${d.color};"><i class="bi ${d.icon}"></i></div>
+            <div class="dl-label">${d.label}</div>
+            <div class="dl-desc">${d.desc}</div>
+            <button class="dl-btn" style="background:${d.color};">
+                <i class="bi bi-download"></i> Download
+            </button>
+        </div>`).join('');
+
+    const statusClass = plan.status === 'Published' ? 'badge-published'
+                      : plan.status === 'Confirmed'  ? 'badge-confirmed' : 'badge-draft';
+
+    document.getElementById('resultArea').innerHTML = `
+        <div class="plan-card">
+            <div class="plan-card-header">
+                <div class="plan-title">
+                    <h3><i class="bi bi-check-circle-fill me-2"></i>Seating Plan Found</h3>
+                    <p>${date} &nbsp;·&nbsp; ${session}</p>
+                </div>
+                <span class="plan-badge">Plan #${plan.plan_id}</span>
+            </div>
+            <div class="plan-meta">
+                <div class="meta-item">
+                    <i class="bi bi-people"></i>
+                    <span><strong>${plan.total_students||0}</strong> Students</span>
+                </div>
+                <div class="meta-item">
+                    <i class="bi bi-building"></i>
+                    <span><strong>${plan.room_count||0}</strong> Rooms</span>
+                </div>
+                <div class="meta-item">
+                    <i class="bi bi-clock"></i>
+                    <span>Saved <strong>${saved}</strong></span>
+                </div>
+                <div class="meta-item">
+                    <i class="bi bi-shield-check"></i>
+                    <span>Status: <span class="recent-badge ${statusClass}">${plan.status}</span></span>
+                </div>
+                <div class="meta-item" style="margin-left:auto;">
+                    <button onclick="window.open('seating-pdf-export.html?plan_id=${plan.plan_id}','_blank')"
+                        style="background:#667eea;color:#fff;border:none;border-radius:8px;
+                               padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;">
+                        <i class="bi bi-eye me-1"></i>Full Preview
+                    </button>
+                    <button onclick="goRegenerate('${toLocalDate(plan.exam_date)}', ${plan.session_order})"
+                        style="background:#f1f5f9;color:#334155;border:none;border-radius:8px;
+                               padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px;">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Re-arrange
+                    </button>
+                </div>
+            </div>
+            <div class="download-section">
+                <h4><i class="bi bi-download"></i> Download Documents</h4>
+                <div class="download-grid">${dlCards}</div>
+            </div>
+        </div>`;
+}
+
+// ── Download dispatcher ───────────────────────────────────────
+async function downloadDoc(type, planId) {
+    const card = document.getElementById(`dlcard_${type}`);
+    if (card) card.classList.add('loading');
+
+    try {
+        switch(type) {
+            case 'seating':
+                window.open(`seating-pdf-export.html?plan_id=${planId}`, '_blank');
+                break;
+            case 'attendance':
+                await downloadAttendance(planId);
+                break;
+            case 'notice':
+                await downloadNoticeBoard(planId);
+                break;
+            case 'dform':
+                await downloadDForm(planId);
+                break;
+        }
+    } finally {
+        if (card) card.classList.remove('loading');
+    }
+}
+
+// ── ATTENDANCE SHEET PDF ──────────────────────────────────────
+async function downloadAttendance(planId) {
+    const btn = document.querySelector(`#dlcard_attendance .dl-btn`);
+    const card = document.getElementById('dlcard_attendance');
+    if (card) card.classList.add('loading');
+
+    try {
+        const res  = await fetch(`/api/seating/attendance/${planId}`);
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed to load attendance data');
+
+        generateAttendancePDF(data, planId);
+
+    } catch(e) {
+        Swal.fire({ title:'Error', text:e.message, icon:'error' });
+    } finally {
+        if (card) card.classList.remove('loading');
+    }
+}
+
+function generateAttendancePDF(data, planId) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+
+    const plan   = data.plan;
+    const notif  = data.notif || {};
+    const rooms  = data.rooms || [];
+
+    // Date formatting
+    const examDate = new Date(plan.exam_date);
+    const dateStr  = examDate.toLocaleDateString('en-IN',
+        { day:'2-digit', month:'2-digit', year:'numeric' }).replace(/\//g,'-');
+    const session  = plan.session_order === 1 ? 'FN' : 'AN';
+    const progName = notif.programme_name || 'B.TECH.';
+    const examType = notif.exam_type_label || notif.exam_type || 'MSE';
+    const monthYr  = notif.month_year_display || '';
+
+    const PW = 210; // A4 width mm
+    const PH = 297; // A4 height mm
+    const ML = 12;  // left margin
+    const MR = 12;  // right margin
+    const CW = PW - ML - MR; // content width
+
+    let pageNum = 0;
+
+    // ── Helper: draw page header ─────────────────────────────
+    function drawHeader(roomNumber, branchCode, semName, subjectName, syllabusCode) {
+        let y = 10;
+
+        // Institute header
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(11);
+        doc.text('KAKATIYA INSTITUTE OF TECHNOLOGY & SCIENCE, WARANGAL', PW/2, y, {align:'center'});
+        y += 5;
+        doc.setFontSize(9);
+        doc.text('EXAMINATION BRANCH', PW/2, y, {align:'center'});
+        y += 5;
+        doc.setFontSize(10);
+        doc.text('STATEMENT OF ATTENDANCE', PW/2, y, {align:'center'});
+        y += 2;
+
+        // Underline
+        doc.setLineWidth(0.5);
+        doc.line(ML, y, PW-MR, y);
+        y += 4;
+
+        // Row 1: Room No | Date
+        doc.setFontSize(9);
+        doc.setFont('helvetica','bold');
+        doc.text(`Room No: `, ML, y);
+        doc.setFont('helvetica','normal');
+        doc.text(`${roomNumber}`, ML + 18, y);
+        doc.setFont('helvetica','bold');
+        doc.text(`Date: `, PW/2, y);
+        doc.setFont('helvetica','normal');
+        doc.text(`${dateStr} (${session})`, PW/2 + 10, y);
+        y += 5;
+
+        // Row 2: Programme | Exam Type | Month | Mode
+        doc.setFont('helvetica','bold');
+        doc.text('Programme: ', ML, y);
+        doc.setFont('helvetica','normal');
+        doc.text(progName, ML + 22, y);
+
+        doc.setFont('helvetica','bold');
+        doc.text('Exam Type: ', 75, y);
+        doc.setFont('helvetica','normal');
+        doc.text(examType, 75 + 21, y);
+
+        doc.setFont('helvetica','bold');
+        doc.text('Exam Month: ', 130, y);
+        doc.setFont('helvetica','normal');
+        doc.text(monthYr, 130 + 24, y);
+        y += 5;
+
+        // Row 3: Semester | Branch | Subject
+        doc.setFont('helvetica','bold');
+        doc.text('Semester(s): ', ML, y);
+        doc.setFont('helvetica','normal');
+        doc.text(semName, ML + 24, y);
+
+        doc.setFont('helvetica','bold');
+        doc.text('Branch: ', 75, y);
+        doc.setFont('helvetica','normal');
+        doc.text(branchCode, 75 + 14, y);
+
+        doc.setFont('helvetica','bold');
+        doc.text('Subject: ', 120, y);
+        doc.setFont('helvetica','normal');
+        const subTxt = `${subjectName} (${syllabusCode})`;
+        doc.text(subTxt.length > 30 ? subTxt.substring(0,30)+'…' : subTxt, 120 + 15, y);
+        y += 4;
+
+        // Divider
+        doc.setLineWidth(0.3);
+        doc.line(ML, y, PW-MR, y);
+        y += 4;
+
+        // Announcement text
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(8);
+        doc.text('Announcement to be made by the Invigilator:', ML, y);
+        y += 4;
+        doc.setFont('helvetica','normal');
+        doc.setFontSize(7.5);
+        const ann1 = 'Attention all students! Malpractice in examination is an illegal activity and is prohibited. If you indulge in malpractice, all exams taken by you during this semester will be cancelled and Fail grade will be awarded.';
+        const ann1Lines = doc.splitTextToSize(ann1, CW);
+        doc.text(ann1Lines, ML, y);
+        y += ann1Lines.length * 4;
+
+        y += 2;
+        const ann2 = 'At the time of taking attendance, the invigilator is requested to ask the questions Q1, Q2 and Q3 to every student and instruct students to write their responses with signature.';
+        const ann2Lines = doc.splitTextToSize(ann2, CW);
+        doc.text(ann2Lines, ML, y);
+        y += ann2Lines.length * 4 + 3;
+
+        return y;
+    }
+
+    // ── Helper: draw table header row ────────────────────────
+    function drawTableHeader(y) {
+        const cols = [
+            { label:'S.No',                        w:10 },
+            { label:'Roll No',                     w:24 },
+            { label:'Name of the Student',         w:58 },
+            { label:'Addl. Answer\nBooklet No.',   w:20 },
+            { label:'Q1\nMobile\n(Y/N)',           w:14 },
+            { label:'Q2\nChits?\n(Y/N)',           w:14 },
+            { label:'Q3\nMalpractice?\n(Y/N)',     w:18 },
+            { label:'Signature',                   w:28 }
+        ];
+
+        doc.setFillColor(230, 230, 230);
+        doc.rect(ML, y, CW, 10, 'F');
+        doc.setLineWidth(0.3);
+        doc.rect(ML, y, CW, 10);
+
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(7);
+        let x = ML;
+        for (const col of cols) {
+            const lines = col.label.split('\n');
+            const lineH = 3;
+            const totalH = lines.length * lineH;
+            const startY = y + (10 - totalH) / 2 + lineH;
+            lines.forEach((line, i) => {
+                doc.text(line, x + col.w/2, startY + i*lineH, {align:'center'});
+            });
+            doc.line(x + col.w, y, x + col.w, y + 10);
+            x += col.w;
+        }
+        return { y: y + 10, cols };
+    }
+
+    // ── Helper: draw one student row ─────────────────────────
+    function drawStudentRow(y, sno, roll, name, cols, shaded) {
+        const rowH = 7;
+        if (shaded) {
+            doc.setFillColor(248, 248, 248);
+            doc.rect(ML, y, CW, rowH, 'F');
+        }
+        doc.setLineWidth(0.2);
+        doc.rect(ML, y, CW, rowH);
+
+        doc.setFont('helvetica','normal');
+        doc.setFontSize(7.5);
+        const values = [String(sno), roll||'', name||'', '', '', '', '', ''];
+        let x = ML;
+        cols.forEach((col, i) => {
+            if (values[i]) {
+                doc.text(values[i].substring(0, Math.floor(col.w/1.8)),
+                    x + 1.5, y + rowH/2 + 1.5);
+            }
+            doc.line(x + col.w, y, x + col.w, y + rowH);
+            x += col.w;
+        });
+        return y + rowH;
+    }
+
+    // ── Helper: draw footer ───────────────────────────────────
+    function drawFooter(y, totalStudents) {
+        y += 4;
+        doc.setFont('helvetica','normal');
+        doc.setFontSize(8);
+        doc.text(`Total Students: ________    Present: ________    Absent: ________`, ML, y);
+        y += 6;
+        doc.text('Roll Number(s) of the Students who are not having ID card:', ML, y);
+        doc.line(ML + 82, y, PW - MR, y);
+        y += 8;
+
+        // Invigilator row
+        doc.setLineWidth(0.3);
+        const boxW = (CW - 4) / 3;
+        const boxH = 14;
+        ['Invigilator\'s Name', 'Invigilator\'s Signature with Date',
+         'Name, Time of Visit & Sign of Squad'].forEach((lbl, i) => {
+            const bx = ML + i * (boxW + 2);
+            doc.rect(bx, y, boxW, boxH);
+            doc.setFontSize(7);
+            doc.setFont('helvetica','bold');
+            doc.text(lbl, bx + boxW/2, y + 4, {align:'center'});
+        });
+        return y + boxH;
+    }
+
+    // ── Main: iterate rooms → groups ─────────────────────────
+    for (const room of rooms) {
+        const groups = room.groups || [];
+        if (!groups.length) continue;
+
+        // Summary for this room (last page of room)
+        const roomSummary = groups.map(g => ({
+            sem:     g.semester_name,
+            branch:  g.branch_code,
+            subject: g.subject_name,
+            code:    g.syllabus_code,
+            total:   g.students.length
+        }));
+
+        for (const group of groups) {
+            if (pageNum > 0) doc.addPage();
+            pageNum++;
+
+            let y = drawHeader(
+                `${room.block_code ? room.block_code + '-' : ''}${room.room_number}`,
+                group.branch_code,
+                group.semester_name,
+                group.subject_name,
+                group.syllabus_code
+            );
+
+            let { cols } = drawTableHeader(y);
+            y += 10;
+
+            const BOTTOM_MARGIN = 240; // leave room for footer
+            for (let i = 0; i < group.students.length; i++) {
+                const s = group.students[i];
+                if (y > BOTTOM_MARGIN) {
+                    // New page continuation
+                    drawFooter(y, group.students.length);
+                    doc.addPage(); pageNum++;
+                    y = drawHeader(
+                        `${room.block_code ? room.block_code+'-' : ''}${room.room_number}`,
+                        group.branch_code, group.semester_name,
+                        group.subject_name, group.syllabus_code
+                    );
+                    ({ cols } = drawTableHeader(y));
+                    y += 10;
+                }
+                y = drawStudentRow(y, i+1, s.roll_no, s.student_name, cols, i%2===1);
+            }
+            drawFooter(y, group.students.length);
+        }
+
+    }
+
+    // Save
+    const fname = `Attendance_${plan.exam_date || ''}_${session}_Plan${planId}.pdf`;
+    doc.save(fname);
+}
+// ── NOTICE BOARD PDF ─────────────────────────────────────────
+async function downloadNoticeBoard(planId) {
+    const card = document.getElementById('dlcard_notice');
+    if (card) card.classList.add('loading');
+    try {
+        const res  = await fetch(`/api/seating/noticeboard/${planId}`);
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed to load notice board data');
+        generateNoticeBoardPDF(data, planId);
+    } catch(e) {
+        Swal.fire({ title:'Error', text:e.message, icon:'error' });
+    } finally {
+        if (card) card.classList.remove('loading');
+    }
+}
+
+function generateNoticeBoardPDF(data, planId) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+
+    const plan   = data.plan;
+    const notif  = data.notif || {};
+    const entries= data.entries || [];
+
+    const PW = 210, PH = 297, ML = 12, MR = 12;
+    const CW = PW - ML - MR;
+
+    // Date formatting
+    const examDate = new Date(plan.exam_date);
+    const dateStr  = examDate.toLocaleDateString('en-IN',
+        { day:'2-digit', month:'2-digit', year:'numeric' }).replace(/\//g,'-');
+    const session  = plan.session_order === 1 ? 'FN' : 'AN';
+    const progName = notif.programme_name || 'B.TECH.';
+    const examType = notif.exam_type_label || notif.exam_type || '';
+    const monthYr  = notif.month_year_display || '';
+    const examMode = notif.exam_mode || 'Regular';
+
+    let pageNum = 0;
+
+    // ── Draw page header ──────────────────────────────────────
+    function drawHeader(programmeName, semesterName) {
+        let y = 12;
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(12);
+        doc.text('KAKATIYA INSTITUTE OF TECHNOLOGY & SCIENCE', PW/2, y, {align:'center'});
+        y += 6;
+        doc.setFontSize(11);
+        doc.text('SEATING ARRANGEMENT', PW/2, y, {align:'center'});
+        y += 3;
+        doc.setLineWidth(0.6);
+        doc.line(ML, y, PW-MR, y);
+        y += 5;
+
+        // Info row
+        doc.setFontSize(9);
+        doc.setFont('helvetica','normal');
+        const info1 = `Date: ${dateStr} (${session})   Programme: ${programmeName}   Exam Type: ${examType}   Exam Month: ${monthYr}`;
+        const info2 = `Exam Mode: ${examMode}   Semester(s): ${semesterName}`;
+        doc.text(info1, PW/2, y, {align:'center'});
+        y += 5;
+        doc.text(info2, PW/2, y, {align:'center'});
+        y += 4;
+        doc.setLineWidth(0.3);
+        doc.line(ML, y, PW-MR, y);
+        y += 4;
+        return y;
+    }
+
+    // ── Draw table header ─────────────────────────────────────
+    function drawTableHeader(y) {
+        const cols = [
+            { label:'Branch', w:20 },
+            { label:'Roll Numbers', w:110 },
+            { label:'Room No', w:40 },
+            { label:'No. of\nStudents', w:CW-170 }
+        ];
+        const rowH = 9;
+        doc.setFillColor(220,220,220);
+        doc.rect(ML, y, CW, rowH, 'F');
+        doc.rect(ML, y, CW, rowH);
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(8.5);
+        let x = ML;
+        for (const col of cols) {
+            const lines = col.label.split('\n');
+            lines.forEach((line, i) => {
+                doc.text(line, x + col.w/2, y + (lines.length===1 ? 6 : 4+i*4), {align:'center'});
+            });
+            doc.line(x+col.w, y, x+col.w, y+rowH);
+            x += col.w;
+        }
+        return { y: y+rowH, cols };
+    }
+
+    // ── Draw one data row ─────────────────────────────────────
+    function drawRow(y, row, cols, shade) {
+        // Wrap roll numbers
+        const rollStr  = row.rolls.join(', ');
+        const rollLines = doc.splitTextToSize(rollStr, cols[1].w - 2);
+        const rowH     = Math.max(7, rollLines.length * 4 + 3);
+
+        if (shade) { doc.setFillColor(248,248,248); doc.rect(ML, y, CW, rowH, 'F'); }
+        doc.setLineWidth(0.2);
+        doc.rect(ML, y, CW, rowH);
+
+        doc.setFont('helvetica','normal');
+        doc.setFontSize(8);
+
+        let x = ML;
+        // Branch
+        doc.text(row.branch||'', x+2, y+rowH/2+1.5);
+        doc.line(x+cols[0].w, y, x+cols[0].w, y+rowH);
+        x += cols[0].w;
+
+        // Roll numbers (wrapped)
+        rollLines.forEach((line, i) => {
+            doc.text(line, x+2, y+4+i*4);
+        });
+        doc.line(x+cols[1].w, y, x+cols[1].w, y+rowH);
+        x += cols[1].w;
+
+        // Room
+        doc.text(row.room||'', x+2, y+rowH/2+1.5);
+        doc.line(x+cols[2].w, y, x+cols[2].w, y+rowH);
+        x += cols[2].w;
+
+        // Count
+        doc.setFont('helvetica','bold');
+        doc.text(String(row.count), x+cols[3].w/2, y+rowH/2+1.5, {align:'center'});
+
+        return y + rowH;
+    }
+
+    // ── Main: one section per programme+semester ──────────────
+    const BOTTOM = 270;
+
+    for (const section of entries) {
+        if (pageNum > 0) doc.addPage();
+        pageNum++;
+
+        let y = drawHeader(section.programme, section.semester);
+        let { cols } = drawTableHeader(y);
+        y += 9;
+
+        for (let i = 0; i < section.rows.length; i++) {
+            const row = section.rows[i];
+
+            // Estimate row height before drawing
+            const rollStr   = row.rolls.join(', ');
+            const rollLines = doc.splitTextToSize(rollStr, cols[1].w - 2);
+            const estH      = Math.max(7, rollLines.length * 4 + 3);
+
+            if (y + estH > BOTTOM) {
+                doc.addPage(); pageNum++;
+                y = drawHeader(section.programme, section.semester);
+                ({ cols } = drawTableHeader(y));
+                y += 9;
+            }
+
+            y = drawRow(y, row, cols, i%2===1);
+        }
+
+        // Footer: Controller of Examinations
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(9);
+        doc.text('Controller of Examinations', PW-MR, PH-15, {align:'right'});
+    }
+
+    const fname = `NoticeBoard_${plan.exam_date||''}_${session}_Plan${planId}.pdf`;
+    doc.save(fname);
+}
+async function downloadDForm(planId) {
+    const card = document.getElementById('dlcard_dform');
+    if (card) card.classList.add('loading');
+    try {
+        const res  = await fetch(`/api/invigilation/dform/${planId}`);
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed to load D-Form data');
+        generateDFormPDF(data, planId);
+    } catch(e) {
+        Swal.fire({ title:'Error', text:e.message, icon:'error' });
+    } finally {
+        if (card) card.classList.remove('loading');
+    }
+}
+
+function generateDFormPDF(data, planId) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+
+    const plan  = data.plan;
+    const notif = data.notif || {};
+    const secs  = data.sections || [];
+
+    const PW=210, PH=297, ML=12, MR=12;
+    const CW = PW-ML-MR;
+
+    const examDate = new Date(plan.exam_date);
+    const dateStr  = examDate.toLocaleDateString('en-IN',
+        {day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'-');
+    const session  = plan.session_order===1?'FN':'AN';
+    const progName = notif.programme_name || 'B.TECH.';
+    const examType = notif.exam_type || 'MSE';
+    const monthYr  = notif.month_year_display || '';
+    const examMode = notif.exam_mode || 'Regular';
+
+    // Format time
+    function fmtTime(t) {
+        if (!t) return '';
+        const [h,m] = t.substring(0,5).split(':');
+        const hr = parseInt(h);
+        return `${hr>12?hr-12:hr}:${m} ${hr>=12?'PM':'AM'}`;
+    }
+    const startT = fmtTime(notif.start_time);
+    const endT   = fmtTime(notif.end_time);
+    const timeStr = startT && endT ? `${startT} - ${endT}` : '—';
+
+    let pageNum = 0;
+
+    // ── Draw header ───────────────────────────────────────────
+    function drawHeader() {
+        let y = 10;
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(11);
+        doc.text('KAKATIYA INSTITUTE OF TECHNOLOGY & SCIENCE, WARANGAL-15', PW/2, y, {align:'center'});
+        y+=5;
+        doc.setFont('helvetica','normal');
+        doc.setFontSize(8);
+        doc.text('(An Autonomous Institute under Kakatiya University, Warangal)', PW/2, y, {align:'center'});
+        y+=5;
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(9);
+        doc.text('Office of the Controller of Examinations', PW/2, y, {align:'center'});
+        y+=5;
+        doc.setFontSize(13);
+        doc.text('D-FORM', PW/2, y, {align:'center'});
+        y+=3;
+        doc.setLineWidth(0.6);
+        doc.line(ML, y, PW-MR, y);
+        y+=4;
+
+        // Info row
+        doc.setFont('helvetica','normal');
+        doc.setFontSize(8.5);
+        const info = `Programme: ${progName}   Exam Type: ${examType}   Exam Month: ${monthYr}   Mode: ${examMode}   Semester(s): ${notif.semester_name||''}`;
+        doc.text(info, PW/2, y, {align:'center'});
+        y+=4;
+        doc.setLineWidth(0.3);
+        doc.line(ML, y, PW-MR, y);
+        return y+4;
+    }
+
+    // ── Draw section info box (colored labels) ───────────────
+    function drawSectionInfo(y, sec) {
+        const bh = 8; // box height per row
+
+        // Helper: draw colored label box + value
+        function labelBox(x, yy, w, label, value, bg) {
+            doc.setFillColor(...bg);
+            doc.rect(x, yy, w, bh, 'F');
+            doc.setLineWidth(0.3);
+            doc.rect(x, yy, w, bh);
+            doc.setFont('helvetica','bold');
+            doc.setFontSize(7.5);
+            doc.setTextColor(255,255,255);
+            doc.text(label, x+2, yy+5.5);
+            doc.setFont('helvetica','normal');
+            doc.setTextColor(0,0,0);
+            const valW = w - doc.getTextWidth(label) - 4;
+            const valStr = String(value||'');
+            doc.text(valStr.length>Math.floor(valW/1.8)?valStr.substring(0,Math.floor(valW/1.8))+'…':valStr,
+                x+doc.getTextWidth(label)+4, yy+5.5);
+        }
+
+        // Row 1: Programme | Branch | Semester
+        const r1w1=55, r1w2=55, r1w3=CW-110;
+        labelBox(ML,      y, r1w1, 'Programme:', sec.programme||'B.TECH', [41,98,255]);
+        labelBox(ML+r1w1, y, r1w2, 'Branch:',    sec.branch_label,        [124,58,237]);
+        labelBox(ML+r1w1+r1w2, y, r1w3, 'Semester:', sec.semester,        [5,150,105]);
+        y += bh+1;
+
+        // Row 2: Subject Code + Name (full width, orange)
+        doc.setFillColor(234,88,12);
+        doc.rect(ML, y, CW, bh, 'F');
+        doc.setLineWidth(0.3);
+        doc.rect(ML, y, CW, bh);
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(255,255,255);
+        doc.text('Subject:', ML+2, y+5.5);
+        doc.setFont('helvetica','normal');
+        const subStr = `${sec.subject_code} – ${sec.subject_name}`;
+        doc.text(subStr.length>70?subStr.substring(0,70)+'…':subStr, ML+18, y+5.5);
+        doc.setTextColor(0,0,0);
+        y += bh+1;
+
+        // Row 3: Date | Time
+        const r3w1=90, r3w2=CW-90;
+        labelBox(ML,     y, r3w1, 'Date & Day:', `${dateStr} (${session})`, [71,85,105]);
+        labelBox(ML+r3w1,y, r3w2, 'Time:',        timeStr,                   [71,85,105]);
+        y += bh+1;
+
+        // Row 4: Stats boxes
+        const sw = CW/4;
+        const stats = [
+            {label:'Total Students', val:sec.total,       bg:[30,64,175]},
+            {label:'Present',        val:sec.present,     bg:[21,128,61]},
+            {label:'Absent',         val:sec.absent,      bg:[185,28,28]},
+            {label:'Malpractice',    val:sec.malpractice, bg:[180,83,9]}
+        ];
+        stats.forEach((s,i) => {
+            doc.setFillColor(...s.bg);
+            doc.rect(ML+i*sw, y, sw, bh+2, 'F');
+            doc.setLineWidth(0.3);
+            doc.rect(ML+i*sw, y, sw, bh+2);
+            doc.setFont('helvetica','bold');
+            doc.setFontSize(7);
+            doc.setTextColor(255,255,255);
+            doc.text(s.label, ML+i*sw+sw/2, y+4, {align:'center'});
+            doc.setFontSize(10);
+            doc.text(String(s.val), ML+i*sw+sw/2, y+bh, {align:'center'});
+        });
+        doc.setTextColor(0,0,0);
+
+        return y + bh+2 + 5;
+    }
+
+    // ── Draw student grid — row by row (1,2,3,4 / 5,6,7,8) ──
+    function drawStudentGrid(y, students) {
+        const COL_W  = CW/4;
+        const SNO_W  = 14;
+        const HT_W   = COL_W - SNO_W;
+        const ROW_H  = 7;
+        const BOTTOM = 252;
+
+        function drawGridHeader(yy) {
+            doc.setFillColor(50,50,100);
+            doc.rect(ML, yy, CW, 8, 'F');
+            doc.rect(ML, yy, CW, 8);
+            doc.setFont('helvetica','bold');
+            doc.setFontSize(8.5);
+            doc.setTextColor(255,255,255);
+            for (let c=0; c<4; c++) {
+                const cx = ML+c*COL_W;
+                doc.text('Sl.No', cx+SNO_W/2, yy+5.5, {align:'center'});
+                doc.text('HT No', cx+SNO_W+HT_W/2, yy+5.5, {align:'center'});
+                doc.line(cx+SNO_W, yy, cx+SNO_W, yy+8);
+                if (c<3) doc.line(cx+COL_W, yy, cx+COL_W, yy+8);
+            }
+            doc.setTextColor(0,0,0);
+            return yy+8;
+        }
+
+        y = drawGridHeader(y);
+
+        // Row-by-row: each row has 4 students (1,2,3,4 then 5,6,7,8...)
+        for (let i=0; i<students.length; i+=4) {
+            if (y+ROW_H > BOTTOM) {
+                doc.addPage(); pageNum++;
+                y = drawHeader();
+                y = drawGridHeader(y);
+            }
+            for (let col=0; col<4; col++) {
+                const idx = i+col;
+                const cx  = ML+col*COL_W;
+                if (idx < students.length) {
+                    const s      = students[idx];
+                    const isAbs  = s.status==='Absent'||s.status==='Malpractice';
+                    if (isAbs) {
+                        doc.setFillColor(180,180,180);
+                        doc.rect(cx, y, COL_W, ROW_H, 'F');
+                    }
+                    doc.setFont('helvetica','normal');
+                    doc.setFontSize(8.5);
+                    doc.setTextColor(0,0,0);
+                    doc.text(String(idx+1), cx+SNO_W/2, y+ROW_H-1.5, {align:'center'});
+                    doc.setFont('helvetica', isAbs?'bold':'normal');
+                    doc.text(s.roll_no||'', cx+SNO_W+2, y+ROW_H-1.5);
+                    doc.setFont('helvetica','normal');
+                }
+                doc.setLineWidth(0.2);
+                doc.rect(cx, y, COL_W, ROW_H);
+                doc.line(cx+SNO_W, y, cx+SNO_W, y+ROW_H);
+                if (col<3) doc.line(cx+COL_W, y, cx+COL_W, y+ROW_H);
+            }
+            y+=ROW_H;
+        }
+        return y;
+    }
+
+    // ── Footer ────────────────────────────────────────────────
+    function drawFooter(y) {
+        y+=4;
+        doc.setFont('helvetica','italic');
+        doc.setFontSize(8);
+        doc.text('Absent candidates are shaded in grey.', ML, y);
+        y+=6;
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(8.5);
+        doc.text('Verified by:', ML, y);
+        y+=5;
+        doc.setFont('helvetica','normal');
+        doc.text('1. Signature : _____________________   Name : _____________________', ML, y);
+        y+=6;
+        doc.text('2. Signature : _____________________   Name : _____________________', ML, y);
+        y+=8;
+        doc.setLineWidth(0.3);
+        doc.line(ML, y, PW-MR, y);
+        y+=4;
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(8);
+        doc.text('Instructions to the Examiner:', ML, y);
+        y+=4;
+        doc.setFont('helvetica','normal');
+        doc.setFontSize(7.5);
+        const instr = [
+            '1. Complete evaluation within 7 days of the exam date.',
+            '2. Show answer scripts to students for verification and mark updates.',
+            '3. Enter marks in CMS and download the marks report.',
+            '4. Submit answer scripts, attendance statement, marks award list and OBE reports to the exam branch immediately after RCM.'
+        ];
+        instr.forEach(line => {
+            const lines = doc.splitTextToSize(line, CW);
+            doc.text(lines, ML, y);
+            y += lines.length*4;
+        });
+    }
+
+    // ── Main loop ─────────────────────────────────────────────
+    for (const sec of secs) {
+        if (pageNum > 0) doc.addPage();
+        pageNum++;
+
+        let y = drawHeader();
+        y = drawSectionInfo(y, sec);
+        y = drawStudentGrid(y, sec.students);
+        drawFooter(y);
+    }
+
+    const fname = `DForm_${plan.exam_date||''}_${session}_Plan${planId}.pdf`;
+    doc.save(fname);
+}
+
+// ── Re-arrange: go to generator with pre-filled date/session ──
+function goRegenerate(date, session) {
+    Swal.fire({
+        title: 'Re-arrange Seating?',
+        html:  `This will replace the existing plan.<br>You'll be taken to the generator.`,
+        icon:  'warning',
+        showCancelButton:   true,
+        confirmButtonText:  '⚡ Yes, Re-arrange',
+        confirmButtonColor: '#dc2626'
+    }).then(r => {
+        if (r.isConfirmed)
+            window.location.href = `seating-plan-generator.html?date=${date}&session=${session}`;
+    });
+}
+
+// ── Recent plans ──────────────────────────────────────────────
+async function loadRecentPlans() {
+    try {
+        const res  = await fetch('/api/seating/plans');
+        const data = await res.json();
+        const plans = (data.plans || []).slice(0, 10);
+
+        if (!plans.length) {
+            document.getElementById('recentList').innerHTML =
+                '<div style="text-align:center;padding:20px;color:#94a3b8;font-size:13px;">No plans yet.</div>';
+            return;
+        }
+
+        document.getElementById('recentList').innerHTML = plans.map(p => {
+            const statusClass = p.status === 'Published' ? 'badge-published'
+                              : p.status === 'Confirmed'  ? 'badge-confirmed' : 'badge-draft';
+            const session = p.session_order === 1 ? 'FN' : 'AN';
+            const date    = p.exam_date_display || toLocalDate(p.exam_date);
+            return `
+                <div class="recent-item" onclick="loadPlanById(${p.plan_id})">
+                    <div class="recent-date">${date}</div>
+                    <div class="recent-info">
+                        <span class="recent-badge ${statusClass}">${p.status}</span>
+                        &nbsp; ${session} &nbsp;·&nbsp;
+                        ${p.total_students||0} students &nbsp;·&nbsp;
+                        ${p.room_count||0} rooms
+                        ${p.exam_names ? `&nbsp;·&nbsp; ${p.exam_names}` : ''}
+                    </div>
+                    <button class="recent-dl-btn" onclick="event.stopPropagation();loadPlanById(${p.plan_id})">
+                        <i class="bi bi-download"></i> Downloads
+                    </button>
+                </div>`;
+        }).join('');
+    } catch(e) {
+        document.getElementById('recentList').innerHTML =
+            `<div style="color:#dc2626;padding:16px;">Error: ${e.message}</div>`;
+    }
+}
+
+// ── UI helpers ────────────────────────────────────────────────
+function showLoading() {
+    document.getElementById('resultArea').innerHTML = `
+        <div style="text-align:center;padding:60px;color:#94a3b8;">
+            <div class="spinner-border text-primary mb-3" role="status"
+                 style="width:2.5rem;height:2.5rem;"></div>
+            <div style="font-size:14px;">Searching for seating plan…</div>
+        </div>`;
+}
+
+function showEmpty(msg) {
+    document.getElementById('resultArea').innerHTML = `
+        <div class="empty-state">
+            <i class="bi bi-calendar-search"></i>
+            <div style="font-size:15px;font-weight:600;margin-bottom:6px;">${msg}</div>
+        </div>`;
+}
+
+function showNoPlan(date, session) {
+    const s = session === '1' ? 'FN — Forenoon' : 'AN — Afternoon';
+    const d = new Date(date + 'T00:00:00').toLocaleDateString('en-IN',
+        { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+    document.getElementById('resultArea').innerHTML = `
+        <div class="no-plan">
+            <i class="bi bi-calendar-x"></i>
+            <div style="font-size:16px;font-weight:700;color:#1e293b;margin-bottom:8px;">
+                No Seating Plan Found
+            </div>
+            <div style="font-size:13px;color:#64748b;margin-bottom:20px;">
+                ${d} &nbsp;·&nbsp; ${s}
+            </div>
+            <button onclick="window.location.href='seating-plan-generator.html?date=${date}&session=${session}'"
+                style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;
+                       border-radius:10px;padding:10px 24px;font-size:13px;font-weight:700;cursor:pointer;">
+                <i class="bi bi-plus-circle me-2"></i>Generate Seating Plan for This Date
+            </button>
+        </div>`;
+}
+
+function toLocalDate(dateVal) {
+    if (!dateVal) return '';
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return String(dateVal).substring(0,10);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+</script>
+</body>
+</html>

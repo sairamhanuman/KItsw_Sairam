@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Exam History</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{background:#f1f5f9;font-family:'Segoe UI',sans-serif;min-height:100vh;}
+
+        .page-header{background:linear-gradient(135deg,#1e293b,#334155);padding:16px 32px;
+            display:flex;align-items:center;justify-content:space-between;}
+        .page-header h1{color:#fff;font-size:18px;font-weight:800;display:flex;align-items:center;gap:10px;}
+        .back-btn{color:#94a3b8;text-decoration:none;font-size:13px;display:flex;align-items:center;gap:6px;}
+        .back-btn:hover{color:#fff;}
+
+        .container{max-width:1200px;margin:24px auto;padding:0 20px;}
+
+        /* Search */
+        .search-card{background:#fff;border-radius:14px;padding:24px;
+            box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:24px;}
+        .search-wrap{position:relative;max-width:500px;margin:0 auto;}
+        .search-input{width:100%;padding:14px 20px 14px 50px;border:2px solid #e2e8f0;
+            border-radius:12px;font-size:16px;outline:none;transition:all .2s;
+            background:#f8fafc;}
+        .search-input:focus{border-color:#667eea;background:#fff;
+            box-shadow:0 0 0 4px rgba(102,126,234,.1);}
+        .search-icon{position:absolute;left:16px;top:50%;transform:translateY(-50%);
+            color:#94a3b8;font-size:20px;}
+        .search-hint{text-align:center;font-size:12px;color:#94a3b8;margin-top:8px;}
+
+        /* Suggestions */
+        .suggestions{position:absolute;top:calc(100% + 4px);left:0;right:0;
+            background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;
+            box-shadow:0 8px 24px rgba(0,0,0,.1);z-index:100;
+            max-height:280px;overflow-y:auto;display:none;}
+        .suggestions.show{display:block;}
+        .sug-item{padding:12px 16px;cursor:pointer;border-bottom:1px solid #f8fafc;
+            display:flex;align-items:center;gap:12px;transition:background .1s;}
+        .sug-item:hover{background:#f0f4ff;}
+        .sug-item:last-child{border-bottom:none;}
+        .sug-roll{font-weight:800;font-size:13px;color:#1e293b;min-width:90px;}
+        .sug-name{font-size:13px;color:#64748b;flex:1;}
+        .sug-branch{font-size:11px;color:#667eea;background:#eef2ff;
+            padding:2px 8px;border-radius:10px;white-space:nowrap;}
+
+        /* Student profile card */
+        .profile-card{background:#fff;border-radius:14px;padding:24px;
+            box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:20px;
+            display:flex;align-items:center;gap:24px;flex-wrap:wrap;}
+        .profile-photo{width:80px;height:80px;border-radius:12px;object-fit:cover;
+            border:3px solid #e2e8f0;flex-shrink:0;}
+        .profile-photo-placeholder{width:80px;height:80px;border-radius:12px;
+            background:linear-gradient(135deg,#667eea,#764ba2);
+            display:flex;align-items:center;justify-content:center;
+            color:#fff;font-size:28px;flex-shrink:0;}
+        .profile-info{flex:1;min-width:200px;}
+        .profile-name{font-size:20px;font-weight:800;color:#1e293b;margin-bottom:4px;}
+        .profile-roll{font-size:14px;color:#667eea;font-weight:700;margin-bottom:8px;}
+        .profile-meta{display:flex;flex-wrap:wrap;gap:8px;}
+        .meta-tag{background:#f1f5f9;color:#64748b;padding:4px 10px;border-radius:20px;
+            font-size:11px;font-weight:600;}
+        .meta-tag.active{background:#d1fae5;color:#065f46;}
+        .meta-tag.detained{background:#fee2e2;color:#991b1b;}
+
+        /* Summary stats */
+        .stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
+            gap:12px;margin-bottom:20px;}
+        .stat-card{background:#fff;border-radius:12px;padding:16px;text-align:center;
+            box-shadow:0 2px 8px rgba(0,0,0,.05);}
+        .stat-val{font-size:28px;font-weight:800;}
+        .stat-lbl{font-size:11px;color:#64748b;margin-top:2px;font-weight:600;}
+        .stat-card.total   .stat-val{color:#6366f1;}
+        .stat-card.present .stat-val{color:#16a34a;}
+        .stat-card.absent  .stat-val{color:#dc2626;}
+        .stat-card.mal     .stat-val{color:#f59e0b;}
+        .stat-card.nr      .stat-val{color:#94a3b8;}
+        .stat-card.trans   .stat-val{color:#0891b2;}
+        .stat-card.blocked .stat-val{color:#7c3aed;}
+
+        /* History table */
+        .history-card{background:#fff;border-radius:14px;
+            box-shadow:0 2px 12px rgba(0,0,0,.06);overflow:hidden;}
+        .history-hdr{padding:16px 20px;background:#f8fafc;border-bottom:1px solid #f1f5f9;
+            display:flex;align-items:center;justify-content:space-between;}
+        .history-hdr h3{font-size:15px;font-weight:700;color:#1e293b;margin:0;}
+
+        .hist-table{width:100%;border-collapse:collapse;font-size:13px;}
+        .hist-table th{background:linear-gradient(135deg,#1e293b,#334155);color:#fff;
+            padding:11px 12px;font-weight:600;font-size:11px;text-transform:uppercase;
+            letter-spacing:.5px;text-align:left;white-space:nowrap;}
+        .hist-table td{padding:11px 12px;border-bottom:1px solid #f1f5f9;
+            vertical-align:middle;}
+        .hist-table tr:last-child td{border-bottom:none;}
+        .hist-table tr:hover td{background:#f8fafc;}
+        .hist-table tr.absent-row td{background:#fff5f5;}
+        .hist-table tr.mal-row td{background:#fffbeb;}
+        .hist-table tr.blocked-row td{background:#faf5ff;opacity:.7;}
+
+        /* Badges */
+        .badge-present{background:#d1fae5;color:#065f46;padding:3px 10px;
+            border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;}
+        .badge-absent{background:#fee2e2;color:#991b1b;padding:3px 10px;
+            border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;}
+        .badge-mal{background:#fef3c7;color:#92400e;padding:3px 10px;
+            border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;}
+        .badge-nr{background:#f1f5f9;color:#64748b;padding:3px 10px;
+            border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;}
+        .badge-transfer{background:#e0f2fe;color:#0369a1;padding:2px 8px;
+            border-radius:10px;font-size:10px;font-weight:700;display:block;margin-top:3px;}
+        .badge-blocked{background:#f3e8ff;color:#7c3aed;padding:2px 8px;
+            border-radius:10px;font-size:10px;font-weight:700;display:block;margin-top:3px;}
+        .badge-mse{background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;}
+        .badge-ese{background:#dcfce7;color:#166534;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;}
+
+        .seat-info{font-size:11px;color:#94a3b8;display:block;margin-top:2px;}
+        .room-code{font-weight:700;color:#1e293b;}
+
+        /* Print button */
+        .btn-print{background:#fff;border:1.5px solid #e2e8f0;border-radius:9px;
+            padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;
+            color:#334155;display:flex;align-items:center;gap:6px;transition:all .15s;}
+        .btn-print:hover{border-color:#667eea;color:#667eea;}
+
+        .empty-state{text-align:center;padding:60px;color:#94a3b8;}
+        .empty-state i{font-size:48px;display:block;margin-bottom:12px;}
+
+        .loading-state{text-align:center;padding:40px;color:#64748b;}
+
+        @media print {
+            .page-header,.search-card,.btn-print{display:none!important;}
+            body{background:#fff;}
+            .stats-row,.history-card,.profile-card{box-shadow:none!important;}
+        }
+    </style>
+</head>
+<body>
+
+<div class="page-header">
+    <h1><i class="bi bi-clock-history" style="color:#a5b4fc;"></i> Student Exam History</h1>
+    <a href="index.html" class="back-btn"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+</div>
+
+<div class="container">
+
+    <!-- ── SEARCH ── -->
+    <div class="search-card">
+        <div class="search-wrap">
+            <i class="bi bi-search search-icon"></i>
+            <input type="text" id="searchInput" class="search-input"
+                   placeholder="Enter Roll No or Student Name…"
+                   oninput="onSearch()" onkeydown="onKey(event)"
+                   autocomplete="off"/>
+            <div class="suggestions" id="suggestions"></div>
+        </div>
+        <div class="search-hint">Type at least 2 characters to search</div>
+    </div>
+
+    <!-- ── RESULTS ── -->
+    <div id="results"></div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+
+let searchTimer = null;
+
+// ── Search ────────────────────────────────────────────────────
+function onSearch() {
+    const q = document.getElementById('searchInput').value.trim();
+    clearTimeout(searchTimer);
+    if (q.length < 2) {
+        closeSuggestions(); return;
+    }
+    searchTimer = setTimeout(() => fetchSuggestions(q), 300);
+}
+
+async function fetchSuggestions(q) {
+    try {
+        const res  = await fetch(`/api/student-history/search?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        renderSuggestions(data.students || []);
+    } catch(_) {}
+}
+
+function renderSuggestions(students) {
+    const box = document.getElementById('suggestions');
+    if (!students.length) { closeSuggestions(); return; }
+
+    box.innerHTML = students.map(s => {
+        const secLbl  = s.section_name ? `-${s.section_name.replace('Sec-','')}` : '';
+        const brLabel = `${s.branch_code}${secLbl}`;
+        return `<div class="sug-item" onclick="loadHistory(${s.student_id},'${s.roll_no}')">
+            <span class="sug-roll">${s.roll_no}</span>
+            <span class="sug-name">${s.student_name}</span>
+            <span class="sug-branch">${brLabel} · ${s.semester_name||''}</span>
+        </div>`;
+    }).join('');
+    box.classList.add('show');
+}
+
+function closeSuggestions() {
+    document.getElementById('suggestions').classList.remove('show');
+}
+
+document.addEventListener('click', e => {
+    if (!e.target.closest('.search-wrap')) closeSuggestions();
+});
+
+function onKey(e) {
+    if (e.key === 'Escape') closeSuggestions();
+}
+
+// ── Load history ──────────────────────────────────────────────
+async function loadHistory(studentId, rollNo) {
+    closeSuggestions();
+    document.getElementById('searchInput').value = rollNo;
+
+    document.getElementById('results').innerHTML = `
+        <div class="loading-state">
+            <div class="spinner-border text-primary mb-3"></div>
+            <div>Loading exam history…</div>
+        </div>`;
+
+    try {
+        const res  = await fetch(`/api/student-history/${studentId}`);
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+        renderResults(data);
+    } catch(e) {
+        document.getElementById('results').innerHTML = `
+            <div class="empty-state">
+                <i class="bi bi-exclamation-circle text-danger"></i>
+                Error: ${e.message}
+            </div>`;
+    }
+}
+
+// ── Render results ────────────────────────────────────────────
+function renderResults(data) {
+    const { student:s, history, summary } = data;
+
+    // Photo
+    const yr       = s.ht_number?.match(/^[A-Z](\d{2})/)?.[1] || '24';
+    const photoUrl = `https://kitsw.ac.in/academics/B.Tech.%20I%20Yr%20URR${yr}/${s.ht_number}.jpg`;
+    const secLbl   = s.section_name ? `-${s.section_name.replace('Sec-','')}` : '';
+    const brLabel  = `${s.branch_code}${secLbl}`;
+    const statusCls= s.student_status === 'In Roll' ? 'active' :
+                     s.student_status === 'Detained' ? 'detained' : '';
+
+    const profileHTML = `
+    <div class="profile-card">
+        <img src="${photoUrl}" class="profile-photo" alt="${s.ht_number}"
+             onerror="this.outerHTML='<div class=profile-photo-placeholder><i class=bi.bi-person-fill></i></div>'"/>
+        <div class="profile-info">
+            <div class="profile-name">${s.full_name}</div>
+            <div class="profile-roll">${s.ht_number}</div>
+            <div class="profile-meta">
+                <span class="meta-tag">${s.programme_name||'B.TECH'}</span>
+                <span class="meta-tag">${brLabel}</span>
+                <span class="meta-tag">${s.semester_name||''}</span>
+                <span class="meta-tag">${s.batch_name||''}</span>
+                <span class="meta-tag">${s.regulation_name||''}</span>
+                <span class="meta-tag ${statusCls}">${s.student_status||''}</span>
+            </div>
+        </div>
+        <button class="btn-print" onclick="window.print()">
+            <i class="bi bi-printer"></i> Print
+        </button>
+    </div>`;
+
+    // Stats
+    const statsHTML = `
+    <div class="stats-row">
+        <div class="stat-card total">
+            <div class="stat-val">${summary.total}</div>
+            <div class="stat-lbl">Total Exams</div>
+        </div>
+        <div class="stat-card present">
+            <div class="stat-val">${summary.present}</div>
+            <div class="stat-lbl">Present</div>
+        </div>
+        <div class="stat-card absent">
+            <div class="stat-val">${summary.absent}</div>
+            <div class="stat-lbl">Absent</div>
+        </div>
+        <div class="stat-card mal">
+            <div class="stat-val">${summary.malpractice}</div>
+            <div class="stat-lbl">Malpractice</div>
+        </div>
+        <div class="stat-card nr">
+            <div class="stat-val">${summary.notRecorded}</div>
+            <div class="stat-lbl">Not Recorded</div>
+        </div>
+        <div class="stat-card trans">
+            <div class="stat-val">${summary.transferred}</div>
+            <div class="stat-lbl">Transferred</div>
+        </div>
+        <div class="stat-card blocked">
+            <div class="stat-val">${summary.blocked}</div>
+            <div class="stat-lbl">Blocked</div>
+        </div>
+    </div>`;
+
+    // History table
+    let tableHTML = '';
+    if (!history.length) {
+        tableHTML = `<div class="empty-state">
+            <i class="bi bi-calendar-x"></i>
+            No exam history found for this student.
+        </div>`;
+    } else {
+        const rows = history.map((h, i) => {
+            const att    = h.attendance_status || 'Not Recorded';
+            const attBadge = att === 'Present'     ? `<span class="badge-present">✅ Present</span>` :
+                             att === 'Absent'      ? `<span class="badge-absent">❌ Absent</span>` :
+                             att === 'Malpractice' ? `<span class="badge-mal">⚠️ Malpractice</span>` :
+                                                     `<span class="badge-nr">— Not Recorded</span>`;
+
+            const rowCls = att === 'Absent'      ? 'absent-row' :
+                           att === 'Malpractice'  ? 'mal-row'    :
+                           h.is_blocked           ? 'blocked-row' : '';
+
+            const examDate = new Date(h.exam_date);
+            const dateStr  = examDate.toLocaleDateString('en-IN',
+                {day:'2-digit', month:'2-digit', year:'numeric'});
+            const dayStr   = examDate.toLocaleDateString('en-IN', {weekday:'short'});
+            const sessStr  = h.session_order === 1 ? 'FN' : 'AN';
+
+            const examTypeBadge = h.exam_type === 'Internal'
+                ? `<span class="badge-mse">MSE</span>`
+                : `<span class="badge-ese">ESE</span>`;
+
+            const seatPos  = h.seat_position === 1 ? 'LEFT' : h.seat_position === 2 ? 'RIGHT' : '—';
+            const seatInfo = h.bench_label
+                ? `<span class="seat-info">Bench ${h.bench_label} · ${seatPos} · #${h.seat_serial||'—'}</span>`
+                : '';
+
+            const transferBadge = h.transfer_info
+                ? `<span class="badge-transfer">🔄 ${h.transfer_info}</span>` : '';
+            const blockedBadge  = h.is_blocked
+                ? `<span class="badge-blocked">🚫 ${h.block_reason_text||'Blocked'}</span>` : '';
+
+            const srcLabel = h.attendance_source === 'Manual'
+                ? '<span style="font-size:10px;color:#94a3b8;display:block;margin-top:2px;">Manual</span>'
+                : h.attendance_source === 'Invigilation'
+                ? '<span style="font-size:10px;color:#94a3b8;display:block;margin-top:2px;">Invigilation</span>'
+                : '';
+
+            return `<tr class="${rowCls}">
+                <td style="color:#94a3b8;font-size:12px;font-weight:600;">${i+1}</td>
+                <td>
+                    <div style="font-weight:700;color:#1e293b;">${dateStr}</div>
+                    <div style="font-size:11px;color:#94a3b8;">${dayStr} · ${sessStr}</div>
+                </td>
+                <td>
+                    ${examTypeBadge}
+                    <div style="font-size:11px;color:#64748b;margin-top:3px;">${h.month_year_display||'—'}</div>
+                </td>
+                <td style="font-size:12px;">
+                    <div style="font-size:11px;color:#94a3b8;">${h.notification_id||'—'}</div>
+                </td>
+                <td>
+                    <div style="font-weight:600;color:#667eea;font-size:12px;">${h.subject_code||'—'}</div>
+                    <div style="font-size:11px;color:#64748b;">${(h.subject_name||'').substring(0,35)}</div>
+                </td>
+                <td>
+                    <span class="room-code">${h.block_code||''} - ${h.room_number||'—'}</span>
+                    ${seatInfo}
+                    ${transferBadge}
+                    ${blockedBadge}
+                </td>
+                <td>
+                    ${attBadge}
+                    ${srcLabel}
+                </td>
+            </tr>`;
+        }).join('');
+
+        tableHTML = `
+        <div class="history-card">
+            <div class="history-hdr">
+                <h3><i class="bi bi-table me-2" style="color:#667eea;"></i>
+                    Exam History — ${history.length} record(s)
+                </h3>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="hist-table">
+                    <thead><tr>
+                        <th>#</th>
+                        <th>Exam Date</th>
+                        <th>Exam Type</th>
+                        <th>Notification</th>
+                        <th>Subject</th>
+                        <th>Room / Seat</th>
+                        <th>Attendance</th>
+                    </tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>
+        </div>`;
+    }
+
+    document.getElementById('results').innerHTML = profileHTML + statsHTML + tableHTML;
+}
+</script>
+</body>
+</html>

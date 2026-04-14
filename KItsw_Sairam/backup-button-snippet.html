@@ -1,0 +1,97 @@
+<!-- ============================================================
+  BACKUP BUTTONS SNIPPET
+  1. Paste buttons inside .header-actions (before logout button)
+  2. Paste <style> inside your <style> block
+  3. Paste toast div + script before </body>
+  ============================================================ -->
+
+<!-- 1. BUTTONS — paste inside .header-actions -->
+<button class="backup-btn db-btn" id="backup-btn" onclick="takeManualBackup()">
+    💾 DB Backup
+</button>
+<button class="backup-btn proj-btn" id="project-btn" onclick="takeProjectBackup()">
+    📁 Project Backup
+</button>
+
+
+<!-- 2. TOAST — paste before </body> -->
+<div id="backup-toast" style="
+    display:none; position:fixed; top:18px; right:22px; z-index:9999;
+    padding:14px 20px; border-radius:8px; font-size:14px; color:#fff;
+    max-width:360px; box-shadow:0 4px 14px rgba(0,0,0,.25); transition:opacity .4s;
+"></div>
+
+
+<!-- 3. STYLES — paste inside your <style> block -->
+<style>
+.backup-btn {
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    cursor: pointer;
+    border-radius: 6px;
+    font-size: 15px;
+    transition: 0.2s;
+}
+.db-btn   { background: #1565c0; }
+.db-btn:hover   { background: #0d47a1; }
+.proj-btn { background: #6a1b9a; }
+.proj-btn:hover { background: #4a148c; }
+.backup-btn:active   { transform: scale(0.97); }
+.backup-btn:disabled { background: #90a4ae !important; cursor: not-allowed; }
+</style>
+
+
+<!-- 4. SCRIPT — paste before </body> -->
+<script>
+// ── DB Backup ──────────────────────────────────────────────
+async function takeManualBackup() {
+    const btn = document.getElementById('backup-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Backing up...';
+    try {
+        const res  = await fetch('/api/backup/manual', { method: 'POST' });
+        const data = await res.json();
+        showBackupToast(
+            data.success ? `✅ DB Backup done! ${data.filename} (${data.sizeKB} KB)` : '❌ DB Backup failed: ' + data.message,
+            data.success ? '#2e7d32' : '#c62828'
+        );
+    } catch (err) {
+        showBackupToast('❌ Error: ' + err.message, '#c62828');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 DB Backup';
+    }
+}
+
+// ── Project Backup ─────────────────────────────────────────
+async function takeProjectBackup() {
+    const btn = document.getElementById('project-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Zipping project...';
+    try {
+        const res  = await fetch('/api/backup/project', { method: 'POST' });
+        const data = await res.json();
+        showBackupToast(
+            data.success ? `✅ Project Backup done! ${data.filename} (${data.sizeKB} KB)` : '❌ Project Backup failed: ' + data.message,
+            data.success ? '#6a1b9a' : '#c62828'
+        );
+    } catch (err) {
+        showBackupToast('❌ Error: ' + err.message, '#c62828');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '📁 Project Backup';
+    }
+}
+
+// ── Toast ──────────────────────────────────────────────────
+function showBackupToast(msg, color) {
+    const toast = document.getElementById('backup-toast');
+    toast.textContent      = msg;
+    toast.style.background = color;
+    toast.style.display    = 'block';
+    toast.style.opacity    = '1';
+    setTimeout(() => { toast.style.opacity = '0'; }, 4500);
+    setTimeout(() => { toast.style.display = 'none'; }, 4900);
+}
+</script>

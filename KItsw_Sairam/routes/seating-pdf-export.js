@@ -86,7 +86,8 @@ function buildGrid(room) {
             grid[r][c] = { available: false, label: '', pos1: null, pos2: null };
     }
 
-    benches.forEach(b => {
+    const sortedBenches = [...benches].sort((a,b) => a.row !== b.row ? a.row-b.row : a.col-b.col);
+    sortedBenches.forEach(b => {
         const seats = benchSeats[b.label] || { pos1: null, pos2: null };
         grid[b.row][b.col] = {
             available: b.available === true,
@@ -108,12 +109,17 @@ function drawSeatPair(doc, startX, boxTop, HT_W, MK_W, BOX_H, student) {
        .roundedRect(startX, boxTop, fullW, BOX_H, 1.5)
        .fillAndStroke('white', 'black');
 
-    if (student) {
+    if (student && !student.is_blocked) {
         const lbl = student.register_number || String(student.student_id || '');
         doc.font('Helvetica-Bold').fontSize(9).fillColor('black')
            .text(lbl, startX + 2, boxTop + (BOX_H - 9) / 2 + 1,
                  { width: fullW - 4, align: 'center', lineBreak: false });
+        // CRITICAL: reset text cursor — drawSeatPair is called for every bench cell
+        // (up to 56+ times per room). Without this, doc.y advances past the page
+        // bottom and PDFKit auto-inserts a blank page before the next addPage().
+        doc.y = boxTop;
     }
+    // Blocked student → cell drawn but left blank (no text, no cursor advance)
 }
 
 // ─── PDF Generator ───────────────────────────────────────────
@@ -125,7 +131,11 @@ function generateSeatingPDF(plan, rooms, notifications, collegeInfo = {}) {
             const doc = new PDFDocument({
                 size:          'A4',
                 layout:        'landscape',    // ← KEY CHANGE
-                margins:       { top:22, bottom:22, left:28, right:28 },
+                margins:       { top:22, bottom:5, left:28, right:28 },
+                // bottom:5 (not 22) moves PDFKit's overflow threshold from 573pt to 590pt.
+                // The page stamp is drawn at PH-28=567pt; its text bottom = 567+9.6=576.6pt.
+                // With bottom:22 → threshold=573 → 576.6>573 → PDFKit auto-adds a blank page.
+                // With bottom:5  → threshold=590 → 576.6<590 → stamp stays on the room page. ✓
                 autoFirstPage: false
             });
 
@@ -140,16 +150,18 @@ function generateSeatingPDF(plan, rooms, notifications, collegeInfo = {}) {
             const ML = 28;
             const CW = PW - ML * 2;   // ≈ 786 pts usable width
 
-            // Helper: draw text at absolute position WITHOUT moving doc.y
-            // This is the key fix — prevents PDFKit from auto-adding blank pages
+            // Helper: draw text at absolute position WITHOUT advancing doc.y.
+            // doc.moveTo() is a PATH operation — it does NOT reset the text cursor.
+            // The correct fix is doc.y = yPos after every doc.text() call.
             function txt(text, x, yPos, opts = {}) {
                 doc.text(text, x, yPos, { ...opts, lineBreak: false });
-                // Immediately move cursor back up so PDFKit never thinks
-                // we've overflowed the page
-                doc.moveTo(x, yPos);
+                // Reset the text cursor to where we just drew — prevents PDFKit
+                // from thinking we've scrolled past the bottom margin and
+                // auto-inserting a blank page before the next doc.addPage().
+                doc.y = yPos;
             }
 
-            const collegeName = (collegeInfo.name       || 'KITS, WARANGAL').toUpperCase();
+            const collegeName = (collegeInfo.name || 'YOUR COLLEGE NAME').toUpperCase();
             const deptName    = (collegeInfo.department || 'EXAMINATION BRANCH').toUpperCase();
             const monthYear   = fmtMonthYear(plan.exam_date);
 
@@ -338,12 +350,19 @@ function generateSeatingPDF(plan, rooms, notifications, collegeInfo = {}) {
 
                 // 7. Red footer note
                 doc.font('Helvetica-Bold').fontSize(10).fillColor('#cc0000');
-                txt(footerNote, ML, Math.min(y, PH - 40), { align:'center', width:CW });
+                txt(footerNote, ML, Math.min(y, PH - 50), { align:'center', width:CW });
 
-                // Page stamp (bottom right)
+                // Page stamp (bottom right) — MUST stay inside bottom margin (PH - margins.bottom = 573pt).
+                // PH - 18 = 577pt is PAST the margin → PDFKit auto-creates a new blank page for it.
+                // Use PH - 28 = 567pt (safely inside) to keep stamp on the same room page.
                 doc.font('Helvetica').fontSize(8).fillColor('#aaaaaa');
                 txt(`Plan #${plan.plan_id}  ·  ${fmtDate(plan.exam_date, plan.session_order)}`,
-                    ML, PH - 18, { align:'right', width:CW });
+                    ML, PH - 28, { align:'right', width:CW });
+
+                // ── CRITICAL: reset text cursor to top-of-page before next addPage() ──
+                // Without this, PDFKit sees doc.y > page bottom and auto-inserts a
+                // blank page BEFORE the next explicit addPage() call.
+                doc.y = doc.page.margins.top;
             });
 
             doc.end();
@@ -401,7 +420,8 @@ function initializeRouter(pool) {
                     br.branch_code,
                     subm.subject_name    AS subject_name_ref,
                     subm.syllabus_code   AS syllabus_code_ref,
-                    smst.semester_name   AS sem_name
+                    smst.semester_name   AS sem_name,
+                    COALESCE(esa.is_blocked, 0) AS is_blocked
                 FROM exam_seat_allocation esa
                 LEFT JOIN room_master    rm   ON rm.room_id      = esa.room_id
                 LEFT JOIN block_master   bm   ON bm.block_id     = rm.block_id
@@ -410,7 +430,7 @@ function initializeRouter(pool) {
                 LEFT JOIN subject_master subm ON subm.subject_id = esa.subject_id
                 LEFT JOIN semester_master smst ON smst.semester_id = esa.semester_id
                 WHERE esa.plan_id = ?
-                ORDER BY esa.room_id, esa.seat_serial
+                ORDER BY esa.room_id, esa.row_no ASC, esa.col_no ASC, esa.seat_position ASC
             `, [planId]);
 
             seats.forEach(s => {
@@ -437,14 +457,98 @@ function initializeRouter(pool) {
                 roomMap[s.room_id].students.push(s);
             });
 
-            let collegeInfo = {};
+            // ── Fetch college info — exhaustive multi-table/column search ──
+            let collegeInfo = { name: '', department: 'EXAMINATION BRANCH' };
             try {
-                const [[col]] = await pool.query(`SELECT * FROM college_master LIMIT 1`);
-                if (col) collegeInfo = {
-                    name:       col.college_name || col.name || 'KITS, WARANGAL',
-                    department: col.department   || 'EXAMINATION BRANCH'
+                // Helper to extract name from a row trying many possible column names
+                const extractName = (row) => {
+                    if (!row) return null;
+                    return row.college_name || row.institution_name || row.name ||
+                           row.college || row.university_name || null;
                 };
-            } catch (_) {}
+                const extractDept = (row) => {
+                    if (!row) return null;
+                    return row.college_subtitle || row.department_name || row.department ||
+                           row.exam_branch_name || null;
+                };
+
+                // Attempt 1: college_settings
+                const [csRows] = await pool.query(`SELECT * FROM college_settings LIMIT 1`).catch(() => [[]]);
+                let found = csRows?.[0];
+                if (found && extractName(found)) {
+                    collegeInfo.name       = extractName(found);
+                    collegeInfo.department = extractDept(found) || 'EXAMINATION BRANCH';
+                    console.log('[PDF] College from college_settings:', collegeInfo.name);
+                } else {
+                    // Attempt 2: college_master — prefer the row with full contact info
+                    // (college_id=1/SVEC has NULL email/website; KITSW id=4 has them)
+                    const [cmRows] = await pool.query(
+                        `SELECT * FROM college_master
+                         WHERE is_active = 1
+                           AND (email IS NOT NULL OR website IS NOT NULL)
+                         ORDER BY college_id ASC
+                         LIMIT 1`
+                    ).catch(() => [[]]);
+                    found = cmRows?.[0];
+                    // Fallback: if none had email/website, grab first active row
+                    if (!found || !extractName(found)) {
+                        const [cmAll] = await pool.query(
+                            `SELECT * FROM college_master WHERE is_active=1 ORDER BY college_id ASC LIMIT 1`
+                        ).catch(() => [[]]);
+                        found = cmAll?.[0];
+                    }
+                    if (found && extractName(found)) {
+                        collegeInfo.name       = extractName(found);
+                        collegeInfo.department = extractDept(found) || 'EXAMINATION BRANCH';
+                        console.log('[PDF] College from college_master:', collegeInfo.name);
+                    } else {
+                        // Attempt 3: institution_master
+                        const [imRows] = await pool.query(`SELECT * FROM institution_master LIMIT 1`).catch(() => [[]]);
+                        found = imRows?.[0];
+                        if (found && extractName(found)) {
+                            collegeInfo.name       = extractName(found);
+                            collegeInfo.department = extractDept(found) || 'EXAMINATION BRANCH';
+                            console.log('[PDF] College from institution_master:', collegeInfo.name);
+                        } else {
+                            // Attempt 4: generic key-value settings table
+                            const [stRows] = await pool.query(
+                                `SELECT setting_key, setting_value FROM settings
+                                 WHERE setting_key IN ('college_name','institution_name','org_name','university_name')
+                                 LIMIT 5`
+                            ).catch(() => [[]]);
+                            if (stRows?.length) {
+                                const m = {};
+                                stRows.forEach(r => { m[r.setting_key] = r.setting_value; });
+                                collegeInfo.name = m.college_name || m.institution_name || m.org_name || m.university_name || '';
+                                console.log('[PDF] College from settings table:', collegeInfo.name);
+                            } else {
+                                // Attempt 5: app_settings or system_settings
+                                const [asRows] = await pool.query(
+                                    `SELECT * FROM app_settings LIMIT 1`
+                                ).catch(() => [[]]);
+                                found = asRows?.[0];
+                                if (found && extractName(found)) {
+                                    collegeInfo.name = extractName(found);
+                                    console.log('[PDF] College from app_settings:', collegeInfo.name);
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('[PDF] College lookup error:', e.message);
+            }
+
+            if (!collegeInfo.name) {
+                // ── FALLBACK: hardcode until you configure the DB ──────────────
+                // TO FIX: Run this SQL to find your college table:
+                //   SHOW TABLES LIKE '%college%';
+                //   SHOW TABLES LIKE '%institution%';
+                //   SHOW TABLES LIKE '%settings%';
+                // Then tell the developer which table + column has your college name.
+                console.error('[PDF] ⚠️  College name NOT found in DB. Add your college name to college_settings.college_name');
+                collegeInfo.name = 'YOUR COLLEGE NAME (Configure in DB)';
+            }
 
             const buf   = await generateSeatingPDF(plan, Object.values(roomMap), notifRows, collegeInfo);
             const fname = `SeatingPlan_${toDateStr(plan.exam_date)}_${sessionStr(plan.session_order)}_Plan${planId}.pdf`;

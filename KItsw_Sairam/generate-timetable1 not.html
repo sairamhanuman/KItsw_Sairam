@@ -1,0 +1,2421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Exam Time Table</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .timetable-container {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .date-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .subject-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: move;
+            transition: all 0.3s ease;
+        }
+        .subject-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        .subject-card.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+        }
+        .subject-card.drag-over {
+            background-color: #e3f2fd;
+            border-color: #2196f3;
+        }
+        .branch-column {
+            min-height: 400px;
+            background: white;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        .branch-column.drag-over {
+            background-color: #f0f8ff;
+            border-color: #007bff;
+        }
+        .unassigned-section {
+            background: #fff3cd;
+            border: 2px dashed #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .elective-group {
+            background: #e8f5e8;
+            border-left: 4px solid #28a745;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        .loading-spinner {
+            display: none;
+        }
+        .btn-generate {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            color: white;
+        }
+        .btn-generate:hover {
+            background: linear-gradient(135deg, #218838 0%, #1ea085 100%);
+        }
+        
+        /* Timetable Action Buttons */
+        #timetableActions .btn {
+            margin-bottom: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+        
+        #timetableActions .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+        
+        #timetableActions .btn-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+            border: none;
+            color: #000;
+        }
+        
+        #timetableActions .btn-warning:hover {
+            background: linear-gradient(135deg, #e0a800 0%, #ffc107 100%);
+        }
+        
+        #timetableActions .btn-info {
+            background: linear-gradient(135deg, #0dcaf0 0%, #2196f3 100%);
+            border: none;
+        }
+        
+        #timetableActions .btn-info:hover {
+            background: linear-gradient(135deg, #0b7dda 0%, #0dcaf0 100%);
+        }
+        
+        #timetableActions .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            border: none;
+        }
+        
+        #timetableActions .btn-danger:hover {
+            background: linear-gradient(135deg, #c82333 0%, #dc3545 100%);
+        }
+        
+        #timetableActions .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+            border: none;
+        }
+        
+        #timetableActions .btn-secondary:hover {
+            background: linear-gradient(135deg, #5a6268 0%, #6c757d 100%);
+        }
+        .round-indicator {
+            background: #007bff;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .subject-info {
+            font-size: 0.9rem;
+        }
+        .subject-code {
+            font-weight: bold;
+            color: #495057;
+        }
+        .subject-type {
+            background: #6c757d;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+        }
+        
+        /* Table styles */
+        .timetable-table {
+            font-size: 0.9rem;
+        }
+        .timetable-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            border: none;
+        }
+        .timetable-table td {
+            vertical-align: middle;
+        }
+        .unallocated-table th {
+            font-weight: 600;
+        }
+        
+        /* Card styles */
+        .summary-section .card {
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .summary-section .card-body {
+            padding: 1.5rem;
+        }
+        .summary-section h3 {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 0;
+        }
+        .summary-section h5 {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Drag and Drop styles for Single Table */
+        .draggable-row {
+            cursor: move;
+            transition: all 0.3s ease;
+            position: relative;
+            border: 2px solid transparent !important; /* Prepare for border animation */
+        }
+        .draggable-row:hover {
+            background-color: #f8f9fa;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .drag-indicator {
+            position: static !important;
+            margin-right: 6px !important;
+            color: #212529 !important;
+            font-size: 16px !important;
+            font-weight: bold !important;
+            letter-spacing: 1px !important;
+            z-index: 10 !important;
+            text-shadow: 0 0 3px rgba(0,0,0,0.3) !important;
+            opacity: 1 !important; /* ALWAYS VISIBLE */
+            transition: opacity 0.3s ease !important;
+        }
+        .draggable-row:hover .drag-indicator {
+            opacity: 1 !important;
+        }
+        
+        /* Force drag indicator in combined table */
+        #combinedTimetable .drag-indicator {
+            position: static !important;
+            margin-right: 6px !important;
+            color: #212529 !important;
+            font-size: 16px !important;
+            font-weight: bold !important;
+            letter-spacing: 1px !important;
+            z-index: 10 !important;
+            text-shadow: 0 0 3px rgba(0,0,0,0.3) !important;
+            opacity: 1 !important; /* ALWAYS VISIBLE */
+            transition: opacity 0.3s ease !important;
+        }
+        #combinedTimetable .draggable-row:hover .drag-indicator {
+            opacity: 1 !important;
+        }
+        .draggable-row.dragging {
+            opacity: 0.9;
+            transform: scale(1.02) rotate(1deg); /* Slightly larger and rotated */
+            box-shadow: 0 8px 25px rgba(0, 123, 255, 0.4) !important; /* Strong blue shadow */
+            border: 4px solid #007bff !important; /* Very thick blue border */
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%) !important; /* Gradient blue background */
+            position: relative;
+            z-index: 1000; /* Bring to front */
+        }
+        .draggable-row.drag-over {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important; /* Gradient yellow background */
+            border: 4px dashed #ffc107 !important; /* Thick yellow dashed border */
+            box-shadow: 0 0 20px rgba(255, 193, 7, 0.5) !important;
+            transform: scale(1.01); /* Slightly larger */
+            position: relative;
+            z-index: 999;
+        }
+        .subject-field {
+            pointer-events: none; /* Prevent text selection during drag */
+            position: relative;
+            padding-left: 0px; /* Remove padding since using margin */
+            font-weight: 500;
+        }
+        .branch-cell {
+            pointer-events: none; /* Prevent branch cell interaction */
+        }
+        .draggable-row td:not(.subject-field):not(.branch-cell) {
+            cursor: default !important; /* Show default cursor for non-draggable cells */
+            background-color: #f8f9fa !important; /* Light gray for fixed columns */
+        }
+        .draggable-row td:not(.subject-field):not(.branch-cell):hover {
+            background-color: #e9ecef !important; /* Darker gray on hover for fixed columns */
+        }
+        
+        /* Status column styling */
+        .badge.bg-success {
+            background-color: #198754 !important;
+        }
+        .badge.bg-warning {
+            background-color: #ffc107 !important;
+            color: #212529 !important;
+        }
+        
+        /* Compact table styling */
+        .compact-table {
+            font-size: 0.875rem;
+        }
+        .compact-table th,
+        .compact-table td {
+            padding: 0.25rem 0.5rem !important;
+            vertical-align: middle !important;
+        }
+        .compact-cell {
+            padding: 0.25rem 0.5rem !important;
+            line-height: 1.2 !important;
+        }
+        .compact-subject {
+            line-height: 1.2 !important;
+        }
+        .compact-subject .group-name,
+        .compact-subject .branch-name {
+            display: block;
+            font-size: 0.75rem;
+            color: #6c757d;
+            margin-bottom: 2px;
+        }
+        .group-prefix {
+            color: #ffc107;
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+        .compact-row {
+            height: auto !important;
+        }
+        .ultra-compact .compact-table th,
+        .ultra-compact .compact-table td {
+            padding: 0.125rem 0.25rem !important;
+            font-size: 0.8rem !important;
+        }
+        .ultra-compact .drag-indicator {
+            font-size: 0.7rem !important;
+        }
+        .ultra-compact .badge {
+            font-size: 0.6rem !important;
+            padding: 0.125rem 0.25rem !important;
+        }
+        .grouped-subject-display {
+            text-align: left;
+        }
+        .grouped-subject-display strong {
+            color: #212529;
+            font-weight: 600;
+        }
+        .group-members {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-top: 4px;
+            line-height: 1.3;
+        }
+        .grouped-row {
+            background-color: #f8f9fa !important;
+            border-left: 4px solid #ffc107 !important;
+        }
+        .grouped-row:hover {
+            background-color: #fff3cd !important;
+        }
+        .group-member-row {
+            background-color: #fff3cd !important;
+            border-left: 3px solid #ffc107 !important;
+        }
+        .group-member-row:hover {
+            background-color: #fff8dc !important;
+        }
+        
+        /* Fix for :: characters appearing during drag */
+        .sortable-ghost, .sortable-drag {
+            content: none !important;
+        }
+        .sortable-ghost::after, .sortable-drag::after {
+            display: none !important;
+        }
+        .sortable-ghost::before, .sortable-drag::before {
+            display: none !important;
+        }
+        
+        /* Loading spinner animation */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+
+.empty-slot {
+    background: #f8f9fa !important;
+    border-left: 3px solid #adb5bd !important;
+}
+.empty-slot td {
+    color: #adb5bd;
+}
+.empty-slot .drop-hint {
+    letter-spacing: 0.5px;
+}
+.drag-over {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7) !important;
+    border: 2px dashed #ffc107 !important;
+    box-shadow: 0 0 12px rgba(255,193,7,.4) !important;
+}
+.drag-over-blocked {
+    background: #fff5f5 !important;
+    border: 2px dashed #dc3545 !important;
+    cursor: not-allowed;
+}
+.dragging {
+    opacity: 0.6;
+    transform: scale(1.01) rotate(0.5deg);
+    box-shadow: 0 6px 20px rgba(0,123,255,.35) !important;
+    border: 2px solid #007bff !important;
+}
+
+
+.unassigned-row {
+    background: #fffbf0 !important;
+    border-left: 4px solid #ffc107 !important;
+}
+.unassigned-row:hover {
+    background: #fff8dc !important;
+}
+.assign-date-btn {
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+.assign-date-select select {
+    font-size: 0.8rem;
+}
+.empty-slot {
+    background: #f4f6f9 !important;
+    border-left: 3px dashed #adb5bd !important;
+}
+.empty-slot td {
+    color: #adb5bd !important;
+}
+.drag-over {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7) !important;
+    border: 2px dashed #ffc107 !important;
+    box-shadow: 0 0 12px rgba(255,193,7,.4) !important;
+}
+.drag-over-blocked {
+    background: #fff5f5 !important;
+    border: 2px dashed #dc3545 !important;
+    cursor: not-allowed !important;
+}
+.dragging {
+    opacity: 0.55;
+    transform: scale(1.01) rotate(0.5deg);
+    box-shadow: 0 6px 20px rgba(0,123,255,.35) !important;
+    border: 2px solid #007bff !important;
+}
+
+    </style>
+</head>
+<body>
+    <!-- Loading Indicator -->
+    <div id="loadingIndicator" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9998; display: flex; justify-content: center; align-items: center;">
+        <div class="spinner-border text-light" style="width: 3rem; height: 3rem; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s linear infinite;" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <div style="color: white; margin-left: 20px; font-size: 1.2rem;">
+            <strong>Generating Time Table...</strong>
+        </div>
+    </div>
+
+    <div class="container-fluid py-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="mb-1">
+                            <i class="bi bi-calendar3 text-primary"></i>
+                            Generate Exam Time Table
+                        </h2>
+                        <p class="text-muted mb-0">Create and manage examination time tables</p>
+                    </div>
+                    <div>
+                        <a href="view-notifications.html" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Back to Notifications
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Info -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5>Notification Details</h5>
+                        <div id="notificationInfo">
+                            <!-- Notification details will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div class="loading-spinner text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Generating time table...</p>
+        </div>
+
+        <!-- Time Table Generation Section -->
+        <div id="timetableSection" style="display: none;">
+            <!-- Generation Controls -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row align-items-end">
+                        <div class="col-md-8">
+                            <h5>Time Table Generation</h5>
+                            <p class="text-muted mb-0">Subjects will be allocated date-wise and branch-wise automatically</p>
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-generate w-100" onclick="console.log('🎯 Button clicked!'); generateTimetable()">
+                                <i class="bi bi-magic"></i> Generate Initial Time Table
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time Table Display -->
+            <div id="timeTableDisplay" style="display: none;">
+                <!-- Time table will be generated here -->
+            </div>
+            
+            <!-- Timetable Management Buttons (shown after generation) -->
+           <!-- Timetable Management Buttons -->
+<div id="timetableActions" style="display: none;" class="card mb-4">
+    <div class="card-body">
+        <h5 class="mb-3"><i class="bi bi-gear"></i> Timetable Management</h5>
+        <div class="row g-3">
+            <div class="col-md-3">
+                <button id="saveBtn" class="btn btn-warning w-100" style="display: none;">
+                    <i class="bi bi-save"></i> Save Changes
+                </button>
+            </div>
+            <div class="col-md-3">
+                <button id="exportBtn" class="btn btn-info w-100" style="display: none;">
+                    <i class="bi bi-download"></i> Export
+                </button>
+            </div>
+            <div class="col-md-3">
+                <button id="clearBtn" class="btn btn-danger w-100" style="display: none;">
+                    <i class="bi bi-trash"></i> Clear
+                </button>
+            </div>
+            <div class="col-md-3">
+                <button id="regenerateBtn" class="btn btn-secondary w-100" style="display: none;">
+                    <i class="bi bi-arrow-clockwise"></i> Regenerate
+                </button>
+            </div>
+        </div>
+
+        <!-- ✅ Snippet A — INSIDE card-body, AFTER row g-3 closes -->
+        <div id="studentDataActions" style="display:none; margin-top: 12px;">
+            <div class="d-flex gap-2 flex-wrap">
+                <button id="btnGenerateStudentData" class="btn btn-primary" onclick="generateStudentData()">
+                    <i class="bi bi-people-fill"></i> Generate Student Data
+                </button>
+                <button id="btnViewSummary" class="btn btn-success" onclick="viewSummary()" disabled>
+                    <i class="bi bi-table"></i> View Summary
+                </button>
+                <span id="studentDataStatus" class="text-muted align-self-center small"></span>
+            </div>
+        </div>
+
+    </div>
+</div>
+<!-- ============================================================
+     SNIPPET B: Summary Modal — Paste before closing </body>
+     ============================================================ -->
+
+<div class="modal fade" id="summaryModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-table me-2"></i>Exam Summary — Student Count</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="summaryTableContainer">
+                    <div class="text-center p-4"><div class="spinner-border text-success"></div><p class="mt-2">Loading summary...</p></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" onclick="exportSummaryCSV()"><i class="fas fa-file-csv me-1"></i>Export CSV</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+    </div>
+
+    <!-- Success/Error Messages -->
+    <div id="alertContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 1050;"></div>
+
+    <!-- jQuery (required for save-timetable.js) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- SweetAlert2 for beautiful alerts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- jsPDF for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- AutoTable for PDF tables -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script>
+      
+        let notificationId = null;
+        let notificationDetails = null;
+        let timeTableData = [];
+
+        // ADD THIS - Timezone-safe helpers
+function toLocalDateString(dateValue) {
+    if (!dateValue) return '';
+    const d = new Date(dateValue);
+    if (isNaN(d.getTime())) return '';
+    const year  = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day   = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function toLocalMidnight(dateValue) {
+    const d = new Date(dateValue);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+        // Show/hide loading indicator
+        function showLoading(show) {
+            console.log('🔄 showLoading called with:', show);
+            const loadingElement = document.getElementById('loadingIndicator');
+            if (loadingElement) {
+                loadingElement.style.display = show ? 'flex' : 'none';
+                console.log('🔄 Loading indicator display set to:', show);
+            } else {
+                console.log('❌ Loading indicator element not found!');
+            }
+        }
+
+        // Show alert message
+        function showAlert(type, message) {
+            console.log('🚨 showAlert called:', type, message);
+            // Create alert container if it doesn't exist
+            let alertContainer = document.getElementById('alertContainer');
+            if (!alertContainer) {
+                alertContainer = document.createElement('div');
+                alertContainer.id = 'alertContainer';
+                alertContainer.style.position = 'fixed';
+                alertContainer.style.top = '20px';
+                alertContainer.style.right = '20px';
+                alertContainer.style.zIndex = '9999';
+                alertContainer.style.maxWidth = '400px';
+                document.body.appendChild(alertContainer);
+            }
+            
+            const alertClass = type === 'success' ? 'alert-success' : 
+                           type === 'danger' ? 'alert-danger' : 
+                           type === 'warning' ? 'alert-warning' : 'alert-info';
+            
+            const alertHtml = `
+                <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+            
+            alertContainer.innerHTML = alertHtml;
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                const alert = alertContainer.querySelector('.alert');
+                if (alert) {
+                    alert.classList.remove('show');
+                    setTimeout(() => {
+                        alertContainer.innerHTML = '';
+                    }, 150);
+                }
+            }, 5000);
+        }
+
+        // Format date
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Page loaded, initializing...');
+            
+            // Get notification ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            notificationId = urlParams.get('notificationId');
+            
+            console.log('📋 Notification ID from URL:', notificationId);
+            
+            if (!notificationId) {
+                showAlert('danger', 'Notification ID not provided');
+                setTimeout(() => {
+                    window.location.href = 'view-notifications.html';
+                }, 2000);
+                return;
+            }
+            
+            console.log('📋 About to load notification details...');
+            loadNotificationDetails();
+        });
+
+        // Load notification details
+        async function loadNotificationDetails() {
+            try {
+                console.log('📋 Starting loadNotificationDetails...');
+                console.log('📋 Fetch URL:', `/api/exam-notifications/${notificationId}`);
+                
+                const response = await fetch(`/api/exam-notifications/${notificationId}`);
+                console.log('📋 Response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('📋 Response result:', result);
+                
+                if (result.status === 'success' || result.success === true) {
+                    notificationDetails = result.data || result;
+                    console.log('📋 Notification details set:', notificationDetails);
+                    
+                    displayNotificationInfo();
+                    
+                    // Hide loading spinner if it exists
+                    const loadingSpinner = document.querySelector('.loading-spinner');
+                    if (loadingSpinner) {
+                        loadingSpinner.style.display = 'none';
+                        console.log('📋 Loading spinner hidden');
+                    } else {
+                        console.log('❌ Loading spinner element not found');
+                    }
+                    
+                    // Show timetable section
+                    const timetableSection = document.getElementById('timetableSection');
+                    if (timetableSection) {
+                        timetableSection.style.display = 'block';
+                        console.log('📋 Timetable section shown');
+                    } else {
+                        console.log('❌ Timetable section not found');
+                    }
+                    
+                    // Also hide any other loading indicators
+                    const loadingIndicators = document.querySelectorAll('[class*="loading"]');
+                    console.log('📋 Found loading indicators:', loadingIndicators.length);
+                    loadingIndicators.forEach((indicator, index) => {
+                        console.log(`📋 Hiding loading indicator ${index}:`, indicator.className, indicator.style.display);
+                        indicator.style.display = 'none';
+                        console.log(`📋 Hidden loading indicator ${index}:`, indicator.style.display);
+                    });
+                    
+                    // Also hide the main loading indicator
+                    const mainLoadingIndicator = document.getElementById('loadingIndicator');
+                    if (mainLoadingIndicator) {
+                        console.log('📋 Hiding main loading indicator');
+                        mainLoadingIndicator.style.display = 'none';
+                    }
+                    
+                    // Check if there are any spinners still visible
+                    const allSpinners = document.querySelectorAll('.spinner-border, .spinner-grow, [class*="spinner"]');
+                    console.log('📋 Found spinners:', allSpinners.length);
+                    allSpinners.forEach((spinner, index) => {
+                        console.log(`📋 Spinner ${index}:`, spinner.className, spinner.style.display);
+                        spinner.style.display = 'none';
+                    });
+                } else {
+                    console.log('❌ API returned error:', result.message);
+                    showAlert('danger', result.message || 'Failed to load notification details');
+                }
+            } catch (error) {
+                console.error('❌ Error loading notification details:', error);
+                showAlert('danger', 'An error occurred while loading notification details: ' + error.message);
+            }
+        }
+
+        // Display notification information
+        // Display notification information
+        async function displayNotificationInfo() {
+            const infoDiv = document.getElementById('notificationInfo');
+            
+            // Handle both old and new data formats
+            const semesters   = notificationDetails.semesters   || notificationDetails.semester_ids   || [];
+            const regulations = notificationDetails.regulations || notificationDetails.regulation_ids || [];
+
+            // ✅ Resolve semester and regulation IDs → names
+            let semesterNames   = Array.isArray(semesters)   ? semesters.join(', ')   : semesters;
+            let regulationNames = Array.isArray(regulations) ? regulations.join(', ') : regulations;
+
+            try {
+                const [semRes, regRes] = await Promise.all([
+                    fetch('/api/semesters'),
+                    fetch('/api/regulations')
+                ]);
+                const semResult = await semRes.json();
+                const regResult = await regRes.json();
+
+                if (semResult.status === 'success') {
+                    const semMap = {};
+                    semResult.data.forEach(s => semMap[s.semester_id] = s.semester_name);
+                    const semArr = Array.isArray(semesters) ? semesters : [semesters];
+                    semesterNames = semArr.map(id => semMap[id] || id).join(', ');
+                }
+                if (regResult.status === 'success') {
+                    const regMap = {};
+                    regResult.data.forEach(r => regMap[r.regulation_id] = r.regulation_name);
+                    const regArr = Array.isArray(regulations) ? regulations : [regulations];
+                    regulationNames = regArr.map(id => regMap[id] || id).join(', ');
+                }
+            } catch(e) {
+                console.warn('Could not fetch master data for display:', e);
+            }
+
+            // ✅ Build session display with timing
+            let sessionDisplay = notificationDetails.session_name || 'N/A';
+            const startT = notificationDetails.session_start_time || notificationDetails.start_time;
+            const endT   = notificationDetails.session_end_time   || notificationDetails.end_time;
+            if (sessionDisplay !== 'N/A' && startT && endT) {
+                sessionDisplay += ` (${startT.substring(0,5)} - ${endT.substring(0,5)})`;
+            }
+
+            infoDiv.innerHTML = `
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Programme:</strong> ${notificationDetails.programme_name || 'N/A'}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Exam Name:</strong> ${notificationDetails.notification_title || 'N/A'}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Exam Period:</strong> ${toLocalDateString(notificationDetails.start_date)} to ${toLocalDateString(notificationDetails.end_date)}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Status:</strong> ${notificationDetails.status === 'Published' ? 
+                            '<span class="badge bg-success">Published</span>' : 
+                            '<span class="badge bg-warning">Draft</span>'
+                        }
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-3">
+                        <strong>Semesters:</strong> ${semesterNames}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Regulations:</strong> ${regulationNames}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Session:</strong> ${sessionDisplay}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Month/Year:</strong> ${notificationDetails.month_year_display || 'N/A'}
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-3">
+                        <strong>Batch:</strong>
+                        <span class="badge bg-secondary">${notificationDetails.batch_name || 'N/A'}</span>
+                    </div>
+                </div>
+            `;
+        }
+        // Show/hide loading indicator
+        function showLoading(show) {
+            console.log('🔄 showLoading called with:', show);
+            const loadingElement = document.getElementById('loadingIndicator');
+            if (loadingElement) {
+                loadingElement.style.display = show ? 'flex' : 'none';
+                console.log('🔄 Loading indicator display set to:', show);
+            } else {
+                console.log('❌ Loading indicator element not found!');
+            }
+        }
+
+        // Show alert message
+        function showAlert(type, message) {
+            // Create alert container if it doesn't exist
+            let alertContainer = document.getElementById('alertContainer');
+            if (!alertContainer) {
+                alertContainer = document.createElement('div');
+                alertContainer.id = 'alertContainer';
+                alertContainer.style.position = 'fixed';
+                alertContainer.style.top = '20px';
+                alertContainer.style.right = '20px';
+                alertContainer.style.zIndex = '9999';
+                alertContainer.style.maxWidth = '400px';
+                document.body.appendChild(alertContainer);
+            }
+            
+            const alertClass = type === 'success' ? 'alert-success' : 
+                           type === 'danger' ? 'alert-danger' : 
+                           type === 'warning' ? 'alert-warning' : 'alert-info';
+            
+            const alertHtml = `
+                <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+            
+            alertContainer.innerHTML = alertHtml;
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                const alert = alertContainer.querySelector('.alert');
+                if (alert) {
+                    alert.classList.remove('show');
+                    setTimeout(() => {
+                        alertContainer.innerHTML = '';
+                    }, 150);
+                }
+            }, 5000);
+        }
+
+        // Format date
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        }
+
+        // Generate timetable (main function)
+        async function generateTimetable() {
+            console.log('🎯 generateTimetable() called');
+            
+            if (!notificationId) {
+                console.log('❌ No notificationId found');
+                showAlert('warning', 'Please select a notification');
+                return;
+            }
+            
+            console.log('🎯 About to call generateTimetableData with:', notificationId);
+            
+            const timeTableData = await generateTimetableData(notificationId);
+            
+            console.log('🎯 generateTimetableData returned:', timeTableData);
+            
+      if (timeTableData) {
+    console.log('🎯 About to call displayTimeTable');
+    timeTableDataGlobal = timeTableData;
+    displayTimeTable();
+    
+    // Show timetable section
+    document.getElementById('timetableSection').style.display = 'block';
+
+    // ✅ Show Timetable Management card + all 4 buttons
+    const actionsCard = document.getElementById('timetableActions');
+    if (actionsCard) actionsCard.style.display = 'block';
+
+    ['saveBtn', 'exportBtn', 'clearBtn', 'regenerateBtn'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.style.display = 'block';
+            console.log('✅ Button shown:', id);
+            
+            // Add event listener if not already attached
+            if (!btn.hasAttribute('data-listener')) {
+                // Delay attachment to ensure JS functions are loaded
+                setTimeout(() => {
+                    btn.addEventListener('click', function() {
+                        console.log('🎯 Button clicked:', id);
+                        if (id === 'saveBtn') {
+                            if (typeof saveTimetable === 'function') saveTimetable();
+                            else console.error('saveTimetable function not found');
+                        }
+                        else if (id === 'exportBtn') {
+                            if (typeof exportTimetable === 'function') exportTimetable();
+                            else console.error('exportTimetable function not found');
+                        }
+                        else if (id === 'clearBtn') {
+                            if (typeof clearTimetable === 'function') clearTimetable();
+                            else console.error('clearTimetable function not found');
+                        }
+                        else if (id === 'regenerateBtn') {
+                            if (typeof regenerateTimetable === 'function') regenerateTimetable();
+                            else console.error('regenerateTimetable function not found');
+                        }
+                    });
+                    btn.setAttribute('data-listener', 'true');
+                    console.log('✅ Event listener attached to:', id);
+                }, 100); // 100ms delay
+            }
+        }
+    });
+    
+    showAlert('success', 'Time table generated successfully!');
+}
+        }
+        
+        // Fallback functions if not loaded from JS file
+        if (typeof exportTimetable === 'undefined') {
+            window.exportTimetable = function() {
+                console.log('📤 Export function called from fallback');
+                Swal.fire('Info', 'Export functionality is loading...', 'info');
+            };
+        }
+        if (typeof clearTimetable === 'undefined') {
+            window.clearTimetable = function() {
+                console.log('🗑️ Clear function called from fallback');
+                Swal.fire('Info', 'Clear functionality is loading...', 'info');
+            };
+        }
+        if (typeof regenerateTimetable === 'undefined') {
+            window.regenerateTimetable = function() {
+                console.log('🔄 Regenerate function called from fallback');
+                Swal.fire('Info', 'Regenerate functionality is loading...', 'info');
+            };
+        }
+
+        // Generate timetable data
+        async function generateTimetableData(notificationId) {
+            try {
+                console.log('🚀 Starting timetable generation for:', notificationId);
+                showLoading(true);
+                
+                // Get notification details
+                const notificationResponse = await fetch(`/api/exam-notifications/${notificationId}`);
+                const notificationResult = await notificationResponse.json();
+                console.log('📋 Notification response:', notificationResult);
+                
+                // Check for success in different formats
+                const isSuccess = notificationResult.status === 'success' || notificationResult.success === true;
+                console.log('📋 Success check:', isSuccess);
+                
+                if (!isSuccess) {
+                    throw new Error('Failed to load notification details');
+                }
+                
+                const notificationDetails = notificationResult.data;
+                console.log('📋 Notification details loaded:', notificationDetails);
+                
+                // Get subjects for the notification
+                const subjects = await getSubjectsForNotification(notificationId);
+                console.log('📋 Subjects loaded:', subjects.length);
+                
+                if (subjects.length === 0) {
+                    showAlert('warning', 'No subjects found for the selected notification');
+                    return null;
+                }
+                
+                // Get branches from subjects
+                const branchesMap = {};
+                subjects.forEach(subject => {
+                    if (!branchesMap[subject.branch_id]) {
+                        branchesMap[subject.branch_id] = {
+                            id: subject.branch_id,
+                            name: subject.branch_name || `Branch ${subject.branch_id}`,
+                            code: subject.branch_code || `B${subject.branch_id}`
+                        };
+                    }
+                });
+                const branches = Object.values(branchesMap);
+                console.log('📋 Branches map:', branchesMap);
+                
+                // Generate dates
+                // Generate dates
+const dates = await generateDates(notificationDetails.start_date, notificationDetails.end_date);
+                console.log('📋 Generated dates:', dates);
+                
+                // Generate timetable with grouped subjects
+                console.log('🔧 Starting grouped subjects generation...');
+                const timeTableData = generateTimeTableWithGroupedSubjects(subjects, dates, branches);
+                console.log('✅ Time table data generated:', timeTableData);
+                
+                return {
+                    ...timeTableData,
+                    notificationDetails: notificationDetails
+                };
+                
+            } catch (error) {
+                console.error('❌ Error generating timetable:', error);
+                showAlert('danger', 'Failed to generate timetable: ' + error.message);
+                return null;
+            } finally {
+                console.log('🏁 Finishing timetable generation');
+                showLoading(false);
+            }
+        }
+
+        // Get subjects for notification
+        async function getSubjectsForNotification(notificationId) {
+            try {
+                console.log('🔍 Getting subjects for notification:', notificationId);
+                
+                // Handle both JSON array and comma-separated string formats
+                let semesterIds, regulationIds, programmeId;
+                
+                // Use the notificationDetails that was set in generateTimetableData
+                const details = window.notificationDetails || notificationDetails;
+                console.log('🔍 Using notification details:', details);
+                
+                if (details.semesters) {
+                    // New format: JSON array
+                    semesterIds = Array.isArray(details.semesters) ? details.semesters : JSON.parse(details.semesters);
+                    regulationIds = Array.isArray(details.regulations) ? details.regulations : JSON.parse(details.regulations);
+                    programmeId = Array.isArray(details.programmes) ? details.programmes[0] : JSON.parse(details.programmes)[0];
+                } else {
+                    // Fallback for old format
+                    semesterIds = details.semester_ids ? details.semester_ids.split(',') : [];
+                    regulationIds = details.regulation_ids ? details.regulation_ids.split(',') : [];
+                    programmeId = details.programme_id;
+                }
+                
+                console.log('🔍 Sending to subjects filter:', {
+                    semester_ids: semesterIds,
+                    regulation_ids: regulationIds,
+                    programme_id: programmeId
+                });
+                
+                const response = await fetch('/api/subjects/filter', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        semester_ids: semesterIds,
+                        regulation_ids: regulationIds,
+                        programme_id: programmeId
+                    })
+                });
+                
+                const result = await response.json();
+                console.log('� Subjects filter response:', result);
+                return result.success ? result.data : [];
+                
+            } catch (error) {
+                console.error('Error getting subjects:', error);
+                return [];
+            }
+        }
+
+        // Generate dates between start and end date
+      async function generateDates(startDate, endDate) {
+    const dates = [];
+    const start = toLocalMidnight(startDate);
+    const end   = toLocalMidnight(endDate);
+
+    // Fetch holidays
+    let holidayDates = [];
+    try {
+        const response = await fetch('/api/holidays');
+        const result = await response.json();
+        if (result.status === 'success') {
+            holidayDates = result.data.map(h => h.holiday_date.split('T')[0]);
+        }
+    } catch (e) {
+        console.error('Could not fetch holidays:', e);
+    }
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        console.warn('Invalid dates');
+        return dates;
+    }
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const day = d.getDay();
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+        if (day === 0) continue;                       // Skip Sunday
+        if (holidayDates.includes(dateStr)) continue;  // Skip holidays
+        dates.push(new Date(d));
+    }
+
+    console.log(`📅 Generated ${dates.length} working dates (Sundays & holidays excluded)`);
+    return dates;
+}
+
+        // Generate timetable with grouped subjects
+        function generateTimeTableWithGroupedSubjects(subjects, dates, branches) {
+            const timeTable = [];
+            const allocatedSubjects = new Set();
+            const branchesMap = {};
+            
+            // Create branches map
+            branches.forEach(branch => {
+                branchesMap[branch.id] = branch;
+            });
+            
+            // Group subjects by elective_name within each branch
+            const groupedSubjects = {};
+            const individualSubjects = [];
+            
+            subjects.forEach(subject => {
+                if (subject.is_under_group && subject.elective_name) {
+                    const groupKey = `${subject.branch_id}_${subject.elective_name}`;
+                    if (!groupedSubjects[groupKey]) {
+                        groupedSubjects[groupKey] = {
+                            branch_id: subject.branch_id,
+                            elective_name: subject.elective_name,
+                            subjects: []
+                        };
+                    }
+                    groupedSubjects[groupKey].subjects.push(subject);
+                } else {
+                    individualSubjects.push(subject);
+                }
+            });
+            
+            const groupsArray = Object.values(groupedSubjects);
+            
+            // Allocate subjects to dates (round-based allocation)
+            let allocatedSubjectsSet = new Set();
+            
+            // Pre-process all subjects by branch with syllabus code sorting
+            const branchData = {};
+            branches.forEach(branch => {
+                const branchSubjects = subjects.filter(s => s.branch_id === branch.id);
+                const sortedSubjects = branchSubjects.sort((a, b) => a.syllabus_code.localeCompare(b.syllabus_code));
+                
+                // Group subjects by elective_name
+                const branchGroups = {};
+                const branchIndividuals = [];
+                
+                sortedSubjects.forEach(subject => {
+                    if (subject.is_under_group && subject.elective_name) {
+                        const groupKey = `${branch.id}_${subject.elective_name}`;
+                        if (!branchGroups[groupKey]) {
+                            branchGroups[groupKey] = {
+                                elective_name: subject.elective_name,
+                                subjects: []
+                            };
+                        }
+                        branchGroups[groupKey].subjects.push(subject);
+                    } else {
+                        branchIndividuals.push(subject);
+                    }
+                });
+                
+                branchData[branch.id] = {
+                    groups: Object.values(branchGroups),
+                    individuals: branchIndividuals,
+                    allSubjects: [...Object.values(branchGroups).flatMap(g => g.subjects), ...branchIndividuals]
+                };
+                
+                console.log(`📋 Branch ${branch.name}: ${Object.keys(branchGroups).length} groups, ${branchIndividuals.length} individuals`);
+            });
+            
+            dates.forEach((dateEntry, dateIndex) => {
+  const dateObj = {
+    date: toLocalDateString(dateEntry),  // ✅ FIX: local date, not UTC
+    branches: {}
+};
+                branches.forEach(branch => {
+                    dateObj.branches[branch.id] = [];
+                });
+                
+                console.log(`📅 Round ${dateIndex + 1} - Date: ${dateEntry.toISOString().split('T')[0]}`);
+                
+                // Round-based allocation: each branch gets ONE subject/group per round
+                branches.forEach(branch => {
+                    console.log(`📋 Processing branch: ${branch.name} (${branch.id})`);
+                    
+                    const data = branchData[branch.id];
+                    let allocatedThisRound = false;
+                    
+                    // Try to allocate ONE group first (if available)
+                    if (!allocatedThisRound) {
+                        data.groups.forEach(group => {
+                            if (!allocatedThisRound && group.subjects.every(s => !allocatedSubjectsSet.has(s.subject_id))) {
+                                // Add each subject in group as separate row with same date
+                                group.subjects.forEach(subject => {
+dateObj.branches[branch.id].push({
+    ...subject,
+    allocated_date: toLocalDateString(dateEntry),  // ✅ FIX
+    is_group_member: true,
+    group_name: group.elective_name
+});
+                                    allocatedSubjectsSet.add(subject.subject_id);
+                                });
+                                allocatedThisRound = true;
+                                console.log(`  ✅ Round ${dateIndex + 1}: Allocated group: ${group.elective_name} (${group.subjects.length} subjects) to branch ${branch.name}`);
+                            }
+                        });
+                    }
+                    
+                    // If no group allocated, try to allocate ONE individual subject
+                    if (!allocatedThisRound) {
+                        data.individuals.forEach(subject => {
+                            if (!allocatedThisRound && !allocatedSubjectsSet.has(subject.subject_id)) {
+                              dateObj.branches[branch.id].push({
+    ...subject,
+    allocated_date: toLocalDateString(dateEntry)  // ✅ FIX
+});
+                                allocatedSubjectsSet.add(subject.subject_id);
+                                allocatedThisRound = true;
+                                console.log(`  ✅ Round ${dateIndex + 1}: Allocated individual: ${subject.subject_name} (${subject.syllabus_code}) to branch ${branch.name}`);
+                            }
+                        });
+                    }
+                    
+                    if (!allocatedThisRound) {
+                        console.log(`  ❌ Round ${dateIndex + 1}: No subjects left for branch ${branch.name}`);
+                    }
+                });
+                
+                timeTable.push(dateObj);
+                console.log(`📅 Completed Round ${dateIndex + 1} - Total allocated: ${allocatedSubjectsSet.size}`);
+            });
+
+            return {
+                dates: timeTable,
+                branches: branches,
+                branchesMap: branchesMap,
+                unallocated: subjects.filter(subject => !allocatedSubjectsSet.has(subject.subject_id))
+            };
+        }
+
+      
+// ─── Global state ────────────────────────────────────────────────────────────
+let draggedRow = null;
+let draggedRowData = null;
+let timeTableDataGlobal = null; // set this when you call generateTimetable()
+
+// ─── displayTimeTable ────────────────────────────────────────────────────────
+function displayTimeTable() {
+    const displayDiv = document.getElementById('timeTableDisplay');
+    displayDiv.style.display = 'block';
+
+    const data = timeTableDataGlobal;
+    if (!data || !data.dates) {
+        showAlert('danger', 'Invalid time table data');
+        return;
+    }
+
+    // Store subject-to-date mapping so we can track current state
+    // Format: { subjectId_branchId : { date, rowEl } }
+    window._subjectDateMap = {};
+
+    let html = `
+        <div class="timetable-section">
+            <!-- Branch filter -->
+            <div class="row mb-3 align-items-center">
+                <div class="col-md-6">
+                    <h4><i class="bi bi-calendar3"></i> Timetable Management</h4>
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle"></i>
+                        Drag subjects to swap dates. Empty rows = No Exam day for that branch.
+                        Right-click an assigned row to clear it.
+                    </small>
+                </div>
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="bi bi-funnel"></i> Filter by Branch:
+                        </span>
+                        <select id="branchSortSelector" class="form-select" onchange="sortTableByBranch()">
+                            <option value="all">📋 All Branches</option>
+                            ${data.branches.map(b =>
+                                `<option value="${b.id}">🏛️ ${b.name} (${b.code})</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="d-flex gap-3 mb-2 flex-wrap">
+                <span><span class="badge bg-success">ASSIGNED</span> Subject scheduled</span>
+                <span><span class="badge bg-secondary">NO EXAM</span> Date left blank (drag a subject here)</span>
+                <span><span class="badge bg-warning text-dark">UNASSIGNED</span> Not yet placed</span>
+                <span class="text-muted fst-italic">⋮⋮ = drag handle</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered timetable-table" id="combinedTimetable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width:200px">Date</th>
+                            <th style="width:80px">Session</th>
+                            <th style="width:80px">Branch</th>
+                            <th style="width:140px">Syllabus Code</th>
+                            <th>Subject</th>
+                            <th style="width:120px">Type</th>
+                            <th style="width:120px">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="timetableTbody">`;
+
+    // ── Render every date × branch combination ──────────────────────────────
+    data.dates.forEach(dateEntry => {
+        data.branches.forEach(branch => {
+            const subjects = dateEntry.branches[branch.id] || [];
+
+            if (subjects.length === 0) {
+                // ── EMPTY row (No Exam / blank slot) ────────────────────────
+                html += buildEmptyRow(dateEntry.date, branch);
+            } else {
+                // ── ASSIGNED row(s) ─────────────────────────────────────────
+                subjects.forEach(subject => {
+                    html += buildAssignedRow(dateEntry.date, branch, subject);
+                });
+            }
+        });
+    });
+
+    // ── Unassigned subjects at the bottom ───────────────────────────────────
+    if (data.unallocated && data.unallocated.length > 0) {
+        html += `
+            <tr class="table-secondary">
+                <td colspan="7" class="fw-bold text-center text-muted py-2">
+                    <i class="bi bi-arrow-down-circle"></i>
+                    UNASSIGNED SUBJECTS — Drag these up to any empty (No Exam) row
+                </td>
+            </tr>`;
+        data.unallocated.forEach(subject => {
+            const branch = data.branchesMap[subject.branch_id];
+            html += buildUnassignedRow(branch, subject);
+        });
+    }
+
+    html += `
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
+
+    // ── Summary stats ────────────────────────────────────────────────────────
+    const totalAssigned = data.dates.reduce((t, d) =>
+        t + data.branches.reduce((b, br) => b + (d.branches[br.id] || []).length, 0), 0);
+    const totalUnassigned = (data.unallocated || []).length;
+
+    html += `
+        <div class="summary-section mt-4">
+            <div class="row g-3">
+                <div class="col-6 col-md-3">
+                    <div class="card bg-primary text-white text-center p-3">
+                        <div class="fs-2 fw-bold">${totalAssigned + totalUnassigned}</div>
+                        <div class="small">Total Subjects</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card bg-success text-white text-center p-3">
+                        <div class="fs-2 fw-bold">${totalAssigned}</div>
+                        <div class="small">Assigned</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card bg-warning text-dark text-center p-3">
+                        <div class="fs-2 fw-bold">${totalUnassigned}</div>
+                        <div class="small">Unassigned</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card bg-info text-white text-center p-3">
+                        <div class="fs-2 fw-bold">${data.dates.length}</div>
+                        <div class="small">Total Dates</div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+
+    displayDiv.innerHTML = html;
+
+    // Wire up drag-and-drop and right-click menu
+    initializeDragAndDrop();
+    initializeContextMenu();
+}
+
+// ─── Row builders ─────────────────────────────────────────────────────────────
+
+function buildEmptyRow(dateStr, branch) {
+    return `
+        <tr class="draggable-row empty-slot"
+            data-date="${dateStr}"
+            data-branch-id="${branch.id}"
+            data-subject-id=""
+            data-status="empty"
+            draggable="false">
+            <td class="text-muted">${formatDate(dateStr)}</td>
+            <td class="text-muted text-center">—</td>
+            <td class="text-center"><span class="badge bg-light text-dark border">${branch.code}</span></td>
+            <td colspan="2" class="text-center text-muted fst-italic drop-hint">
+                <i class="bi bi-arrow-left-right"></i>
+                Drop a subject here
+            </td>
+            <td>—</td>
+            <td><span class="badge bg-secondary">NO EXAM</span></td>
+        </tr>`;
+}
+
+function buildAssignedRow(dateStr, branch, subject) {
+    const typeBadge = buildTypeBadge(subject);
+    const groupMark = subject.is_group_member ? 'group-member-row' : '';
+    return `
+        <tr class="draggable-row ${groupMark}"
+            data-date="${dateStr}"
+            data-branch-id="${branch.id}"
+            data-subject-id="${subject.subject_id}"
+            data-syllabus="${escHtml(subject.syllabus_code)}"
+            data-subject-name="${escHtml(subject.subject_name)}"
+            data-status="assigned"
+            data-group="${subject.group_name || ''}"
+            data-is-group="${subject.is_group_member ? '1' : '0'}"
+            draggable="true"
+            title="Right-click to clear this date">
+            <td>${formatDate(dateStr)}</td>
+            <td class="text-center">${window.notificationDetails?.session_name || 'FN'}</td>
+            <td class="text-center"><span class="badge bg-light text-dark border">${branch.code}</span></td>
+            <td class="subject-field syllabus-code">
+                <span class="drag-indicator">⋮⋮</span> ${escHtml(subject.syllabus_code)}
+            </td>
+            <td class="subject-field subject-name">
+                <span class="drag-indicator">⋮⋮</span> ${escHtml(subject.subject_name)}
+            </td>
+            <td class="subject-field type">${typeBadge}</td>
+            <td><span class="badge bg-success">ASSIGNED</span></td>
+        </tr>`;
+}
+
+function buildUnassignedRow(branch, subject) {
+    const typeBadge = buildTypeBadge(subject);
+    const branchCode = branch ? branch.code : subject.branch_id;
+
+    return `
+        <tr class="draggable-row unassigned-row"
+            data-date=""
+            data-branch-id="${subject.branch_id}"
+            data-subject-id="${subject.subject_id}"
+            data-syllabus="${escHtml(subject.syllabus_code)}"
+            data-subject-name="${escHtml(subject.subject_name)}"
+            data-status="unassigned"
+            draggable="true">
+            <td class="text-center" style="vertical-align:middle;">
+                <!-- Assign Date Button -->
+                <button class="btn btn-sm btn-outline-primary assign-date-btn px-2 py-1"
+                        onclick="openAssignDatePicker(this)"
+                        title="Click to assign a date to this subject">
+                    <i class="bi bi-calendar-plus"></i> Pick Date
+                </button>
+                <!-- Hidden date select (shown on click) -->
+                <div class="assign-date-select" style="display:none; margin-top:4px;">
+                    <select class="form-select form-select-sm date-picker-select"
+                            onchange="assignDateToRow(this)"
+                            style="min-width:180px; font-size:0.8rem;">
+                        <option value="">— Select a date —</option>
+                    </select>
+                    <button class="btn btn-xs btn-outline-secondary mt-1"
+                            style="font-size:0.7rem; padding:1px 6px;"
+                            onclick="closeAssignDatePicker(this)">Cancel</button>
+                </div>
+            </td>
+            <td class="text-center text-muted">—</td>
+            <td class="text-center">
+                <span class="badge bg-light text-dark border">${branchCode}</span>
+            </td>
+            <td class="subject-field syllabus-code">
+                <span class="drag-indicator">⋮⋮</span> ${escHtml(subject.syllabus_code)}
+            </td>
+            <td class="subject-field subject-name">
+                <span class="drag-indicator">⋮⋮</span> ${escHtml(subject.subject_name)}
+            </td>
+            <td class="subject-field type">${typeBadge}</td>
+            <td>
+                <span class="badge bg-warning text-dark">UNASSIGNED</span>
+                <div class="text-muted" style="font-size:0.7rem; margin-top:2px;">
+                    drag to swap or pick date →
+                </div>
+            </td>
+        </tr>`;
+}
+function openAssignDatePicker(btn) {
+    const row      = btn.closest('tr');
+    const branchId = row.dataset.branchId;
+
+    // Get all dates from timetable data
+    const allDates = timeTableDataGlobal?.dates || [];
+
+    // Build options: show all dates for same branch
+    // Mark dates already occupied vs empty
+    const select = row.querySelector('.date-picker-select');
+    select.innerHTML = '<option value="">— Select a date —</option>';
+
+    allDates.forEach(dateEntry => {
+        const subjects    = dateEntry.branches[branchId] || [];
+        const isOccupied  = subjects.length > 0;
+        const label       = formatDateShort(dateEntry.date);
+        const opt         = document.createElement('option');
+        opt.value         = dateEntry.date;
+        opt.textContent   = isOccupied
+            ? `📋 ${label} — ${subjects[0].subject_name} (SWAP)`
+            : `✅ ${label} — Empty (assign here)`;
+        opt.dataset.occupied = isOccupied ? '1' : '0';
+        select.appendChild(opt);
+    });
+
+    // Also offer "Keep unassigned but mark for later" 
+    // Hide the button, show the dropdown
+    btn.style.display = 'none';
+    row.querySelector('.assign-date-select').style.display = 'block';
+}
+
+// ─── 3. Close date picker without picking ────────────────────────────────────
+function closeAssignDatePicker(cancelBtn) {
+    const row   = cancelBtn.closest('tr');
+    const picker = row.querySelector('.assign-date-select');
+    const btn    = row.querySelector('.assign-date-btn');
+    picker.style.display = 'none';
+    btn.style.display    = '';
+    // Reset select
+    row.querySelector('.date-picker-select').value = '';
+}
+
+// ─── 4. Assign date when user picks from dropdown ────────────────────────────
+function assignDateToRow(select) {
+    const chosenDate = select.value;
+    if (!chosenDate) return;
+
+    const row      = select.closest('tr');
+    const branchId = row.dataset.branchId;
+    const branch   = timeTableDataGlobal?.branchesMap[branchId] || { code: branchId, id: branchId };
+
+    // Check if that date is occupied for this branch
+    const dateEntry = timeTableDataGlobal?.dates.find(d => d.date === chosenDate);
+    const subjects  = dateEntry ? (dateEntry.branches[branchId] || []) : [];
+    const isOccupied = subjects.length > 0;
+
+    if (isOccupied) {
+        // ── SWAP: unassigned takes the date, assigned becomes unassigned ────
+        Swal.fire({
+            title: 'Swap Dates?',
+            html: `
+                <p>Date <strong>${formatDateShort(chosenDate)}</strong> already has:</p>
+                <p class="text-primary fw-bold">${subjects[0].subject_name}</p>
+                <hr>
+                <p>Swapping will:</p>
+                <ul class="text-start">
+                    <li><strong>${row.dataset.subjectName}</strong> → assigned to ${formatDateShort(chosenDate)}</li>
+                    <li><strong>${subjects[0].subject_name}</strong> → becomes UNASSIGNED</li>
+                </ul>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: '✅ Yes, Swap',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#0d6efd'
+        }).then(result => {
+            if (result.isConfirmed) {
+                performAssignWithSwap(row, chosenDate, branch, subjects[0]);
+            } else {
+                closeAssignDatePicker(row.querySelector('.assign-date-select button'));
+            }
+        });
+    } else {
+        // ── ASSIGN: date is empty, just assign ──────────────────────────────
+        performDirectAssign(row, chosenDate, branch);
+    }
+}
+
+// ─── 5. Assign to empty date slot ────────────────────────────────────────────
+function performDirectAssign(unassignedRow, targetDate, branch) {
+    // Find the NO EXAM row for that date+branch and replace it
+    const emptyRow = findEmptyRow(targetDate, branch.id);
+
+    const subjectData = {
+        subject_id:    unassignedRow.dataset.subjectId,
+        syllabus_code: unassignedRow.dataset.syllabus,
+        subject_name:  unassignedRow.dataset.subjectName,
+        is_elective:   false,
+        is_under_group: unassignedRow.dataset.isGroup === '1',
+        is_group_member: unassignedRow.dataset.isGroup === '1',
+        group_name:    unassignedRow.dataset.group || '',
+    };
+
+    if (emptyRow) {
+        // Replace empty row with assigned row
+        emptyRow.outerHTML = buildAssignedRow(targetDate, branch, subjectData);
+    } else {
+        // No visible empty row — insert a new assigned row in date order
+        insertAssignedRowAtDate(targetDate, branch, subjectData);
+    }
+
+    // Remove the unassigned row
+    unassignedRow.remove();
+
+    // Update global data
+    updateGlobalData_assign(targetDate, branch.id, subjectData);
+
+    initializeDragAndDrop();
+    initializeContextMenu();
+    showAlert('success', `✅ <strong>${subjectData.subject_name}</strong> assigned to ${formatDateShort(targetDate)}!`);
+}
+
+// ─── 6. Swap: unassigned gets date, assigned loses it ────────────────────────
+function performAssignWithSwap(unassignedRow, targetDate, branch, displacedSubject) {
+    // Find the assigned row for targetDate + branch
+    const assignedRow = findAssignedRow(targetDate, branch.id);
+
+    const incomingData = {
+        subject_id:    unassignedRow.dataset.subjectId,
+        syllabus_code: unassignedRow.dataset.syllabus,
+        subject_name:  unassignedRow.dataset.subjectName,
+        is_elective:   false,
+        is_under_group: unassignedRow.dataset.isGroup === '1',
+        is_group_member: unassignedRow.dataset.isGroup === '1',
+        group_name:    unassignedRow.dataset.group || '',
+    };
+
+    if (assignedRow) {
+        // Replace assigned row with new subject
+        assignedRow.outerHTML = buildAssignedRow(targetDate, branch, incomingData);
+    } else {
+        insertAssignedRowAtDate(targetDate, branch, incomingData);
+    }
+
+    // Turn unassigned row into an unassigned row for the displaced subject
+    unassignedRow.outerHTML = buildUnassignedRow(branch, {
+        branch_id:     branch.id,
+        subject_id:    displacedSubject.subject_id,
+        syllabus_code: displacedSubject.syllabus_code,
+        subject_name:  displacedSubject.subject_name,
+        is_elective:   displacedSubject.is_elective,
+        is_under_group: displacedSubject.is_under_group,
+    });
+
+    initializeDragAndDrop();
+    initializeContextMenu();
+    showAlert('success', `✅ Swap done! <strong>${incomingData.subject_name}</strong> → ${formatDateShort(targetDate)}`);
+}
+
+
+function buildTypeBadge(subject) {
+    if (subject.is_elective)    return '<span class="badge bg-info">ELECTIVE</span>';
+    if (subject.is_under_group) return '<span class="badge bg-warning text-dark">GROUP</span>';
+    return '<span class="badge bg-success">REGULAR</span>';
+}
+
+function escHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+// ─── Drag and Drop ───────────────────────────────────────────────────────────
+
+function initializeDragAndDrop() {
+    document.querySelectorAll('#combinedTimetable .draggable-row').forEach(row => {
+        const status = row.dataset.status;
+
+        // Assigned and unassigned rows are draggable
+        if (status === 'assigned' || status === 'unassigned') {
+            row.setAttribute('draggable', 'true');
+            row.removeEventListener('dragstart', onDragStart);
+            row.addEventListener('dragstart', onDragStart);
+            row.removeEventListener('dragend', onDragEnd);
+            row.addEventListener('dragend', onDragEnd);
+        } else {
+            row.setAttribute('draggable', 'false');
+        }
+
+        // All rows accept drops
+        row.removeEventListener('dragover',  onDragOver);
+        row.removeEventListener('dragenter', onDragEnter);
+        row.removeEventListener('dragleave', onDragLeave);
+        row.removeEventListener('drop',      onDrop);
+        row.addEventListener('dragover',  onDragOver);
+        row.addEventListener('dragenter', onDragEnter);
+        row.addEventListener('dragleave', onDragLeave);
+        row.addEventListener('drop',      onDrop);
+    });
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function findEmptyRow(date, branchId) {
+    return document.querySelector(
+        `#combinedTimetable tbody tr[data-status="empty"][data-date="${date}"][data-branch-id="${branchId}"]`
+    );
+}
+
+function findAssignedRow(date, branchId) {
+    return document.querySelector(
+        `#combinedTimetable tbody tr[data-status="assigned"][data-date="${date}"][data-branch-id="${branchId}"]`
+    );
+}
+
+function insertAssignedRowAtDate(targetDate, branch, subjectData) {
+    // Find where to insert (find the empty row or insert before next date)
+    const tbody = document.querySelector('#combinedTimetable tbody');
+    const rows  = Array.from(tbody.querySelectorAll(`tr[data-branch-id="${branch.id}"]`));
+
+    // Try to find insertion point by date order
+    let insertBefore = null;
+    for (const row of rows) {
+        const rowDate = row.dataset.date;
+        if (rowDate && rowDate > targetDate) {
+            insertBefore = row;
+            break;
+        }
+    }
+
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = buildAssignedRow(targetDate, branch, subjectData);
+    const newRow = tempDiv.firstElementChild;
+
+    if (insertBefore) {
+        tbody.insertBefore(newRow, insertBefore);
+    } else {
+        // Insert before unassigned section
+        const firstUnassigned = tbody.querySelector('tr[data-status="unassigned"]');
+        if (firstUnassigned) {
+            tbody.insertBefore(newRow, firstUnassigned);
+        } else {
+            tbody.appendChild(newRow);
+        }
+    }
+}
+
+function updateGlobalData_assign(date, branchId, subjectData) {
+    if (!timeTableDataGlobal) return;
+    const dateEntry = timeTableDataGlobal.dates.find(d => d.date === date);
+    if (dateEntry) {
+        if (!dateEntry.branches[branchId]) dateEntry.branches[branchId] = [];
+        dateEntry.branches[branchId].push(subjectData);
+    }
+    // Remove from unallocated
+    timeTableDataGlobal.unallocated = (timeTableDataGlobal.unallocated || [])
+        .filter(s => s.subject_id !== subjectData.subject_id);
+}
+
+function formatDateShort(dateStr) {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', weekday: 'short' });
+}
+
+
+function onDragStart(e) {
+    draggedRow = e.currentTarget;
+    draggedRowData = {
+        date:        draggedRow.dataset.date,
+        branchId:    draggedRow.dataset.branchId,
+        subjectId:   draggedRow.dataset.subjectId,
+        syllabus:    draggedRow.dataset.syllabus,
+        subjectName: draggedRow.dataset.subjectName,
+        status:      draggedRow.dataset.status,
+    };
+    draggedRow.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function onDragEnd() {
+    document.querySelectorAll('.draggable-row').forEach(r => {
+        r.classList.remove('dragging', 'drag-over');
+    });
+}
+
+function onDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+}
+
+function onDragEnter(e) {
+    const target = e.currentTarget;
+    if (target !== draggedRow) {
+        // Only highlight if same branch
+        if (target.dataset.branchId === draggedRow?.dataset.branchId) {
+            target.classList.add('drag-over');
+        } else {
+            target.classList.add('drag-over-blocked');
+        }
+    }
+}
+
+function onDragLeave(e) {
+    e.currentTarget.classList.remove('drag-over', 'drag-over-blocked');
+}
+
+function onDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const targetRow = e.currentTarget;
+    targetRow.classList.remove('drag-over', 'drag-over-blocked');
+
+    if (!draggedRow || targetRow === draggedRow) return;
+
+    // Branch guard
+    if (targetRow.dataset.branchId !== draggedRow.dataset.branchId) {
+        showAlert('warning', '⚠️ You can only move subjects within the same branch!');
+        return;
+    }
+
+    const src  = draggedRow.dataset.status;
+    const dest = targetRow.dataset.status;
+
+    if (dest === 'empty') {
+        // Any subject → empty slot: assign
+        moveSubjectToEmptySlot(draggedRow, targetRow);
+
+    } else if (src === 'assigned' && dest === 'assigned') {
+        // Assigned ↔ Assigned: swap dates
+        swapAssignedRows(draggedRow, targetRow);
+        showAlert('success', '✅ Dates swapped!');
+
+    } else if (src === 'unassigned' && dest === 'assigned') {
+        // ── KEY FIX: Unassigned gets the assigned row's date ─────────────
+        const targetDate  = targetRow.dataset.date;
+        const branchId    = targetRow.dataset.branchId;
+        const branch      = timeTableDataGlobal?.branchesMap[branchId] || { code: branchId, id: branchId };
+
+        // The previously assigned subject becomes unassigned
+        const displacedData = {
+            branch_id:     branchId,
+            subject_id:    targetRow.dataset.subjectId,
+            syllabus_code: targetRow.dataset.syllabus,
+            subject_name:  targetRow.dataset.subjectName,
+        };
+
+        // Replace assigned row with incoming unassigned subject
+        targetRow.outerHTML = buildAssignedRow(targetDate, branch, {
+            subject_id:    draggedRow.dataset.subjectId,
+            syllabus_code: draggedRow.dataset.syllabus,
+            subject_name:  draggedRow.dataset.subjectName,
+            is_elective:   false,
+            is_under_group: draggedRow.dataset.isGroup === '1',
+            is_group_member: draggedRow.dataset.isGroup === '1',
+        });
+
+        // Replace unassigned dragged row with the displaced subject
+        draggedRow.outerHTML = buildUnassignedRow(branch, displacedData);
+
+        initializeDragAndDrop();
+        initializeContextMenu();
+        showAlert('success', `✅ <strong>${draggedRow?.dataset?.subjectName || 'Subject'}</strong> → assigned to ${formatDateShort(targetDate)}. Previous subject is now unassigned.`);
+
+    } else if (src === 'assigned' && dest === 'unassigned') {
+        // Mirror: assigned loses date, unassigned gains it
+        const srcDate  = draggedRow.dataset.date;
+        const branchId = draggedRow.dataset.branchId;
+        const branch   = timeTableDataGlobal?.branchesMap[branchId] || { code: branchId, id: branchId };
+
+        const displacedData = {
+            branch_id:     branchId,
+            subject_id:    draggedRow.dataset.subjectId,
+            syllabus_code: draggedRow.dataset.syllabus,
+            subject_name:  draggedRow.dataset.subjectName,
+        };
+
+        draggedRow.outerHTML = buildAssignedRow(srcDate, branch, {
+            subject_id:    targetRow.dataset.subjectId,
+            syllabus_code: targetRow.dataset.syllabus,
+            subject_name:  targetRow.dataset.subjectName,
+            is_elective:   false,
+            is_under_group: targetRow.dataset.isGroup === '1',
+            is_group_member: targetRow.dataset.isGroup === '1',
+        });
+
+        targetRow.outerHTML = buildUnassignedRow(branch, displacedData);
+
+        initializeDragAndDrop();
+        initializeContextMenu();
+        showAlert('success', `✅ Dates swapped!`);
+    }
+}
+// ── Move a subject row into an empty slot ────────────────────────────────────
+function moveSubjectToEmptySlot(srcRow, emptyRow) {
+    const newDate   = emptyRow.dataset.date;
+    const oldDate   = srcRow.dataset.date;
+    const branchId  = srcRow.dataset.branchId;
+
+    // Build the new assigned row in place of the empty row
+    const newAssignedHtml = buildAssignedRow(newDate,
+        timeTableDataGlobal.branchesMap[branchId] || { code: branchId, id: branchId },
+        {
+            subject_id:    srcRow.dataset.subjectId,
+            syllabus_code: srcRow.dataset.syllabus,
+            subject_name:  srcRow.dataset.subjectName,
+            is_group_member: srcRow.dataset.isGroup === '1',
+            group_name:    srcRow.dataset.group,
+            is_elective:   false,
+            is_under_group: srcRow.dataset.isGroup === '1',
+        }
+    );
+
+    // Replace empty row with the assigned row
+    emptyRow.outerHTML = newAssignedHtml;
+
+    // Turn the source row into an empty slot (if it was assigned)
+    if (srcRow.dataset.status === 'assigned') {
+        const branch = timeTableDataGlobal.branchesMap[branchId] || { code: branchId, id: branchId };
+        srcRow.outerHTML = buildEmptyRow(oldDate, branch);
+    } else {
+        // Source was unassigned — just remove it (it's now in the timetable)
+        srcRow.remove();
+    }
+
+    // Re-wire drag events after DOM change
+    initializeDragAndDrop();
+    initializeContextMenu();
+}
+
+// ── Swap subject content between two assigned rows ───────────────────────────
+function swapAssignedRows(rowA, rowB) {
+    // Swap the subject fields only; keep the date cells fixed
+    const fieldsToSwap = ['subjectId', 'syllabus', 'subjectName'];
+    fieldsToSwap.forEach(field => {
+        const tmp = rowA.dataset[field];
+        rowA.dataset[field] = rowB.dataset[field];
+        rowB.dataset[field] = tmp;
+    });
+
+    // Also swap the visible cells (syllabus, subject name, type)
+    swapCell(rowA, rowB, '.syllabus-code');
+    swapCell(rowA, rowB, '.subject-name');
+    swapCell(rowA, rowB, '.type');
+}
+
+function swapCell(rowA, rowB, selector) {
+    const cellA = rowA.querySelector(selector);
+    const cellB = rowB.querySelector(selector);
+    if (!cellA || !cellB) return;
+    const tmp = cellA.innerHTML;
+    cellA.innerHTML = cellB.innerHTML;
+    cellB.innerHTML = tmp;
+}
+
+function swapSubjectData(rowA, rowB) {
+    ['subjectId', 'syllabus', 'subjectName'].forEach(f => {
+        const t = rowA.dataset[f]; rowA.dataset[f] = rowB.dataset[f]; rowB.dataset[f] = t;
+    });
+    swapCell(rowA, rowB, '.syllabus-code');
+    swapCell(rowA, rowB, '.subject-name');
+    swapCell(rowA, rowB, '.type');
+}
+
+function setRowDate(row, dateStr) {
+    row.dataset.date = dateStr || '';
+    row.querySelector('td:first-child').textContent = dateStr ? formatDate(dateStr) : '—';
+    row.querySelector('td:nth-child(2)').textContent = dateStr
+        ? (window.notificationDetails?.session_name || 'FN')
+        : '—';
+}
+
+function setRowStatus(row, status) {
+    row.dataset.status = status;
+    const badge = row.querySelector('td:last-child');
+    if (status === 'assigned') {
+        badge.innerHTML = '<span class="badge bg-success">ASSIGNED</span>';
+        row.setAttribute('draggable', 'true');
+    } else {
+        badge.innerHTML = '<span class="badge bg-warning text-dark">UNASSIGNED</span>';
+    }
+}
+
+// ─── Right-click context menu: "Clear Date" ──────────────────────────────────
+
+function initializeContextMenu() {
+    // Remove old menu if exists
+    const old = document.getElementById('ttContextMenu');
+    if (old) old.remove();
+
+    const menu = document.createElement('div');
+    menu.id = 'ttContextMenu';
+    menu.style.cssText = `
+        display:none; position:fixed; z-index:9999;
+        background:#fff; border:1px solid #dee2e6; border-radius:6px;
+        box-shadow:0 4px 16px rgba(0,0,0,.15); min-width:180px;
+    `;
+    menu.innerHTML = `
+        <div id="ctxClearDate" style="padding:10px 16px;cursor:pointer;color:#dc3545;"
+             onmouseenter="this.style.background='#fff5f5'"
+             onmouseleave="this.style.background='#fff'">
+            <i class="bi bi-calendar-x"></i> Clear Date (make blank)
+        </div>
+        <div id="ctxMoveUp" style="padding:10px 16px;cursor:pointer;"
+             onmouseenter="this.style.background='#f8f9fa'"
+             onmouseleave="this.style.background='#fff'">
+            <i class="bi bi-arrow-up-circle"></i> Move to previous blank date
+        </div>
+        <div id="ctxMoveDown" style="padding:10px 16px;cursor:pointer;"
+             onmouseenter="this.style.background='#f8f9fa'"
+             onmouseleave="this.style.background='#fff'">
+            <i class="bi bi-arrow-down-circle"></i> Move to next blank date
+        </div>`;
+    document.body.appendChild(menu);
+
+    let ctxTargetRow = null;
+
+    document.querySelectorAll('#combinedTimetable .draggable-row[data-status="assigned"]').forEach(row => {
+        row.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            ctxTargetRow = row;
+            menu.style.display = 'block';
+            menu.style.left = e.clientX + 'px';
+            menu.style.top  = e.clientY + 'px';
+        });
+    });
+
+    document.getElementById('ctxClearDate').onclick = () => {
+        if (!ctxTargetRow) return;
+        clearRowDate(ctxTargetRow);
+        menu.style.display = 'none';
+    };
+
+    document.getElementById('ctxMoveUp').onclick = () => {
+        if (!ctxTargetRow) return;
+        moveToAdjacentBlank(ctxTargetRow, 'prev');
+        menu.style.display = 'none';
+    };
+
+    document.getElementById('ctxMoveDown').onclick = () => {
+        if (!ctxTargetRow) return;
+        moveToAdjacentBlank(ctxTargetRow, 'next');
+        menu.style.display = 'none';
+    };
+
+    document.addEventListener('click', () => { menu.style.display = 'none'; });
+}
+
+// Clear a date row → turns it into a "No Exam" empty slot
+function clearRowDate(row) {
+    const branchId = row.dataset.branchId;
+    const date     = row.dataset.date;
+    const branch   = timeTableDataGlobal?.branchesMap[branchId] || { code: branchId, id: branchId };
+
+    // Build unassigned row to append at bottom
+    const unassignedHtml = buildUnassignedRow(branch, {
+        branch_id:    branchId,
+        subject_id:   row.dataset.subjectId,
+        syllabus_code: row.dataset.syllabus,
+        subject_name:  row.dataset.subjectName,
+        is_elective:  false,
+        is_under_group: row.dataset.isGroup === '1',
+    });
+
+    // Replace assigned row with empty slot
+    row.outerHTML = buildEmptyRow(date, branch);
+
+    // Append unassigned row at end of tbody
+    document.getElementById('timetableTbody').insertAdjacentHTML('beforeend', unassignedHtml);
+
+    initializeDragAndDrop();
+    initializeContextMenu();
+    showAlert('success', `✅ Date cleared → subject moved to Unassigned.`);
+}
+
+// Move subject to the nearest blank slot in same branch (prev or next)
+function moveToAdjacentBlank(row, direction) {
+    const branchId = row.dataset.branchId;
+    const allRows  = Array.from(document.querySelectorAll(
+        `#combinedTimetable tbody tr[data-branch-id="${branchId}"]`
+    ));
+    const idx   = allRows.indexOf(row);
+    const step  = direction === 'prev' ? -1 : 1;
+
+    for (let i = idx + step; i >= 0 && i < allRows.length; i += step) {
+        if (allRows[i].dataset.status === 'empty') {
+            moveSubjectToEmptySlot(row, allRows[i]);
+            showAlert('success', `✅ Subject moved ${direction === 'prev' ? 'up' : 'down'}.`);
+            return;
+        }
+    }
+    showAlert('info', `No blank slot found ${direction === 'prev' ? 'above' : 'below'} in this branch.`);
+}
+
+// ─── sortTableByBranch (keep your existing one or use this) ──────────────────
+function sortTableByBranch() {
+    const val   = document.getElementById('branchSortSelector').value;
+    const rows  = document.querySelectorAll('#combinedTimetable tbody tr');
+    rows.forEach(row => {
+        row.style.display = (val === 'all' || row.dataset.branchId == val) ? '' : 'none';
+    });
+}
+
+        // Show alert message
+        function showAlert(type, message) {
+            const alertHtml = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            document.getElementById('alertContainer').insertAdjacentHTML('beforeend', alertHtml);
+            
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                const alerts = document.querySelectorAll('.alert');
+                if (alerts.length > 0) {
+                    alerts[alerts.length - 1].remove();
+                }
+            }, 5000);
+        }
+    </script>
+    
+<script>
+// ── Show student data buttons after timetable is saved ───────
+// Call this from inside your existing saveTimetable() success block:
+//   showStudentDataButtons();
+
+function showStudentDataButtons() {
+    document.getElementById('studentDataActions').style.display = 'block';
+    checkStudentDataStatus();
+}
+
+// ── Check if student data already generated ───────────────────
+async function checkStudentDataStatus() {
+    const notificationId = new URLSearchParams(window.location.search).get('notificationId');
+    if (!notificationId) return;
+
+    try {
+        const res    = await fetch(`/api/student-entries/status/${notificationId}`);
+        const result = await res.json();
+
+        if (result.status === 'success' && result.data.is_generated) {
+            const dt = new Date(result.data.last_generated).toLocaleString();
+            document.getElementById('studentDataStatus').innerHTML =
+                `<i class="fas fa-check-circle text-success"></i> ${result.data.total_entries} entries generated on ${dt}`;
+            document.getElementById('btnViewSummary').disabled = false;
+        } else {
+            document.getElementById('studentDataStatus').textContent = 'Not yet generated';
+            document.getElementById('btnViewSummary').disabled = true;
+        }
+    } catch (e) {
+        console.warn('Could not check student data status:', e);
+    }
+}
+
+// ── BUTTON 1: Generate Student Data ──────────────────────────
+async function generateStudentData() {
+    const notificationId = new URLSearchParams(window.location.search).get('notificationId');
+
+    const confirm = await Swal.fire({
+        title: 'Generate Student Data?',
+        html: 'This will resolve subjects for all students<br>based on the saved timetable.<br><br>Any previous generation will be replaced.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Generate',
+        confirmButtonColor: '#0d6efd'
+    });
+    if (!confirm.isConfirmed) return;
+
+    Swal.fire({ title: 'Generating...', html: 'Resolving subjects for all students...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+    try {
+        const res    = await fetch(`/api/student-entries/generate/${notificationId}`, { method: 'POST' });
+        const result = await res.json();
+        Swal.close();
+
+        if (result.status === 'success') {
+            await Swal.fire({
+                title: 'Generated!',
+                html: `<b>${result.data.total_students}</b> students processed<br><b>${result.data.total_entries}</b> entries saved`,
+                icon: 'success'
+            });
+            document.getElementById('btnViewSummary').disabled = false;
+            checkStudentDataStatus();
+        } else {
+            Swal.fire('Error', result.message, 'error');
+        }
+    } catch (e) {
+        Swal.close();
+        Swal.fire('Error', 'Failed to generate: ' + e.message, 'error');
+    }
+}
+
+// ── BUTTON 2: View Summary ────────────────────────────────────
+let summaryDataGlobal = null;
+
+async function viewSummary() {
+    const notificationId = new URLSearchParams(window.location.search).get('notificationId');
+
+    const modal = new bootstrap.Modal(document.getElementById('summaryModal'));
+    modal.show();
+    document.getElementById('summaryTableContainer').innerHTML =
+        '<div class="text-center p-4"><div class="spinner-border text-success"></div><p class="mt-2">Loading...</p></div>';
+
+    try {
+        const res    = await fetch(`/api/student-entries/summary/${notificationId}`);
+        const result = await res.json();
+
+        if (result.status !== 'success') throw new Error(result.message);
+
+        summaryDataGlobal = result.data;
+        renderSummaryTable(result.data);
+    } catch (e) {
+        document.getElementById('summaryTableContainer').innerHTML =
+            `<div class="alert alert-danger m-3">Failed to load summary: ${e.message}</div>`;
+    }
+}
+
+// ── Render Summary Table ──────────────────────────────────────
+function renderSummaryTable(data) {
+    const { summary, totals, grand_total } = data;
+
+    // Group by date+session
+    const grouped = {};
+    summary.forEach(row => {
+        const key = `${row.exam_date}_${row.session_order}`;
+        if (!grouped[key]) grouped[key] = { rows: [], meta: row };
+        grouped[key].rows.push(row);
+    });
+
+    const totalsMap = {};
+    totals.forEach(t => { totalsMap[`${t.exam_date}_${t.session_order}`] = t.total_students; });
+
+    const formatDate = d => {
+        const dt = new Date(d);
+        return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', weekday: 'short' });
+    };
+    const formatTime = t => {
+        if (!t) return '';
+        const [h, m] = t.substring(0,5).split(':');
+        const hr = parseInt(h);
+        return `${hr > 12 ? hr-12 : hr}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
+    };
+
+    let html = `
+        <div class="p-3">
+            <div class="alert alert-info py-2 mb-3">
+                <strong>Grand Total:</strong> ${grand_total} student-subject entries across ${totals.length} date-session(s)
+            </div>
+        </div>
+        <div class="table-responsive px-3 pb-3">
+        <table class="table table-bordered table-hover table-sm align-middle" id="summaryTable">
+            <thead class="table-dark">
+                <tr>
+                    <th>Date</th>
+                    <th>Session</th>
+                    <th>Timing</th>
+                    <th>Branch</th>
+                    <th>Syllabus Code</th>
+                    <th>Subject Name</th>
+                    <th>Type</th>
+                    <th class="text-center">Student Count</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+    Object.entries(grouped).forEach(([key, group]) => {
+        const { rows, meta } = group;
+        const totalForSlot   = totalsMap[key] || 0;
+        const rowspan        = rows.length;
+
+        rows.forEach((row, idx) => {
+            html += `<tr>`;
+            if (idx === 0) {
+                html += `
+                    <td rowspan="${rowspan}" class="fw-bold text-nowrap bg-light">
+                        ${formatDate(row.exam_date)}
+                    </td>
+                    <td rowspan="${rowspan}" class="text-center bg-light">
+                        <span class="badge bg-primary">${row.session_name || 'FN'}</span>
+                    </td>
+                    <td rowspan="${rowspan}" class="text-nowrap bg-light small">
+                        ${formatTime(row.start_time)} – ${formatTime(row.end_time)}
+                    </td>`;
+            }
+            html += `
+                <td><span class="badge bg-secondary">${row.branch_code}</span> ${row.branch_name}</td>
+                <td class="fw-bold text-primary">${row.syllabus_code || '—'}</td>
+                <td>${row.subject_name}</td>
+                <td><span class="badge bg-light text-dark border">${row.subject_type || 'Theory'}</span></td>
+                <td class="text-center fw-bold fs-5 text-success">${row.student_count}</td>
+            </tr>`;
+        });
+
+        // Sub-total row per date+session
+        html += `
+            <tr class="table-warning">
+                <td colspan="4" class="text-end fw-bold">Total for this slot:</td>
+                <td colspan="3" class="text-center fw-bold text-danger fs-5">${totalForSlot}</td>
+            </tr>`;
+    });
+
+    html += `
+            </tbody>
+            <tfoot class="table-dark">
+                <tr>
+                    <td colspan="7" class="text-end fw-bold">Grand Total (all slots):</td>
+                    <td class="text-center fw-bold fs-5">${grand_total}</td>
+                </tr>
+            </tfoot>
+        </table>
+        </div>`;
+
+    document.getElementById('summaryTableContainer').innerHTML = html;
+}
+
+// ── Export Summary as CSV ─────────────────────────────────────
+function exportSummaryCSV() {
+    if (!summaryDataGlobal) return;
+
+    const { summary } = summaryDataGlobal;
+    let csv = 'Date,Session,Start Time,End Time,Branch Code,Branch Name,Syllabus Code,Subject Name,Subject Type,Student Count\n';
+
+    summary.forEach(row => {
+        const d = new Date(row.exam_date).toLocaleDateString('en-GB');
+        csv += `"${d}","${row.session_name || ''}","${row.start_time || ''}","${row.end_time || ''}","${row.branch_code}","${row.branch_name}","${row.syllabus_code || ''}","${row.subject_name}","${row.subject_type || 'Theory'}",${row.student_count}\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `exam_summary_${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// ── Auto-check status on page load ───────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    // Show buttons if timetable already saved (check param)
+    const notificationId = new URLSearchParams(window.location.search).get('notificationId');
+    if (notificationId) {
+        document.getElementById('studentDataActions').style.display = 'block';
+        checkStudentDataStatus();
+    }
+});
+</script>
+
+    <!-- Export Functions Script (Fixed Version) -->
+    <script src="js/export-functions-fixed.js"></script>
+    
+    <!-- Enhanced Save Timetable Script -->
+    <script src="js/save-timetable.js"></script>
+</body>
+</html>

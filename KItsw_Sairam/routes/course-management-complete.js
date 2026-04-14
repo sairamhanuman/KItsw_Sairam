@@ -215,8 +215,8 @@ router.post('/subjects', async (req, res) => {
     external_exam_code, subject_name, subject_type,
     internal_max_marks, external_max_marks, ta_max_marks,
     credits, is_elective, is_under_group, elective_name,
-        is_exempt_exam_fee, is_replacement, replacement_group_order, is_running_curriculum, is_locked  
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        is_exempt_exam_fee, is_replacement, replacement_group_order, is_running_curriculum, is_locked
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 programme_id, branch_id, semester_id, regulation_id,
                 subject_order || 1, syllabus_code, ref_code || null, 
@@ -360,6 +360,24 @@ router.delete('/subjects/:id', async (req, res) => {
             message: 'Failed to delete subject',
             error: error.message
         });
+    }
+});
+
+// GET distinct subject_group_codes for dropdown
+router.get('/subjects/group-codes', async (req, res) => {
+    try {
+        const [rows] = await promisePool.query(
+            `SELECT DISTINCT subject_group_code
+             FROM subject_master
+             WHERE subject_group_code IS NOT NULL
+               AND subject_group_code != ''
+               AND is_active = 1
+             ORDER BY subject_group_code`
+        );
+        const codes = rows.map(r => r.subject_group_code);
+        res.json({ status: 'success', data: codes });
+    } catch (err) {
+        res.status(500).json({ status: 'error', message: err.message });
     }
 });
 

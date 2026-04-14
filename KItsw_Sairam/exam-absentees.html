@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Absentees Entry</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{background:#f1f5f9;font-family:'Segoe UI',sans-serif;min-height:100vh;}
+
+        .page-header{background:linear-gradient(135deg,#1e293b,#334155);padding:18px 32px;
+            display:flex;align-items:center;justify-content:space-between;}
+        .page-header h1{color:#fff;font-size:18px;font-weight:800;display:flex;align-items:center;gap:10px;}
+        .back-btn{color:#94a3b8;text-decoration:none;font-size:13px;display:flex;align-items:center;gap:6px;}
+        .back-btn:hover{color:#fff;}
+
+        .container{max-width:1100px;margin:24px auto;padding:0 20px;}
+
+        .card{background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.06);
+            margin-bottom:20px;overflow:hidden;}
+        .card-hdr{padding:14px 20px;background:#f8fafc;border-bottom:1px solid #f1f5f9;
+            display:flex;align-items:center;gap:10px;}
+        .card-hdr h3{font-size:14px;font-weight:700;color:#1e293b;margin:0;}
+        .card-body{padding:20px;}
+
+        .filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;}
+        .field-label{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;
+            letter-spacing:.5px;margin-bottom:5px;}
+        .field-input{width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;
+            font-size:13px;color:#1e293b;outline:none;transition:border-color .2s;background:#fff;}
+        .field-input:focus{border-color:#667eea;}
+        .field-input:disabled{background:#f8fafc;color:#94a3b8;}
+
+        /* Search bar */
+        .search-wrap{position:relative;}
+        .search-input{width:100%;padding:11px 16px 11px 42px;border:2px solid #e2e8f0;
+            border-radius:10px;font-size:14px;outline:none;transition:all .2s;}
+        .search-input:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1);}
+        .search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);
+            color:#94a3b8;font-size:16px;}
+        .status-sel{padding:10px 12px;border:2px solid #e2e8f0;border-radius:10px;
+            font-size:13px;font-weight:600;outline:none;cursor:pointer;min-width:140px;
+            transition:border-color .2s;}
+        .status-sel:focus{border-color:#667eea;}
+        .status-sel.absent{border-color:#f59e0b;color:#92400e;background:#fffbeb;}
+        .status-sel.malpractice{border-color:#dc2626;color:#dc2626;background:#fff5f5;}
+
+        /* Suggestions dropdown */
+        .suggestions{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;
+            border:1.5px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.1);
+            z-index:100;max-height:240px;overflow-y:auto;display:none;}
+        .suggestions.show{display:block;}
+        .sug-item{padding:10px 16px;cursor:pointer;border-bottom:1px solid #f8fafc;
+            display:flex;align-items:center;justify-content:space-between;gap:10px;}
+        .sug-item:hover{background:#f0f4ff;}
+        .sug-item:last-child{border-bottom:none;}
+        .sug-roll{font-weight:700;font-size:13px;color:#1e293b;min-width:90px;}
+        .sug-name{font-size:12px;color:#64748b;flex:1;}
+        .sug-sub{font-size:11px;color:#667eea;background:#eef2ff;padding:2px 8px;
+            border-radius:10px;white-space:nowrap;}
+
+        /* Entry table */
+        .entry-table{width:100%;border-collapse:collapse;font-size:13px;}
+        .entry-table th{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;
+            padding:10px 12px;font-weight:600;font-size:12px;text-align:left;}
+        .entry-table td{padding:10px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle;}
+        .entry-table tr:last-child td{border-bottom:none;}
+        .entry-table tr:hover td{background:#f8fafc;}
+
+        .badge-absent{background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:20px;
+            font-size:11px;font-weight:700;}
+        .badge-malpractice{background:#fee2e2;color:#dc2626;padding:3px 10px;border-radius:20px;
+            font-size:11px;font-weight:700;}
+
+        .btn-remove{background:none;border:none;color:#dc2626;cursor:pointer;padding:4px 8px;
+            border-radius:6px;font-size:16px;transition:background .15s;}
+        .btn-remove:hover{background:#fee2e2;}
+        .btn-edit{background:none;border:none;color:#667eea;cursor:pointer;padding:4px 8px;
+            border-radius:6px;font-size:14px;transition:background .15s;}
+        .btn-edit:hover{background:#eef2ff;}
+
+        .empty-table{text-align:center;padding:40px;color:#94a3b8;}
+        .empty-table i{font-size:40px;display:block;margin-bottom:10px;}
+
+        .btn-primary{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;
+            border-radius:10px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;
+            transition:all .2s;display:inline-flex;align-items:center;gap:8px;}
+        .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(102,126,234,.4);}
+        .btn-primary:disabled{opacity:.6;pointer-events:none;}
+        .btn-outline{background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;
+            padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;color:#334155;
+            transition:all .15s;display:inline-flex;align-items:center;gap:6px;}
+        .btn-outline:hover{border-color:#667eea;color:#667eea;}
+
+        .stats-bar{display:flex;gap:16px;flex-wrap:wrap;padding:12px 20px;
+            background:#f8fafc;border-top:1px solid #f1f5f9;}
+        .stat{font-size:12px;color:#64748b;display:flex;align-items:center;gap:5px;}
+        .stat strong{font-size:14px;font-weight:800;}
+        .stat.absent strong{color:#f59e0b;}
+        .stat.malpractice strong{color:#dc2626;}
+        .stat.total strong{color:#6366f1;}
+
+        .filter-status{padding:6px 12px;border-radius:20px;font-size:11px;font-weight:700;
+            background:#d1fae5;color:#065f46;display:inline-flex;align-items:center;gap:5px;}
+        .filter-status.loading{background:#fef3c7;color:#92400e;}
+
+        /* Inline edit */
+        .inline-sel{border:1.5px solid #667eea;border-radius:6px;padding:3px 6px;
+            font-size:11px;font-weight:600;cursor:pointer;outline:none;}
+
+        .toast-container{position:fixed;top:20px;right:20px;z-index:9999;}
+        .toast-msg{background:#1e293b;color:#fff;padding:12px 18px;border-radius:10px;
+            font-size:13px;margin-bottom:8px;display:flex;align-items:center;gap:8px;
+            box-shadow:0 4px 16px rgba(0,0,0,.2);animation:slideIn .3s ease;}
+        @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+    </style>
+</head>
+<body>
+
+<div class="page-header">
+    <h1><i class="bi bi-person-x-fill" style="color:#fca5a5;"></i> Absentees Entry</h1>
+    <a href="index.html" class="back-btn"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+
+    <!-- ── FILTER PANEL ── -->
+    <div class="card">
+        <div class="card-hdr">
+            <i class="bi bi-funnel" style="color:#667eea;"></i>
+            <h3>Select Exam</h3>
+            <span id="filterStatus" class="filter-status loading ms-auto" style="display:none;">
+                <i class="bi bi-hourglass-split"></i> Loading students…
+            </span>
+        </div>
+        <div class="card-body">
+            <div class="filter-grid">
+                <div>
+                    <div class="field-label">Exam Type</div>
+                    <select id="fExamType" class="field-input" onchange="onFilterChange()">
+                        <option value="">— Select —</option>
+                        <option value="Internal">MSE (Internal)</option>
+                        <option value="ESE">ESE</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="field-label">Programme</div>
+                    <select id="fProgramme" class="field-input" onchange="onFilterChange()" disabled>
+                        <option value="">— Select —</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="field-label">Semester</div>
+                    <select id="fSemester" class="field-input" onchange="onFilterChange()" disabled>
+                        <option value="">— Select —</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="field-label">Exam Date</div>
+                    <input type="date" id="fDate" class="field-input" onchange="onFilterChange()" disabled/>
+                </div>
+                <div>
+                    <div class="field-label">Session</div>
+                    <select id="fSession" class="field-input" onchange="onFilterChange()" disabled>
+                        <option value="">— Select —</option>
+                        <option value="1">FN — Forenoon</option>
+                        <option value="2">AN — Afternoon</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── ENTRY PANEL ── -->
+    <div class="card" id="entryPanel" style="display:none;">
+        <div class="card-hdr">
+            <i class="bi bi-person-plus" style="color:#10b981;"></i>
+            <h3>Add Absentee</h3>
+            <span id="loadedCount" style="font-size:12px;color:#64748b;margin-left:6px;"></span>
+        </div>
+        <div class="card-body">
+            <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+                <div class="search-wrap" style="flex:1;min-width:240px;">
+                    <i class="bi bi-search search-icon"></i>
+                    <input type="text" id="rollSearch" class="search-input"
+                           placeholder="Type Roll No or Name to search…"
+                           oninput="onSearchInput()"
+                           onkeydown="onSearchKey(event)"
+                           autocomplete="off"/>
+                    <div class="suggestions" id="suggestions"></div>
+                </div>
+                <div>
+                    <select id="statusSel" class="status-sel absent" onchange="onStatusChange(this)">
+                        <option value="Absent">Absent</option>
+                        <option value="Malpractice">Malpractice</option>
+                    </select>
+                </div>
+                <button class="btn-outline" onclick="addEntry()" id="addBtn" disabled>
+                    <i class="bi bi-plus-circle"></i> Add
+                </button>
+            </div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:8px;">
+                <i class="bi bi-keyboard me-1"></i>Press <kbd>Enter</kbd> to add · <kbd>↑↓</kbd> to navigate suggestions
+            </div>
+        </div>
+    </div>
+
+    <!-- ── ENTRY TABLE ── -->
+    <div class="card" id="tableCard" style="display:none;">
+        <div class="card-hdr">
+            <i class="bi bi-table" style="color:#6366f1;"></i>
+            <h3>Absentees List</h3>
+            <div style="margin-left:auto;display:flex;gap:8px;">
+                <button class="btn-outline" onclick="clearAll()" id="clearBtn" style="display:none;">
+                    <i class="bi bi-trash"></i> Clear All
+                </button>
+                <button class="btn-primary" onclick="saveEntries()" id="saveBtn" disabled>
+                    <i class="bi bi-save"></i> Save All Entries
+                </button>
+            </div>
+        </div>
+        <div id="tableBody">
+            <div class="empty-table">
+                <i class="bi bi-person-check"></i>
+                No absentees added yet. Use the search box above.
+            </div>
+        </div>
+        <div class="stats-bar" id="statsBar" style="display:none;">
+            <div class="stat total"><strong id="statTotal">0</strong> Total</div>
+            <div class="stat absent"><strong id="statAbsent">0</strong> Absent</div>
+            <div class="stat malpractice"><strong id="statMal">0</strong> Malpractice</div>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+
+// ── State ─────────────────────────────────────────────────────
+const STATE = {
+    students:    [],   // all students for selected slot
+    entries:     [],   // absentee entries [{student, status}]
+    selectedStu: null, // currently selected from suggestions
+    sugIdx:      -1,   // suggestion nav index
+    saved:       false
+};
+
+// ── Init ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    loadProgrammes();
+    loadSemesters();
+    // Set today
+    document.getElementById('fDate').value =
+        new Date().toISOString().split('T')[0];
+});
+
+async function loadProgrammes() {
+    try {
+        const res  = await fetch('/api/programmes');
+        const data = await res.json();
+        const sel  = document.getElementById('fProgramme');
+        (data.data || data.programmes || []).forEach(p => {
+            sel.innerHTML += `<option value="${p.programme_id}">${p.programme_name}</option>`;
+        });
+    } catch(_) {}
+}
+
+async function loadSemesters() {
+    try {
+        const res  = await fetch('/api/semesters');
+        const data = await res.json();
+        const sel  = document.getElementById('fSemester');
+        (data.data || data.semesters || []).forEach(s => {
+            sel.innerHTML += `<option value="${s.semester_id}">${s.semester_name}</option>`;
+        });
+    } catch(_) {}
+}
+
+// ── Filter change ─────────────────────────────────────────────
+function onFilterChange() {
+    const et  = document.getElementById('fExamType').value;
+    const prg = document.getElementById('fProgramme').value;
+    const sem = document.getElementById('fSemester').value;
+    const dt  = document.getElementById('fDate').value;
+    const ses = document.getElementById('fSession').value;
+
+    // Enable fields progressively
+    document.getElementById('fProgramme').disabled = !et;
+    document.getElementById('fSemester').disabled  = !et;
+    document.getElementById('fDate').disabled      = !et;
+    document.getElementById('fSession').disabled   = !et;
+
+    if (et && prg && sem && dt && ses) {
+        loadStudents(et, prg, sem, dt, ses);
+    }
+}
+
+async function loadStudents(examType, programmeId, semesterId, date, session) {
+    const status = document.getElementById('filterStatus');
+    status.style.display = 'inline-flex';
+    status.className     = 'filter-status loading ms-auto';
+    status.innerHTML     = '<i class="bi bi-hourglass-split"></i> Loading students…';
+
+    try {
+        const res  = await fetch(
+            `/api/absentees/students?exam_type=${examType}&programme_id=${programmeId}` +
+            `&semester_id=${semesterId}&exam_date=${date}&session_order=${session}`
+        );
+        const data = await res.json();
+
+        if (!data.success || !data.students?.length) {
+            status.className = 'filter-status ms-auto';
+            status.style.background = '#fee2e2'; status.style.color = '#dc2626';
+            status.innerHTML = '<i class="bi bi-exclamation-circle"></i> No students found for this slot';
+            document.getElementById('entryPanel').style.display = 'none';
+            return;
+        }
+
+        STATE.students = data.students;
+        STATE.entries  = [];
+
+        status.className = 'filter-status ms-auto';
+        status.style.background = ''; status.style.color = '';
+        status.innerHTML = `<i class="bi bi-check-circle"></i> ${data.students.length} students loaded`;
+
+        document.getElementById('loadedCount').textContent =
+            `— ${data.students.length} students in this slot`;
+        document.getElementById('entryPanel').style.display = 'block';
+        document.getElementById('tableCard').style.display  = 'block';
+
+        // Load existing saved entries if any
+        loadExistingEntries(programmeId, semesterId, date, session);
+
+        renderTable();
+
+    } catch(e) {
+        status.innerHTML = `<i class="bi bi-exclamation-circle"></i> Error: ${e.message}`;
+    }
+}
+
+async function loadExistingEntries(progId, semId, date, session) {
+    try {
+        const res  = await fetch(
+            `/api/absentees?programme_id=${progId}&semester_id=${semId}` +
+            `&exam_date=${date}&session_order=${session}`
+        );
+        const data = await res.json();
+        if (data.success && data.entries?.length) {
+            // Map saved entries to STATE.entries
+            STATE.entries = data.entries.map(e => ({
+                id:           e.id,
+                student_id:   e.student_id,
+                roll_no:      e.roll_no,
+                student_name: e.student_name,
+                subject_id:   e.subject_id,
+                subject_code: e.subject_code,
+                subject_name: e.subject_name,
+                status:       e.status,
+                saved:        true
+            }));
+            renderTable();
+            toast(`Loaded ${data.entries.length} existing entries`, 'info');
+        }
+    } catch(_) {}
+}
+
+// ── Search / Suggestions ──────────────────────────────────────
+function onSearchInput() {
+    const q   = document.getElementById('rollSearch').value.trim().toLowerCase();
+    const box = document.getElementById('suggestions');
+
+    STATE.selectedStu = null;
+
+    if (q.length < 2) {
+        box.classList.remove('show');
+        document.getElementById('addBtn').disabled = true;
+        return;
+    }
+
+    // Filter students not already in entries
+    const added  = new Set(STATE.entries.map(e => e.roll_no));
+    const matches = STATE.students
+        .filter(s => !added.has(s.roll_no) &&
+            (s.roll_no.toLowerCase().includes(q) || s.student_name.toLowerCase().includes(q)))
+        .slice(0, 8);
+
+    if (!matches.length) { box.classList.remove('show'); return; }
+
+    STATE.sugIdx = -1;
+    box.innerHTML = matches.map((s, i) => `
+        <div class="sug-item" data-idx="${i}" onmousedown="selectSuggestion(${i})">
+            <span class="sug-roll">${s.roll_no}</span>
+            <span class="sug-name">${s.student_name}</span>
+            <span class="sug-sub">${s.subject_code || s.syllabus_code || ''}</span>
+        </div>`).join('');
+
+    box._matches = matches;
+    box.classList.add('show');
+
+    // Auto-select best match:
+    // 1. Exact roll number match
+    // 2. First suggestion
+    const exactMatch = matches.find(s => s.roll_no.toLowerCase() === q);
+    STATE.selectedStu = exactMatch || matches[0];
+    document.getElementById('addBtn').disabled = !STATE.selectedStu;
+}
+
+function onSearchKey(e) {
+    const box     = document.getElementById('suggestions');
+    const items   = box.querySelectorAll('.sug-item');
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        STATE.sugIdx = Math.min(STATE.sugIdx+1, items.length-1);
+        highlightSug(items);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        STATE.sugIdx = Math.max(STATE.sugIdx-1, 0);
+        highlightSug(items);
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (STATE.sugIdx >= 0 && box._matches) {
+            selectSuggestion(STATE.sugIdx);
+            setTimeout(() => addEntry(), 50);
+        } else if (STATE.selectedStu) {
+            addEntry();
+        } else {
+            // Try to find by typed text
+            const q2 = document.getElementById('rollSearch').value.trim().toLowerCase();
+            const added = new Set(STATE.entries.map(e => e.roll_no));
+            const found = STATE.students.find(s =>
+                !added.has(s.roll_no) && s.roll_no.toLowerCase() === q2
+            );
+            if (found) { STATE.selectedStu = found; addEntry(); }
+            else toast('No matching student found', 'warning');
+        }
+    } else if (e.key === 'Escape') {
+        box.classList.remove('show');
+    }
+}
+
+function highlightSug(items) {
+    items.forEach((it, i) => {
+        it.style.background = i === STATE.sugIdx ? '#eef2ff' : '';
+    });
+    const box = document.getElementById('suggestions');
+    if (box._matches && STATE.sugIdx >= 0) {
+        const s = box._matches[STATE.sugIdx];
+        document.getElementById('rollSearch').value = s.roll_no;
+        STATE.selectedStu = s;
+        document.getElementById('addBtn').disabled = false;
+    }
+}
+
+function selectSuggestion(idx) {
+    const box = document.getElementById('suggestions');
+    if (!box._matches) return;
+    const s = box._matches[idx];
+    STATE.selectedStu = s;
+    document.getElementById('rollSearch').value = s.roll_no;
+    document.getElementById('addBtn').disabled  = false;
+    box.classList.remove('show');
+    document.getElementById('rollSearch').focus();
+}
+
+// Close suggestions on outside click
+document.addEventListener('click', e => {
+    if (!e.target.closest('.search-wrap'))
+        document.getElementById('suggestions').classList.remove('show');
+});
+
+function onStatusChange(sel) {
+    sel.className = 'status-sel ' +
+        (sel.value === 'Malpractice' ? 'malpractice' : 'absent');
+}
+
+// ── Add entry ─────────────────────────────────────────────────
+function addEntry() {
+    const s = STATE.selectedStu;
+    if (!s) return;
+
+    // Duplicate check
+    if (STATE.entries.find(e => e.roll_no === s.roll_no)) {
+        toast(`${s.roll_no} already added`, 'warning'); return;
+    }
+
+    const status = document.getElementById('statusSel').value;
+    STATE.entries.push({
+        student_id:   s.student_id,
+        roll_no:      s.roll_no,
+        student_name: s.student_name,
+        subject_id:   s.subject_id,
+        subject_code: s.subject_code || s.syllabus_code || '',
+        subject_name: s.subject_name || '',
+        status,
+        saved: false
+    });
+
+    STATE.selectedStu = null;
+    const input = document.getElementById('rollSearch');
+    // Briefly show name as confirmation then clear
+    input.value = `✓ ${s.roll_no} — ${s.student_name}`;
+    input.style.color = '#16a34a';
+    setTimeout(() => {
+        input.value = '';
+        input.style.color = '';
+        input.focus();
+    }, 1200);
+    document.getElementById('addBtn').disabled  = true;
+    document.getElementById('suggestions').classList.remove('show');
+
+    renderTable();
+    toast(`${s.roll_no} — ${s.student_name} added as ${status}`, status === 'Absent' ? 'warning' : 'error');
+}
+
+// ── Render table ──────────────────────────────────────────────
+function renderTable() {
+    const body = document.getElementById('tableBody');
+    const save = document.getElementById('saveBtn');
+    const clr  = document.getElementById('clearBtn');
+    const stats= document.getElementById('statsBar');
+
+    if (!STATE.entries.length) {
+        body.innerHTML = `<div class="empty-table">
+            <i class="bi bi-person-check"></i>
+            No absentees added yet. Use the search box above.
+        </div>`;
+        save.disabled = true;
+        clr.style.display = 'none';
+        stats.style.display = 'none';
+        return;
+    }
+
+    const rows = STATE.entries.map((e, i) => {
+        const badge   = e.status === 'Malpractice'
+            ? '<span class="badge-malpractice">M</span>'
+            : '<span class="badge-absent">Absent</span>';
+        const unsaved = !e.saved
+            ? '<i class="bi bi-circle-fill" style="color:#f59e0b;font-size:8px;" title="Unsaved"></i>'
+            : '<i class="bi bi-check-circle-fill" style="color:#10b981;font-size:8px;" title="Saved"></i>';
+
+        return `<tr id="row_${i}">
+            <td style="width:40px;color:#94a3b8;font-size:12px;">${unsaved} ${i+1}</td>
+            <td style="font-weight:700;color:#1e293b;">${e.roll_no}</td>
+            <td style="color:#64748b;">${e.student_name}</td>
+            <td style="font-weight:600;color:#667eea;">${e.subject_code}</td>
+            <td style="font-size:12px;color:#64748b;">${e.subject_name}</td>
+            <td>
+                <select class="inline-sel" onchange="changeStatus(${i}, this.value)"
+                    style="${e.status==='Malpractice'?'border-color:#dc2626;color:#dc2626':'border-color:#f59e0b;color:#92400e'}">
+                    <option value="Absent" ${e.status==='Absent'?'selected':''}>Absent</option>
+                    <option value="Malpractice" ${e.status==='Malpractice'?'selected':''}>M (Malpractice)</option>
+                </select>
+            </td>
+            <td>
+                <button class="btn-remove" onclick="removeEntry(${i})" title="Remove">
+                    <i class="bi bi-x-circle"></i>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    body.innerHTML = `<table class="entry-table">
+        <thead><tr>
+            <th>#</th><th>Roll No</th><th>Student Name</th>
+            <th>Sub Code</th><th>Subject Name</th><th>Remarks</th><th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+    </table>`;
+
+    // Stats
+    const absent = STATE.entries.filter(e=>e.status==='Absent').length;
+    const mal    = STATE.entries.filter(e=>e.status==='Malpractice').length;
+    document.getElementById('statTotal').textContent  = STATE.entries.length;
+    document.getElementById('statAbsent').textContent = absent;
+    document.getElementById('statMal').textContent    = mal;
+    stats.style.display  = 'flex';
+    save.disabled        = false;
+    clr.style.display    = 'inline-flex';
+}
+
+function changeStatus(idx, val) {
+    STATE.entries[idx].status = val;
+    STATE.entries[idx].saved  = false;
+    renderTable();
+}
+
+function removeEntry(idx) {
+    STATE.entries.splice(idx, 1);
+    renderTable();
+}
+
+function clearAll() {
+    Swal.fire({
+        title:'Clear All?', text:'Remove all entries from the list?',
+        icon:'warning', showCancelButton:true,
+        confirmButtonText:'Clear', confirmButtonColor:'#dc2626'
+    }).then(r => { if (r.isConfirmed) { STATE.entries=[]; renderTable(); } });
+}
+
+// ── Save entries ──────────────────────────────────────────────
+async function saveEntries() {
+    if (!STATE.entries.length) return;
+
+    const prg = document.getElementById('fProgramme').value;
+    const sem = document.getElementById('fSemester').value;
+    const dt  = document.getElementById('fDate').value;
+    const ses = document.getElementById('fSession').value;
+    const et  = document.getElementById('fExamType').value;
+
+    document.getElementById('saveBtn').disabled = true;
+
+    try {
+        const res  = await fetch('/api/absentees/save', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({
+                exam_type:     et,
+                programme_id:  prg,
+                semester_id:   sem,
+                exam_date:     dt,
+                session_order: ses,
+                entries: STATE.entries.map(e => ({
+                    student_id:   e.student_id,
+                    roll_no:      e.roll_no,
+                    subject_id:   e.subject_id,
+                    subject_code: e.subject_code,
+                    subject_name: e.subject_name,
+                    status:       e.status
+                }))
+            })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            STATE.entries.forEach(e => e.saved = true);
+            renderTable();
+            Swal.fire({
+                icon:'success', title:'Saved!',
+                text:`${STATE.entries.length} entries saved successfully.`,
+                timer:2000, showConfirmButton:false
+            });
+        } else {
+            throw new Error(data.error || 'Save failed');
+        }
+    } catch(e) {
+        Swal.fire({ icon:'error', title:'Error', text:e.message });
+    } finally {
+        document.getElementById('saveBtn').disabled = false;
+    }
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+function toast(msg, type='success') {
+    const colors = { success:'#16a34a', warning:'#f59e0b', error:'#dc2626', info:'#6366f1' };
+    const icons  = { success:'bi-check-circle', warning:'bi-exclamation-triangle',
+                     error:'bi-x-circle', info:'bi-info-circle' };
+    const el = document.createElement('div');
+    el.className = 'toast-msg';
+    el.style.borderLeft = `4px solid ${colors[type]||'#667eea'}`;
+    el.innerHTML = `<i class="bi ${icons[type]||'bi-info-circle'}" style="color:${colors[type]};"></i> ${msg}`;
+    document.getElementById('toastContainer').appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+}
+
+</script>
+</body>
+</html>

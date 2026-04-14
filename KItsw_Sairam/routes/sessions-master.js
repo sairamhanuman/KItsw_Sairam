@@ -2,10 +2,8 @@
 const express = require('express');
 const router = express.Router();
 
-// Create a promise pool for database operations
 let promisePool;
 
-// Initialize the router with database pool
 function initializeRouter(pool) {
     promisePool = pool;
     return router;
@@ -15,25 +13,16 @@ function initializeRouter(pool) {
 router.get('/', async (req, res) => {
     try {
         const [rows] = await promisePool.query(
-            `SELECT session_id, session_name, start_time, end_time, session_type, is_active, 
+            `SELECT session_id, session_name, start_time, end_time, session_type, session_group, is_active, 
                     created_at, updated_at
              FROM sessions_master 
-             WHERE is_active = 1 OR is_active IS NULL
+             WHERE is_active = 1
              ORDER BY session_name`
         );
-        
-        res.json({
-            status: 'success',
-            message: 'Sessions retrieved successfully',
-            data: rows
-        });
+        res.json({ status: 'success', message: 'Sessions retrieved successfully', data: rows });
     } catch (error) {
         console.error('Error fetching sessions:', error);
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch sessions',
-            error: error.message
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch sessions', error: error.message });
     }
 });
 
@@ -42,94 +31,58 @@ router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const [rows] = await promisePool.query(
-            `SELECT session_id, session_name, start_time, end_time, session_type, is_active, 
+            `SELECT session_id, session_name, start_time, end_time, session_type, session_group, is_active, 
                     created_at, updated_at
-             FROM sessions_master 
-             WHERE session_id = ?`,
+             FROM sessions_master WHERE session_id = ?`,
             [id]
         );
-        
-        if (rows.length === 0) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Session not found'
-            });
-        }
-        
-        res.json({
-            status: 'success',
-            message: 'Session retrieved successfully',
-            data: rows[0]
-        });
+        if (rows.length === 0) return res.status(404).json({ status: 'error', message: 'Session not found' });
+        res.json({ status: 'success', message: 'Session retrieved successfully', data: rows[0] });
     } catch (error) {
         console.error('Error fetching session:', error);
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch session',
-            error: error.message
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to fetch session', error: error.message });
     }
 });
 
 // POST new session
 router.post('/', async (req, res) => {
     try {
-        const {
-            session_name,
-            session_type,
-            start_time,
-            end_time,
-            is_active = true
-        } = req.body;
+        const { session_name, session_type, session_group, start_time, end_time, is_active = true } = req.body;
 
-        // Validation
-        if (!session_name || !session_type || !start_time || !end_time) {
+        if (!session_name || !session_type || !session_group || !start_time || !end_time) {
             return res.status(400).json({
                 status: 'error',
-                message: 'Missing required fields: session_name, session_type, start_time, end_time'
+                message: 'Missing required fields: session_name, session_type, session_group, start_time, end_time'
             });
         }
 
-        // Check if session name already exists
+        if (!['FN', 'AN'].includes(session_group)) {
+            return res.status(400).json({ status: 'error', message: 'Invalid session_group. Must be FN or AN' });
+        }
+
+        // Only block duplicate among ACTIVE sessions
         const [existingSession] = await promisePool.query(
-            'SELECT session_id FROM sessions_master WHERE session_name = ?',
+            'SELECT session_id FROM sessions_master WHERE session_name = ? AND is_active = 1',
             [session_name]
         );
-
         if (existingSession.length > 0) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Session name already exists'
-            });
+            return res.status(400).json({ status: 'error', message: 'Session name already exists' });
         }
 
-        // Insert new session
         const [result] = await promisePool.query(
-            `INSERT INTO sessions_master 
-             (session_name, session_type, start_time, end_time, is_active) 
-             VALUES (?, ?, ?, ?, ?)`,
-            [session_name, session_type, start_time, end_time, is_active]
+            `INSERT INTO sessions_master (session_name, session_type, session_group, start_time, end_time, is_active) 
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [session_name, session_type, session_group, start_time, end_time, is_active]
         );
 
         res.status(201).json({
             status: 'success',
             message: 'Session created successfully',
-            data: {
-                session_id: result.insertId,
-                session_name,
-                session_type,
-                start_time,
-                end_time,
-                is_active
-            }
+            data: { session_id: result.insertId, session_name, session_type, session_group, start_time, end_time, is_active }
         });
     } catch (error) {
         console.error('Error creating session:', error);
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to create session',
-            error: error.message
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to create session', error: error.message });
     }
 });
 
@@ -137,73 +90,37 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const {
-            session_name,
-            session_type,
-            start_time,
-            end_time,
-            is_active
-        } = req.body;
+        const { session_name, session_type, session_group, start_time, end_time, is_active } = req.body;
 
-        // Check if session exists
         const [existingSession] = await promisePool.query(
-            'SELECT session_id FROM sessions_master WHERE session_id = ?',
-            [id]
+            'SELECT session_id FROM sessions_master WHERE session_id = ?', [id]
         );
+        if (existingSession.length === 0) return res.status(404).json({ status: 'error', message: 'Session not found' });
 
-        if (existingSession.length === 0) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Session not found'
-            });
-        }
-
-        // Check if session name already exists (excluding current session)
+        // Only block duplicate among OTHER active sessions
         if (session_name) {
             const [nameCheck] = await promisePool.query(
-                'SELECT session_id FROM sessions_master WHERE session_name = ? AND session_id != ?',
+                'SELECT session_id FROM sessions_master WHERE session_name = ? AND session_id != ? AND is_active = 1',
                 [session_name, id]
             );
-
-            if (nameCheck.length > 0) {
-                return res.status(400).json({
-                    status: 'error',
-                    message: 'Session name already exists'
-                });
-            }
+            if (nameCheck.length > 0) return res.status(400).json({ status: 'error', message: 'Session name already exists' });
         }
 
-        // Update session
+        if (session_group !== undefined && !['FN', 'AN'].includes(session_group)) {
+            return res.status(400).json({ status: 'error', message: 'Invalid session_group. Must be FN or AN' });
+        }
+
         const updateFields = [];
         const updateValues = [];
 
-        if (session_name !== undefined) {
-            updateFields.push('session_name = ?');
-            updateValues.push(session_name);
-        }
-        if (session_type !== undefined) {
-            updateFields.push('session_type = ?');
-            updateValues.push(session_type);
-        }
-        if (start_time !== undefined) {
-            updateFields.push('start_time = ?');
-            updateValues.push(start_time);
-        }
-        if (end_time !== undefined) {
-            updateFields.push('end_time = ?');
-            updateValues.push(end_time);
-        }
-        if (is_active !== undefined) {
-            updateFields.push('is_active = ?');
-            updateValues.push(is_active);
-        }
+        if (session_name  !== undefined) { updateFields.push('session_name = ?');  updateValues.push(session_name);  }
+        if (session_type  !== undefined) { updateFields.push('session_type = ?');  updateValues.push(session_type);  }
+        if (session_group !== undefined) { updateFields.push('session_group = ?'); updateValues.push(session_group); }
+        if (start_time    !== undefined) { updateFields.push('start_time = ?');    updateValues.push(start_time);    }
+        if (end_time      !== undefined) { updateFields.push('end_time = ?');      updateValues.push(end_time);      }
+        if (is_active     !== undefined) { updateFields.push('is_active = ?');     updateValues.push(is_active);     }
 
-        if (updateFields.length === 0) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'No fields to update'
-            });
-        }
+        if (updateFields.length === 0) return res.status(400).json({ status: 'error', message: 'No fields to update' });
 
         updateFields.push('updated_at = CURRENT_TIMESTAMP');
         updateValues.push(id);
@@ -213,17 +130,10 @@ router.put('/:id', async (req, res) => {
             updateValues
         );
 
-        res.json({
-            status: 'success',
-            message: 'Session updated successfully'
-        });
+        res.json({ status: 'success', message: 'Session updated successfully' });
     } catch (error) {
         console.error('Error updating session:', error);
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to update session',
-            error: error.message
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to update session', error: error.message });
     }
 });
 
@@ -231,37 +141,18 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-
-        // Check if session exists
         const [existingSession] = await promisePool.query(
-            'SELECT session_id FROM sessions_master WHERE session_id = ?',
-            [id]
+            'SELECT session_id FROM sessions_master WHERE session_id = ?', [id]
         );
+        if (existingSession.length === 0) return res.status(404).json({ status: 'error', message: 'Session not found' });
 
-        if (existingSession.length === 0) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Session not found'
-            });
-        }
-
-        // Soft delete by setting is_active to false
         await promisePool.query(
-            'UPDATE sessions_master SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE session_id = ?',
-            [id]
+            'UPDATE sessions_master SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE session_id = ?', [id]
         );
-
-        res.json({
-            status: 'success',
-            message: 'Session deleted successfully'
-        });
+        res.json({ status: 'success', message: 'Session deleted successfully' });
     } catch (error) {
         console.error('Error deleting session:', error);
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to delete session',
-            error: error.message
-        });
+        res.status(500).json({ status: 'error', message: 'Failed to delete session', error: error.message });
     }
 });
 

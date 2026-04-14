@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Registration - Engineering College Application</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .register-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+        }
+
+        .register-card {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .register-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .register-header h1 {
+            color: #1e3c72;
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .register-header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #1e3c72;
+            box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.1);
+        }
+
+        .form-group input.error,
+        .form-group select.error {
+            border-color: #f44336;
+        }
+
+        .error-message {
+            color: #f44336;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .success-message {
+            color: #4caf50;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .password-strength {
+            margin-top: 8px;
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .password-strength-bar {
+            height: 100%;
+            transition: all 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .password-strength-bar.weak {
+            width: 33%;
+            background: #f44336;
+        }
+
+        .password-strength-bar.medium {
+            width: 66%;
+            background: #ff9800;
+        }
+
+        .password-strength-bar.strong {
+            width: 100%;
+            background: #4caf50;
+        }
+
+        .password-requirements {
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .register-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .register-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(40, 167, 69, 0.3);
+        }
+
+        .register-btn:active {
+            transform: translateY(0);
+        }
+
+        .register-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ffffff;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .register-btn.loading .btn-text {
+            display: none;
+        }
+
+        .register-btn.loading .loading-spinner {
+            display: inline-block;
+        }
+
+        .login-link {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .login-link a {
+            color: #1e3c72;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+
+        .role-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #1e3c72;
+        }
+
+        .role-info h4 {
+            color: #1e3c72;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .role-info p {
+            color: #666;
+            font-size: 12px;
+            margin: 5px 0;
+        }
+
+        @media (max-width: 480px) {
+            .register-card {
+                margin: 20px;
+                padding: 30px 20px;
+            }
+            
+            .register-header h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <div class="register-card">
+            <div class="register-header">
+                <h1>🎓 User Registration</h1>
+                <p>Engineering College Examination System</p>
+            </div>
+
+            <div class="role-info">
+                <h4>📋 Available Roles</h4>
+                <p><strong>Faculty:</strong> Can view and manage course information</p>
+                <p><strong>HOD:</strong> Department head with additional permissions</p>
+                <p><strong>Exam Cell:</strong> Manage examinations and seating plans</p>
+                <p><strong>Librarian:</strong> Library management access</p>
+            </div>
+
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="username">Username *</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        placeholder="Choose a unique username"
+                        required
+                        autocomplete="username"
+                    >
+                    <div class="error-message" id="username-error"></div>
+                    <div class="success-message" id="username-success"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address *</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        placeholder="your.email@kitsw.edu"
+                        required
+                        autocomplete="email"
+                    >
+                    <div class="error-message" id="email-error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password *</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        placeholder="Create a strong password"
+                        required
+                        autocomplete="new-password"
+                    >
+                    <div class="password-strength">
+                        <div class="password-strength-bar" id="strength-bar"></div>
+                    </div>
+                    <div class="password-requirements">
+                        Minimum 8 characters with uppercase, lowercase, number, and special character
+                    </div>
+                    <div class="error-message" id="password-error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password *</label>
+                    <input 
+                        type="password" 
+                        id="confirmPassword" 
+                        name="confirmPassword" 
+                        placeholder="Re-enter your password"
+                        required
+                        autocomplete="new-password"
+                    >
+                    <div class="error-message" id="confirmPassword-error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="userRole">Role *</label>
+                    <select id="userRole" name="userRole" required>
+                        <option value="">Select your role</option>
+                        <option value="Faculty">Faculty</option>
+                        <option value="HOD">HOD (Head of Department)</option>
+                        <option value="Exam_Cell">Exam Cell</option>
+                        <option value="Librarian">Librarian</option>
+                    </select>
+                    <div class="error-message" id="userRole-error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="staffId">Staff ID (Optional)</label>
+                    <select id="staffId" name="staffId">
+                        <option value="">Select your staff record (if available)</option>
+                        <!-- Staff options will be loaded here -->
+                    </select>
+                    <small>If you're a staff member, link your account to your staff record</small>
+                </div>
+
+                <button type="submit" class="register-btn" id="registerBtn">
+                    <span class="loading-spinner"></span>
+                    <span class="btn-text">Create Account</span>
+                </button>
+            </form>
+
+            <div class="login-link">
+                <p>Already have an account? <a href="login.html">Sign in here</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let usernameTimeout;
+        let emailTimeout;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStaffOptions();
+            
+            // Setup form submission
+            document.getElementById('registerForm').addEventListener('submit', handleRegister);
+            
+            // Setup real-time validation
+            document.getElementById('username').addEventListener('input', checkUsername);
+            document.getElementById('email').addEventListener('input', checkEmail);
+            document.getElementById('password').addEventListener('input', checkPasswordStrength);
+            document.getElementById('confirmPassword').addEventListener('input', checkPasswordMatch);
+        });
+
+        // Load staff options
+        async function loadStaffOptions() {
+            try {
+                const response = await fetch('/api/staff?limit=1000');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const select = document.getElementById('staffId');
+                    select.innerHTML = '<option value="">Select your staff record (if available)</option>' +
+                        data.staff.map(staff => 
+                            `<option value="${staff.staff_id}">${staff.full_name} (${staff.employee_id}) - ${staff.designation}</option>`
+                        ).join('');
+                }
+            } catch (error) {
+                console.error('Load staff error:', error);
+            }
+        }
+
+        // Check username availability
+        async function checkUsername() {
+            const username = document.getElementById('username').value.trim();
+            const usernameInput = document.getElementById('username');
+            const usernameError = document.getElementById('username-error');
+            const usernameSuccess = document.getElementById('username-success');
+
+            // Clear previous results
+            clearTimeout(usernameTimeout);
+            usernameInput.classList.remove('error');
+            usernameError.style.display = 'none';
+            usernameSuccess.style.display = 'none';
+
+            if (username.length < 3) {
+                return;
+            }
+
+            // Debounce the check
+            usernameTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/api/users/check-username/${username}`);
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        if (data.available) {
+                            usernameSuccess.textContent = '✓ Username is available';
+                            usernameSuccess.style.display = 'block';
+                        } else {
+                            usernameInput.classList.add('error');
+                            usernameError.textContent = 'Username is already taken';
+                            usernameError.style.display = 'block';
+                        }
+                    }
+                } catch (error) {
+                    console.error('Username check error:', error);
+                }
+            }, 500);
+        }
+
+        // Check email availability
+        async function checkEmail() {
+            const email = document.getElementById('email').value.trim();
+            const emailInput = document.getElementById('email');
+            const emailError = document.getElementById('email-error');
+
+            // Clear previous results
+            clearTimeout(emailTimeout);
+            emailInput.classList.remove('error');
+            emailError.style.display = 'none';
+
+            if (!email.includes('@')) {
+                return;
+            }
+
+            // Debounce the check
+            emailTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/api/users/check-email/${email}`);
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        if (!data.available) {
+                            emailInput.classList.add('error');
+                            emailError.textContent = 'Email is already registered';
+                            emailError.style.display = 'block';
+                        }
+                    }
+                } catch (error) {
+                    console.error('Email check error:', error);
+                }
+            }, 500);
+        }
+
+        // Check password strength
+        function checkPasswordStrength() {
+            const password = document.getElementById('password').value;
+            const strengthBar = document.getElementById('strength-bar');
+            const passwordError = document.getElementById('password-error');
+
+            let strength = 0;
+            
+            // Check length
+            if (password.length >= 8) strength++;
+            if (password.length >= 12) strength++;
+            
+            // Check for uppercase, lowercase, numbers, special chars
+            if (/[a-z]/.test(password)) strength++;
+            if (/[A-Z]/.test(password)) strength++;
+            if (/[0-9]/.test(password)) strength++;
+            if (/[^a-zA-Z0-9]/.test(password)) strength++;
+
+            // Update strength bar
+            strengthBar.className = 'password-strength-bar';
+            if (strength <= 2) {
+                strengthBar.classList.add('weak');
+            } else if (strength <= 4) {
+                strengthBar.classList.add('medium');
+            } else {
+                strengthBar.classList.add('strong');
+            }
+
+            // Show error if password is too weak
+            if (password.length > 0 && strength < 4) {
+                passwordError.textContent = 'Password is too weak. Please add more variety.';
+                passwordError.style.display = 'block';
+            } else {
+                passwordError.style.display = 'none';
+            }
+
+            checkPasswordMatch();
+        }
+
+        // Check password match
+        function checkPasswordMatch() {
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const confirmPasswordInput = document.getElementById('confirmPassword');
+            const confirmPasswordError = document.getElementById('confirmPassword-error');
+
+            if (confirmPassword.length > 0) {
+                if (password !== confirmPassword) {
+                    confirmPasswordInput.classList.add('error');
+                    confirmPasswordError.textContent = 'Passwords do not match';
+                    confirmPasswordError.style.display = 'block';
+                } else {
+                    confirmPasswordInput.classList.remove('error');
+                    confirmPasswordError.style.display = 'none';
+                }
+            }
+        }
+
+        // Handle registration
+        async function handleRegister(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const registerBtn = document.getElementById('registerBtn');
+            
+            // Get form values
+            const userData = {
+                username: formData.get('username').trim(),
+                email: formData.get('email').trim(),
+                password: formData.get('password'),
+                userRole: formData.get('userRole'),
+                staffId: formData.get('staffId') || null
+            };
+
+            // Client-side validation
+            let hasError = false;
+
+            // Check username
+            if (userData.username.length < 3) {
+                document.getElementById('username').classList.add('error');
+                document.getElementById('username-error').textContent = 'Username must be at least 3 characters';
+                document.getElementById('username-error').style.display = 'block';
+                hasError = true;
+            }
+
+            // Check email
+            if (!userData.email.includes('@')) {
+                document.getElementById('email').classList.add('error');
+                document.getElementById('email-error').textContent = 'Please enter a valid email address';
+                document.getElementById('email-error').style.display = 'block';
+                hasError = true;
+            }
+
+            // Check password
+            if (userData.password.length < 8) {
+                document.getElementById('password').classList.add('error');
+                document.getElementById('password-error').textContent = 'Password must be at least 8 characters';
+                document.getElementById('password-error').style.display = 'block';
+                hasError = true;
+            }
+
+            // Check password match
+            if (userData.password !== formData.get('confirmPassword')) {
+                document.getElementById('confirmPassword').classList.add('error');
+                document.getElementById('confirmPassword-error').textContent = 'Passwords do not match';
+                document.getElementById('confirmPassword-error').style.display = 'block';
+                hasError = true;
+            }
+
+            // Check role
+            if (!userData.userRole) {
+                document.getElementById('userRole').classList.add('error');
+                document.getElementById('userRole-error').textContent = 'Please select a role';
+                document.getElementById('userRole-error').style.display = 'block';
+                hasError = true;
+            }
+
+            if (hasError) return;
+
+            // Show loading state
+            registerBtn.classList.add('loading');
+            registerBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(userData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Show success message
+                    alert('Registration successful! Your account has been created. You can now login with your credentials.');
+                    
+                    // Redirect to login
+                    window.location.href = '/login.html';
+                } else {
+                    // Show error message
+                    alert(data.message || 'Registration failed. Please try again.');
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                alert('Network error. Please try again later.');
+            } finally {
+                // Hide loading state
+                registerBtn.classList.remove('loading');
+                registerBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

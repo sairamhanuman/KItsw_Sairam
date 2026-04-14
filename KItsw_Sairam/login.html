@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - Engineering College Application</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-header {
+            margin-bottom: 30px;
+        }
+
+        .login-header h1 {
+            color: #1e3c72;
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .login-header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #1e3c72;
+            box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.1);
+        }
+
+        .form-group input.error {
+            border-color: #f44336;
+        }
+
+        .error-message {
+            color: #f44336;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(30, 60, 114, 0.3);
+        }
+
+        .login-btn:active {
+            transform: translateY(0);
+        }
+
+        .login-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ffffff;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .login-btn.loading .btn-text {
+            display: none;
+        }
+
+        .login-btn.loading .loading-spinner {
+            display: inline-block;
+        }
+
+        .college-info {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .college-info h3 {
+            color: #1e3c72;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .college-info p {
+            color: #666;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .credentials-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 4px solid #1e3c72;
+        }
+
+        .credentials-info h4 {
+            color: #1e3c72;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .credentials-info p {
+            color: #666;
+            font-size: 12px;
+            margin: 5px 0;
+        }
+
+        .icon {
+            font-size: 48px;
+            color: #1e3c72;
+            margin-bottom: 20px;
+        }
+
+        .login-link {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .login-link a {
+            color: #1e3c72;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 480px) {
+            .login-card {
+                margin: 20px;
+                padding: 30px 20px;
+            }
+            
+            .login-header h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="icon">🏛️</div>
+                <!-- <h1>Admin Login</h1> -->
+                <p>Kakatiya Institute of Technology and Science, Warangal</p>
+            </div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        placeholder="Enter your username"
+                        required
+                        autocomplete="username"
+                    >
+                    <div class="error-message" id="username-error">Please enter your username</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        placeholder="Enter your password"
+                        required
+                        autocomplete="current-password"
+                    >
+                    <div class="error-message" id="password-error">Please enter your password</div>
+                </div>
+
+                <button type="submit" class="login-btn" id="loginBtn">
+                    <span class="loading-spinner"></span>
+                    <span class="btn-text">Sign In</span>
+                </button>
+            </form>
+
+            <!-- <div class="credentials-info">
+                <h4>📋 Default Credentials</h4>
+                <p><strong>Username:</strong> Admin</p>
+                <p><strong>Password:</strong> Admin@12345</p>
+            </div> -->
+
+            <div class="college-info">
+                <h3>KITSW Engineering College</h3>
+                <p>Examination Management System<br>
+                © 2024 All Rights Reserved</p>
+            </div>
+
+      
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('loginBtn');
+            const usernameError = document.getElementById('username-error');
+            const passwordError = document.getElementById('password-error');
+            
+            // Reset error states
+            document.getElementById('username').classList.remove('error');
+            document.getElementById('password').classList.remove('error');
+            usernameError.style.display = 'none';
+            passwordError.style.display = 'none';
+            
+            // Basic validation
+            let hasError = false;
+            
+            if (!username) {
+                document.getElementById('username').classList.add('error');
+                usernameError.style.display = 'block';
+                hasError = true;
+            }
+            
+            if (!password) {
+                document.getElementById('password').classList.add('error');
+                passwordError.style.display = 'block';
+                hasError = true;
+            }
+            
+            if (hasError) return;
+            
+            // Show loading state
+            loginBtn.classList.add('loading');
+            loginBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    // Store session info
+                    localStorage.setItem('adminSession', JSON.stringify({
+                        username: data.username,
+                        loginTime: new Date().toISOString()
+                    }));
+                    localStorage.setItem('userId',   data.userId);
+                    localStorage.setItem('username', data.username);
+                    localStorage.setItem('userRole', data.userRole);
+                    // Redirect back to the page the user originally wanted
+                    var returnUrl = localStorage.getItem('returnUrl');
+                    localStorage.removeItem('returnUrl');
+                    window.location.href = returnUrl || '/index.html';
+                } else {
+                    // Show error message
+                    const errorMessage = data.message || 'Invalid username or password';
+                    
+                    if (errorMessage.toLowerCase().includes('username')) {
+                        document.getElementById('username').classList.add('error');
+                        usernameError.textContent = errorMessage;
+                        usernameError.style.display = 'block';
+                    } else {
+                        document.getElementById('password').classList.add('error');
+                        passwordError.textContent = errorMessage;
+                        passwordError.style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                document.getElementById('password').classList.add('error');
+                passwordError.textContent = 'Network error. Please try again.';
+                passwordError.style.display = 'block';
+            } finally {
+                // Hide loading state
+                loginBtn.classList.remove('loading');
+                loginBtn.disabled = false;
+            }
+        });
+        
+        // Clear error on input
+        document.getElementById('username').addEventListener('input', function() {
+            this.classList.remove('error');
+            document.getElementById('username-error').style.display = 'none';
+        });
+        
+        document.getElementById('password').addEventListener('input', function() {
+            this.classList.remove('error');
+            document.getElementById('password-error').style.display = 'none';
+        });
+        
+        // Check if already logged in
+        window.addEventListener('load', function() {
+            const session = localStorage.getItem('adminSession');
+            if (session) {
+                try {
+                    const sessionData = JSON.parse(session);
+                    const loginTime = new Date(sessionData.loginTime);
+                    const now = new Date();
+                    const hoursDiff = (now - loginTime) / (1000 * 60 * 60);
+                    
+                    // Auto-logout after 8 hours
+                    if (hoursDiff < 8) {
+                        window.location.href = '/index.html';
+                    } else {
+                        localStorage.removeItem('adminSession');
+                    }
+                } catch (e) {
+                    localStorage.removeItem('adminSession');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

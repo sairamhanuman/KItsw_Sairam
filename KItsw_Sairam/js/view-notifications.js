@@ -41,7 +41,6 @@ async function loadNotifications() {
 // Load master data for filters
 async function loadMasterData() {
     try {
-        // Load programmes
         const programmesResponse = await fetch('/api/programmes');
         const programmesResult = await programmesResponse.json();
         
@@ -86,13 +85,15 @@ function displayNotifications(notifications) {
 // Create notification card HTML
 function createNotificationCard(notification) {
     const statusClass = getStatusClass(notification.status);
-    const statusBadge = getStatusBadge(notification.status);
     const workingDays = countWorkingDays(notification.start_date, notification.end_date);
+
+    // Use notification_title (dynamic: "BTECH - MSE-1 - VI SEMESTER - April-2026")
+    const displayTitle = notification.notification_title || notification.notification_code || 'N/A';
     
     return `
         <div class="notification-card">
             <div class="notification-header">
-                <h5 class="mb-2">${notification.notification_code}</h5>
+                <h5 class="mb-2">${displayTitle}</h5>
                 <div class="notification-status ${statusClass}">${notification.status}</div>
             </div>
             <div class="notification-body">
@@ -103,15 +104,11 @@ function createNotificationCard(notification) {
                     </div>
                     <div class="info-item">
                         <span class="info-label">Exam Name</span>
-                        <span class="info-value">${notification.exam_name}</span>
+                        <span class="info-value">${notification.exam_name || notification.exam_name_id || 'N/A'}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Exam Type</span>
                         <span class="info-value">${notification.exam_type}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Exam Code</span>
-                        <span class="info-value">${notification.exam_code}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Date Range</span>
@@ -140,22 +137,22 @@ function createNotificationCard(notification) {
                 </div>
                 
                 <div class="action-buttons">
-                    <button class="btn-action btn-info" onclick="viewDetails(${notification.notification_id})">
+                    <button class="btn-action btn-info" onclick="viewDetails('${notification.notification_id}')">
                         <i class="bi bi-eye"></i> View Details
                     </button>
-                    <button class="btn-action btn-warning" onclick="editNotification(${notification.notification_id})">
+                    <button class="btn-action btn-warning" onclick="editNotification('${notification.notification_id}')">
                         <i class="bi bi-pencil"></i> Edit
                     </button>
-                    <button class="btn-action btn-success" onclick="generateTimetable(${notification.notification_id})" 
+                    <button class="btn-action btn-success" onclick="generateTimetable('${notification.notification_id}')" 
                             ${notification.timetable_generated ? 'disabled' : ''}>
                         <i class="bi bi-calendar3"></i> 
                         ${notification.timetable_generated ? 'Timetable Generated' : 'Generate Timetable'}
                     </button>
-                    <button class="btn-action btn-primary" onclick="viewTimetable(${notification.notification_id})"
+                    <button class="btn-action btn-primary" onclick="viewTimetable('${notification.notification_id}')"
                             ${!notification.timetable_generated ? 'disabled' : ''}>
                         <i class="bi bi-calendar-week"></i> View Timetable
                     </button>
-                    <button class="btn-action btn-danger" onclick="deleteNotification(${notification.notification_id})">
+                    <button class="btn-action btn-danger" onclick="deleteNotification('${notification.notification_id}')">
                         <i class="bi bi-trash"></i> Delete
                     </button>
                 </div>
@@ -196,7 +193,7 @@ function countWorkingDays(startDate, endDate) {
     
     for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
         const day = date.getDay();
-        if (day !== 0 && day !== 6) { // Not Sunday or Saturday
+        if (day !== 0 && day !== 6) {
             workingDays++;
         }
     }
@@ -234,22 +231,20 @@ function filterNotifications() {
     
     let filtered = allNotifications;
     
-    // Search filter
+    // Search filter — searches notification_title as well
     if (searchTerm) {
-        filtered = filtered.filter(notification => 
-            notification.notification_code.toLowerCase().includes(searchTerm) ||
-            notification.exam_name.toLowerCase().includes(searchTerm) ||
+        filtered = filtered.filter(notification =>
+            (notification.notification_title && notification.notification_title.toLowerCase().includes(searchTerm)) ||
+            (notification.notification_code && notification.notification_code.toLowerCase().includes(searchTerm)) ||
             notification.exam_type.toLowerCase().includes(searchTerm) ||
             (notification.programme_name && notification.programme_name.toLowerCase().includes(searchTerm))
         );
     }
     
-    // Status filter
     if (statusFilter) {
         filtered = filtered.filter(notification => notification.status === statusFilter);
     }
     
-    // Programme filter
     if (programmeFilter) {
         filtered = filtered.filter(notification => notification.programme_id == programmeFilter);
     }
@@ -277,6 +272,8 @@ async function viewDetails(notificationId) {
 
 // Show notification details modal
 function showNotificationDetails(notification) {
+    const displayTitle = notification.notification_title || notification.notification_code || 'N/A';
+
     const modalHTML = `
         <div class="modal fade" id="detailsModal" tabindex="-1">
             <div class="modal-dialog modal-lg">
@@ -291,24 +288,16 @@ function showNotificationDetails(notification) {
                                 <h6>Basic Information</h6>
                                 <table class="table table-sm">
                                     <tr>
-                                        <td><strong>Notification Code:</strong></td>
-                                        <td>${notification.notification_code}</td>
+                                        <td><strong>Exam Name:</strong></td>
+                                        <td>${displayTitle}</td>
                                     </tr>
                                     <tr>
                                         <td><strong>Programme:</strong></td>
                                         <td>${notification.programme_name || 'N/A'}</td>
                                     </tr>
                                     <tr>
-                                        <td><strong>Exam Name:</strong></td>
-                                        <td>${notification.exam_name}</td>
-                                    </tr>
-                                    <tr>
                                         <td><strong>Exam Type:</strong></td>
                                         <td>${notification.exam_type}</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Exam Code:</strong></td>
-                                        <td>${notification.exam_code}</td>
                                     </tr>
                                     <tr>
                                         <td><strong>Status:</strong></td>
@@ -360,8 +349,8 @@ function showNotificationDetails(notification) {
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-warning" onclick="editNotification(${notification.notification_id})">Edit</button>
-                        <button type="button" class="btn btn-success" onclick="generateTimetable(${notification.notification_id})" 
+                        <button type="button" class="btn btn-warning" onclick="editNotification('${notification.notification_id}')">Edit</button>
+                        <button type="button" class="btn btn-success" onclick="generateTimetable('${notification.notification_id}')"
                                 ${notification.timetable_generated ? 'disabled' : ''}>Generate Timetable</button>
                     </div>
                 </div>
@@ -369,10 +358,7 @@ function showNotificationDetails(notification) {
         </div>
     `;
     
-    // Remove existing modal if any
     $('#detailsModal').remove();
-    
-    // Add new modal to body and show it
     $('body').append(modalHTML);
     const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
     modal.show();
@@ -396,8 +382,6 @@ function viewTimetable(notificationId) {
 // Delete notification
 function deleteNotification(notificationId) {
     $('#deleteModal').modal('show');
-    
-    // Store notification ID for confirmation
     $('#deleteModal').data('notification-id', notificationId);
 }
 
@@ -415,7 +399,7 @@ async function confirmDelete() {
         if (result.status === 'success') {
             showAlert('success', 'Notification deleted successfully');
             $('#deleteModal').modal('hide');
-            loadNotifications(); // Refresh the list
+            loadNotifications();
         } else {
             showAlert('danger', result.message || 'Failed to delete notification');
         }
@@ -457,10 +441,8 @@ function showAlert(type, message) {
         </div>
     `;
     
-    // Add alert to top of the page
     $('.content-section').prepend(alertHTML);
     
-    // Auto-dismiss after 5 seconds
     setTimeout(() => {
         $('.alert').alert('close');
     }, 5000);
@@ -468,19 +450,14 @@ function showAlert(type, message) {
 
 // Keyboard shortcuts
 $(document).on('keydown', function(e) {
-    // Ctrl/Cmd + R to refresh
     if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
         e.preventDefault();
         refreshNotifications();
     }
-    
-    // Ctrl/Cmd + N to create new notification
     if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
         e.preventDefault();
         createNotification();
     }
-    
-    // Escape to close modals
     if (e.key === 'Escape') {
         $('.modal').modal('hide');
     }

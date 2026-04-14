@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QP Setting Panel — KITSW</title>
+
+<!-- ── Inline Auth Guard ─────────────────────────────────────── -->
+<script>
+(function () {
+    var u = localStorage.getItem('username');
+    var i = localStorage.getItem('userId');
+    if (!u || !i) { localStorage.setItem('returnUrl', window.location.href); window.location.replace('/login.html'); return; }
+    var ok = ['Admin','Exam_Cell'];
+    if (ok.indexOf(localStorage.getItem('userRole')) === -1) {
+        localStorage.setItem('accessDeniedMsg','QP Setting Panel is restricted to Admin and Exam Cell only.');
+        window.location.replace('/index.html');
+    }
+}());
+</script>
+
+<link rel="stylesheet" href="css/styles.css">
+<!-- SheetJS for Excel export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#1a1a2e;font-size:14px;}
+.page-wrap{max-width:1400px;margin:24px auto;padding:0 20px 60px;}
+
+/* Toast */
+#toast-container{position:fixed;bottom:28px;right:28px;display:flex;flex-direction:column-reverse;gap:10px;z-index:9999;pointer-events:none;}
+.toast{min-width:280px;max-width:400px;padding:14px 18px;border-radius:10px;font-size:13px;font-weight:600;display:flex;align-items:flex-start;gap:10px;box-shadow:0 6px 24px rgba(0,0,0,.18);pointer-events:all;animation:toastIn .3s ease forwards;position:relative;overflow:hidden;}
+.toast::after{content:'';position:absolute;bottom:0;left:0;height:3px;background:rgba(255,255,255,.4);animation:toastProgress 4s linear forwards;}
+@keyframes toastIn{from{opacity:0;transform:translateX(40px);}to{opacity:1;transform:translateX(0);}}
+@keyframes toastOut{from{opacity:1;}to{opacity:0;transform:translateX(40px);}}
+@keyframes toastProgress{from{width:100%;}to{width:0%;}}
+.toast-success{background:#1b5e20;color:#fff;}.toast-error{background:#b71c1c;color:#fff;}
+.toast-warning{background:#e65100;color:#fff;}.toast-info{background:#0d47a1;color:#fff;}
+.toast-icon{font-size:18px;flex-shrink:0;margin-top:1px;}.toast-close{margin-left:auto;cursor:pointer;opacity:.7;font-size:16px;}
+
+/* Header */
+.page-header{background:linear-gradient(135deg,#1a237e,#3949ab);color:#fff;padding:20px 28px;border-radius:10px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 18px rgba(26,35,126,.25);}
+.page-header h1{font-size:20px;font-weight:700;}.page-header p{font-size:12px;opacity:.75;margin-top:3px;}
+.back-link{color:#fff;text-decoration:none;font-size:13px;padding:7px 14px;border:1px solid rgba(255,255,255,.4);border-radius:6px;}
+.back-link:hover{background:rgba(255,255,255,.15);}
+
+/* Stats */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.stat-card{background:#fff;border-radius:10px;padding:18px 20px;text-align:center;box-shadow:0 1px 6px rgba(238, 7, 7, 0.08);border-top:4px solid #e0e0e0;}
+.stat-num{font-size:30px;font-weight:700;line-height:1.1;}
+.stat-label{font-size:11px;font-weight:600;color:#666;margin-top:5px;text-transform:uppercase;letter-spacing:.5px;}
+.stat-total{border-top-color:#3949ab;}.stat-total .stat-num{color:#3949ab;}
+.stat-sent{border-top-color:#1565c0;}.stat-sent .stat-num{color:#1565c0;}
+.stat-received{border-top-color:#2e7d32;}.stat-received .stat-num{color:#2e7d32;}
+.stat-notsent{border-top-color:#f57c00;}.stat-notsent .stat-num{color:#f57c00;}
+.stat-pending{border-top-color:#b71c1c;}.stat-pending .stat-num{color:#b71c1c;}
+
+/* Tabs */
+.tabs{display:flex;border-bottom:2px solid #e0e0e0;margin-bottom:20px;}
+.tab{padding:10px 24px;background:none;border:none;font-family:inherit;font-size:16px;font-weight:600;color:#888;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .2s;}
+.tab:hover{color:#3949ab;}.tab.active{color:#3949ab;border-bottom-color:#3949ab;}
+.tab-panel{display:none;}.tab-panel.active{display:block;}
+
+/* Card */
+.card{background:#eaebec;border: 2px solid #4caf50;border-radius:10px;padding:22px 26px;margin-bottom:18px;box-shadow:0 1px 6px rgba(0,0,0,.08);}
+.card-title{font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#0a0004;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #e8eaf6;display:flex;align-items:center;gap:8px;}
+
+/* Form */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;}
+.fg label{display:block;font-size:15px;font-weight:700;color:#f90808;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px;}
+.fg input,.fg select{width:100%;padding:9px 12px;border:2.5px solid #2bda0c;border-radius:6px;font-size:15px;font-family:inherit;background:#fafafa;transition:border-color .2s;}
+.fg input:focus,.fg select:focus{outline:none;border-color:#3949ab;background:#fff;}
+
+/* Faculty search */
+.search-wrap{position:relative;}
+.search-wrap input{width:100%;}
+.search-dropdown{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #3949ab;border-top:none;border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;z-index:200;box-shadow:0 6px 18px rgba(0,0,0,.12);display:none;}
+.search-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid #f0f0f0;transition:background .1s;}
+.search-item:hover{background:#e8eaf6;}
+.search-item .s-name{font-weight:600;font-size:13px;}
+.search-item .s-meta{font-size:11px;color:#777;margin-top:2px;}
+.faculty-selected-box{display:none;margin-top:10px;padding:12px 16px;background:#e8f5e9;border-radius:8px;border-left:3px solid #43a047;}
+.faculty-selected-box .fs-name{font-weight:700;font-size:14px;color:#1b5e20;}
+.faculty-selected-box .fs-meta{font-size:12px;color:#388e3c;margin-top:3px;}
+.faculty-selected-box .fs-contact{font-size:11px;color:#666;margin-top:5px;}
+
+/* Buttons */
+.btn{padding:10px 20px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;display:inline-flex;align-items:center;gap:6px;}
+.btn-primary{background:#3949ab;color:#fff;}.btn-primary:hover{background:#283593;}
+.btn-success{background:#43a047;color:#fff;}.btn-success:hover{background:#2e7d32;}
+.btn-warning{background:#f57c00;color:#fff;}.btn-warning:hover{background:#e65100;}
+.btn-info{background:#0288d1;color:#fff;}.btn-info:hover{background:#0277bd;}
+.btn-outline{background:#fff;color:#3949ab;border:1.5px solid #3949ab;}.btn-outline:hover{background:#e8eaf6;}
+.btn-sm{padding:5px 12px;font-size:12px;}
+.btn-xs{padding:3px 9px;font-size:11px;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+
+/* Panel table */
+.panel-table{width:100%;border-collapse:collapse;font-size:13px;}
+.panel-table th{background:#1a237e;color:#fff;padding:10px 12px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;}
+.panel-table td{padding:10px 12px;border-bottom:1px solid #f0f0f0;vertical-align:middle;}
+.panel-table tr:hover td{background:#f8f9ff;}
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700;}
+.badge-assigned{background:#f3e5f5;color:#7b1fa2;}
+.badge-email_sent{background:#e3f2fd;color:#1565c0;}
+.badge-received{background:#e8f5e9;color:#1b5e20;}
+.badge-completed{background:#1b5e20;color:#fff;}
+
+/* Filter bar */
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;}
+.filter-bar .fg{min-width:160px;}
+.filter-bar .fg label{color:#555;}
+
+/* Email preview modal */
+#modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;}
+#modal-overlay.open{display:block;}
+#preview-modal{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;width:780px;max-width:95vw;max-height:88vh;overflow-y:auto;z-index:1001;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+#preview-modal.open{display:block;}
+.modal-head{background:linear-gradient(135deg,#283593,#3f51b5);color:#fff;padding:16px 22px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center;}
+.modal-head h3{font-size:15px;font-weight:700;}
+.modal-close{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;opacity:.8;}
+.modal-body{padding:20px 22px;}
+.modal-footer{padding:14px 22px;border-top:1px solid #f0f0f0;display:flex;gap:8px;justify-content:flex-end;}
+.preview-iframe{width:100%;height:420px;border:1px solid #e0e0e0;border-radius:6px;}
+.attach-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.attach-pill{padding:5px 12px;background:#e8eaf6;border-radius:20px;font-size:12px;font-weight:600;color:#3949ab;display:flex;align-items:center;gap:5px;}
+
+/* Action buttons in table */
+.action-group{display:flex;gap:5px;flex-wrap:wrap;}
+.pwd-badge{display:inline-flex;align-items:center;gap:5px;background:#fff3e0;color:#e65100;border:1px solid #ffcc80;border-radius:6px;padding:3px 8px;font-size:12px;font-weight:700;font-family:monospace;letter-spacing:1px;}
+.wa-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;}
+.wa-modal.open{display:flex;align-items:center;justify-content:center;}
+.wa-box{background:#fff;border-radius:12px;width:520px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden;}
+.wa-head{background:linear-gradient(135deg,#25d366,#128c7e);color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;}
+.wa-head h3{font-size:15px;font-weight:700;}
+.wa-body{padding:18px 20px;}
+.wa-msg{width:100%;height:260px;border:1.5px solid #e0e0e0;border-radius:8px;padding:12px;font-size:13px;font-family:'Segoe UI',sans-serif;line-height:1.6;resize:none;background:#f9f9f9;}
+.wa-foot{padding:12px 20px;border-top:1px solid #f0f0f0;display:flex;gap:8px;justify-content:flex-end;}
+</style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<!-- Email Preview Modal -->
+<div id="modal-overlay" onclick="closePreview()"></div>
+<div id="preview-modal">
+    <div class="modal-head">
+        <h3 id="preview-title">📧 Email Preview</h3>
+        <button class="modal-close" onclick="closePreview()">✕</button>
+    </div>
+    <div class="modal-body">
+        <div style="margin-bottom:12px;padding:12px 16px;background:#f8f9ff;border-radius:8px;font-size:13px;">
+            <div><b>To:</b> <span id="preview-to" style="color:#1565c0;"></span></div>
+            <div style="margin-top:4px;"><b>CC:</b> <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="aacbc9c5cfc9eac1c3ded9dd84cbc984c3c4">[email&#160;protected]</a>, <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="0b68646e4b60627f787c256a68256265">[email&#160;protected]</a></div>
+            <div style="margin-top:4px;"><b>Subject:</b> <span id="preview-subject"></span></div>
+        </div>
+        <iframe id="preview-iframe" class="preview-iframe" title="Email Preview"></iframe>
+        <div style="margin-top:14px;">
+            <div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">📎 Attachments</div>
+            <div class="attach-list">
+                <div class="attach-pill">📄 Guidelines_QP_Setting.pdf</div>
+                <div class="attach-pill">📝 NDA_NonDisclosure.html</div>
+                <div class="attach-pill" id="preview-templates"></div>
+                
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closePreview()">Cancel</button>
+        <button class="btn btn-success" id="confirm-send-btn" onclick="confirmSend()">📤 Confirm &amp; Send Email</button>
+    </div>
+</div>
+
+<!-- WhatsApp Message Modal -->
+<div class="wa-modal" id="wa-modal">
+  <div class="wa-box">
+    <div class="wa-head">
+      <h3>📱 WhatsApp Message</h3>
+      <button onclick="closeWAModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+    </div>
+    <div class="wa-body">
+      <p style="font-size:12px;color:#666;margin-bottom:8px;">Copy this message and paste in WhatsApp:</p>
+      <textarea class="wa-msg" id="wa-msg-text" readonly></textarea>
+    </div>
+    <div class="wa-foot">
+      <button class="btn btn-outline" onclick="closeWAModal()">Close</button>
+      <button class="btn btn-success" onclick="copyWAMsg()">📋 Copy Message</button>
+    </div>
+  </div>
+</div>
+
+<div class="page-wrap">
+    <div class="page-header">
+        <div>
+            <h1>📋 QP Setting Panel</h1>
+            <p>Question Paper Setting — Appointment &amp; Tracking</p>
+        </div>
+        <a href="index.html" class="back-link">← Back to Dashboard</a>
+    </div>
+
+    <!-- Dashboard Stats -->
+    <div class="card" style="margin-bottom:20px;">
+        <div class="card-title">📊 Dashboard Summary</div>
+        <div class="filter-bar">
+            <div class="fg"><label>Academic Year</label>
+                <select id="d-ay" onchange="loadStats()"><option value="">— All —</option></select>
+            </div>
+            <div class="fg"><label>Semester</label>
+                <select id="d-sem" onchange="loadStats()"><option value="">— All —</option></select>
+            </div>
+            <div class="fg"><label>Exam Type</label>
+                <select id="d-examtype" onchange="loadStats()">
+                    <option value="">— All —</option>
+                    <option value="Regular">Regular</option>
+                    <option value="Supply">Supply</option>
+                </select>
+            </div>
+        </div>
+        <div class="stats-row" style="grid-template-columns:repeat(6,1fr);">
+            <div class="stat-card stat-total">
+                <div class="stat-num" id="s-total">—</div>
+                <div class="stat-label">📋 Total Panels</div>
+            </div>
+            <div class="stat-card stat-notsent">
+                <div class="stat-num" id="s-notsent">—</div>
+                <div class="stat-label">📭 Not Sent</div>
+            </div>
+            <div class="stat-card stat-sent">
+                <div class="stat-num" id="s-sent">—</div>
+                <div class="stat-label">📤 Sent to Faculty</div>
+            </div>
+            <div class="stat-card stat-received">
+                <div class="stat-num" id="s-received">—</div>
+                <div class="stat-label">📥 Received</div>
+            </div>
+            <div class="stat-card" style="border-top-color:#7b1fa2;">
+                <div class="stat-num" id="s-remun" style="color:#7b1fa2;">—</div>
+                <div class="stat-label">💰 Bill Submitted</div>
+            </div>
+            <div class="stat-card stat-pending">
+                <div class="stat-num" id="s-pending">—</div>
+                <div class="stat-label">⏳ Pending</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('new')">➕ New Assignment</button>
+        <button class="tab" onclick="switchTab('list')">📋 All Panels</button>
+    </div>
+
+    <!-- ═══ NEW ASSIGNMENT TAB ═══ -->
+    <div class="tab-panel active" id="tab-new">
+
+        <!-- Step 1: Details -->
+        <div class="card">
+            <div class="card-title">🎯 Step 1 — Examination Details</div>
+            <div class="form-grid">
+                <div class="fg">
+                    <label>Academic Year *</label>
+                    <select id="f-ay" onchange="onAYChange()"><option value="">— Select —</option></select>
+                </div>
+                <div class="fg">
+                    <label>Programme *</label>
+                    <select id="f-prog" onchange="onProgChange()"><option value="">— Select —</option></select>
+                </div>
+                <div class="fg">
+                    <label>Branch *</label>
+                    <select id="f-branch" onchange="loadTheorySubjects()"><option value="">— Select Branch —</option></select>
+                </div>
+                <div class="fg">
+                    <label>Semester *</label>
+                    <select id="f-sem" onchange="loadTheorySubjects()"><option value="">— Select —</option></select>
+                </div>
+                <div class="fg">
+                    <label>Exam Type *</label>
+                    <select id="f-examtype">
+                        <option value="Regular">Regular</option>
+                        <option value="Supply">Supply / Supplementary</option>
+                    </select>
+                </div>
+                <div class="fg">
+                    <label>Batch</label>
+                    <select id="f-batch"><option value="">— Select —</option></select>
+                </div>
+                <div class="fg">
+                    <label>No. of QP Templates *</label>
+                    <select id="f-templates">
+                        <option value="1">1 Set</option>
+                        <option value="2" selected>2 Sets</option>
+                    </select>
+                </div>
+                <div class="fg">
+                    <label>QP  Due Date *</label>
+                    <input type="date" id="f-duedate">
+                </div>
+            </div>
+            <div class="form-grid" style="margin-top:14px;">
+                <div class="fg" style="grid-column:1/-1;max-width:450px;">
+                    <label>Theory Subject *</label>
+                    <select id="f-subject" onchange="showSubjectRegulation()"><option value="">— Select Branch &amp; Semester first —</option></select>
+                    <div id="f-regulation-display" style="margin-top:4px;font-size:12px;color:#1a237e;font-weight:600;display:none;">
+                        📋 Regulation: <span id="f-regulation-name"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Faculty -->
+        <div class="card">
+            <div class="card-title">👨‍🏫 Step 2 — Select Faculty (Paper Setter)</div>
+            <div class="search-wrap" style="max-width:460px;">
+                <label class="fg" style="display:block;font-size:15px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;">Search Faculty by Name / Employee ID / Branch</label>
+                <input type="text" id="faculty-search" placeholder="🔍 Type name or employee ID..." oninput="searchFaculty()" autocomplete="off"
+                    style="width:100%;padding:10px 14px;border:2.5px solid #e0e0e0;border-radius:6px;font-size:18px;font-family:inherit;">
+                <div class="search-dropdown" id="faculty-dropdown"></div>
+            </div>
+            <input type="hidden" id="selected-staff-id">
+            <div class="faculty-selected-box" id="faculty-box">
+                <div class="fs-name" id="fs-name"></div>
+                <div class="fs-meta" id="fs-meta"></div>
+                <div class="fs-contact" id="fs-contact"></div>
+            </div>
+        </div>
+
+        <!-- Step 3: Action -->
+        <div class="card" style="background:linear-gradient(135deg,#e8eaf6,#f3f4ff);">
+            <div class="card-title">🚀 Step 3 — Save &amp; Send</div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+                <button class="btn btn-primary" onclick="savePanel()">💾 Save Assignment</button>
+                <span style="color:#aaa;font-size:13px;font-style:italic;" id="saved-ref-display"></span>
+            </div>
+            <p style="font-size:12px;color:#888;margin-top:10px;">Save first — then preview &amp; send the email from the <b>All Panels</b> tab.</p>
+        </div>
+    </div>
+
+    <!-- ═══ ALL PANELS TAB ═══ -->
+    <div class="tab-panel" id="tab-list">
+        <div class="card">
+            <div class="card-title">📋 All QP Setting Panels</div>
+            <div class="filter-bar" style="margin-bottom:16px;">
+                <div class="fg"><label>Academic Year</label>
+                    <select id="l-ay" onchange="loadList()"><option value="">— All —</option></select>
+                </div>
+                <div class="fg"><label>Semester</label>
+                    <select id="l-sem" onchange="loadList()"><option value="">— All —</option></select>
+                </div>
+                <div class="fg"><label>Exam Type</label>
+                    <select id="l-examtype" onchange="loadList()">
+                        <option value="">— All —</option>
+                        <option value="Regular">Regular</option>
+                        <option value="Supply">Supply</option>
+                    </select>
+                </div>
+                <div class="fg"><label>Status</label>
+                    <select id="l-status" onchange="loadList()">
+                        <option value="">— All —</option>
+                        <option value="assigned">Assigned</option>
+                        <option value="email_sent">Email Sent</option>
+                        <option value="received">Received</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                </div>
+                <div class="fg" style="display:flex;align-items:flex-end;">
+                    <button class="btn btn-success" onclick="promptExport()" id="export-btn" style="white-space:nowrap;background:linear-gradient(135deg,#2e7d32,#43a047);box-shadow:0 2px 8px rgba(46,125,50,.3);">
+                        📥 Export Excel
+                    </button>
+                </div>
+            </div>
+            <div id="list-container"><p style="color:#aaa;text-align:center;padding:30px;">Select filters and the list will load automatically.</p></div>
+
+<!-- ═══ Export Choice Modal ═══ -->
+<div id="export-modal-overlay" onclick="closeExportModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;"></div>
+<div id="export-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:14px;width:440px;max-width:95vw;z-index:3001;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden;">
+    <div style="background:linear-gradient(135deg,#2e7d32,#43a047);color:#fff;padding:16px 22px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+            <div style="font-size:15px;font-weight:700;">📥 Export to Excel</div>
+            <div style="font-size:11px;opacity:.8;margin-top:2px;">Choose what to export</div>
+        </div>
+        <button onclick="closeExportModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;opacity:.8;">✕</button>
+    </div>
+    <div style="padding:22px;">
+        <p style="font-size:13px;color:#555;margin-bottom:18px;">Your current filters are applied. What would you like to export?</p>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+            <button onclick="runExport('filtered')" style="padding:14px 18px;border:2px solid #43a047;border-radius:10px;background:#f1f8f1;cursor:pointer;text-align:left;font-family:inherit;transition:all .2s;" onmouseover="this.style.background='#e8f5e9'" onmouseout="this.style.background='#f1f8f1'">
+                <div style="font-size:14px;font-weight:700;color:#2e7d32;">🔍 Export Filtered Results</div>
+                <div style="font-size:12px;color:#666;margin-top:4px;">Only the rows currently visible based on your selected filters</div>
+                <div id="export-count-label" style="font-size:11px;color:#43a047;font-weight:600;margin-top:4px;"></div>
+            </button>
+            <button onclick="runExport('all')" style="padding:14px 18px;border:2px solid #3949ab;border-radius:10px;background:#f5f6ff;cursor:pointer;text-align:left;font-family:inherit;transition:all .2s;" onmouseover="this.style.background='#e8eaf6'" onmouseout="this.style.background='#f5f6ff'">
+                <div style="font-size:14px;font-weight:700;color:#1a237e;">📋 Export ALL Panels</div>
+                <div style="font-size:12px;color:#666;margin-top:4px;">Fetch and export every panel regardless of filters (may take a moment)</div>
+            </button>
+        </div>
+    </div>
+    <div style="padding:0 22px 18px;display:flex;justify-content:flex-end;">
+        <button onclick="closeExportModal()" class="btn btn-outline" style="font-size:13px;">Cancel</button>
+    </div>
+</div>
+        </div>
+    </div>
+</div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+// ─── Session ──────────────────────────────────────────────────────────────────
+const SESSION = {
+    userId:   localStorage.getItem('userId'),
+    username: localStorage.getItem('username'),
+    userRole: localStorage.getItem('userRole')
+};
+
+let FD = {};
+let searchTimer = null;
+let previewPanelId = null;
+let selectedFaculty = null;
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function showToast(msg, type='success') {
+    const icons = {success:'✅',error:'❌',warning:'⚠️',info:'ℹ️'};
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast toast-${type}`;
+    t.innerHTML = `<span class="toast-icon">${icons[type]||'ℹ️'}</span><span style="flex:1">${msg}</span><span class="toast-close" onclick="this.parentElement.remove()">✕</span>`;
+    c.appendChild(t);
+    setTimeout(()=>{ t.style.animation='toastOut .3s ease forwards'; setTimeout(()=>t.remove(),300); },5000);
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadFilterData();
+    // Set default due date 2 weeks from today
+    const dd = new Date(); dd.setDate(dd.getDate()+14);
+    document.getElementById('f-duedate').value = dd.toISOString().split('T')[0];
+    // Auto-load stats
+    loadStats();
+});
+
+async function loadFilterData() {
+    try {
+        const res  = await fetch('/api/qp-setting/filter-data');
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message);
+        FD = data.data;
+
+        // Populate all AY dropdowns
+        ['f-ay','d-ay','l-ay'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.innerHTML = id === 'f-ay' ? '<option value="">— Select —</option>' : '<option value="">— All —</option>';
+            FD.academicYears.forEach(ay => {
+                const o = document.createElement('option');
+                o.value = ay.academic_year_id;
+                o.textContent = `${ay.academic_year} (${ay.semester_type})`;
+                if (ay.is_current) o.selected = true;
+                el.appendChild(o);
+            });
+        });
+
+        // Programmes
+        const pSel = document.getElementById('f-prog');
+        FD.programmes.forEach(p => {
+            const o = document.createElement('option');
+            o.value = p.programme_id; o.textContent = `${p.programme_code} — ${p.programme_name}`;
+            pSel.appendChild(o);
+        });
+
+        // Semesters
+        ['f-sem','d-sem','l-sem'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.innerHTML = id === 'f-sem' ? '<option value="">— Select —</option>' : '<option value="">— All —</option>';
+            FD.semesters.forEach(s => {
+                const o = document.createElement('option');
+                o.value = s.semester_id; o.textContent = `Semester ${s.semester_number} — ${s.semester_name}`;
+                el.appendChild(o);
+            });
+        });
+
+        // Batches
+        const bSel = document.getElementById('f-batch');
+        FD.batches.forEach(b => {
+            const o = document.createElement('option');
+            o.value = b.batch_id; o.textContent = b.batch_name;
+            bSel.appendChild(o);
+        });
+
+    } catch(err) { showToast('Failed to load filter data: '+err.message,'error'); }
+}
+
+function onAYChange() { loadStats(); }
+
+function onProgChange() {
+    const progId = document.getElementById('f-prog').value;
+    const bSel   = document.getElementById('f-branch');
+    bSel.innerHTML = '<option value="">— Select Branch —</option>';
+    (FD.branches||[]).filter(b=>String(b.programme_id)===String(progId)).forEach(b=>{
+        const o=document.createElement('option'); o.value=b.branch_id;
+        o.textContent=`${b.branch_code} — ${b.branch_name}`; bSel.appendChild(o);
+    });
+    loadTheorySubjects();
+}
+
+async function loadTheorySubjects() {
+    const progId  = document.getElementById('f-prog').value;
+    const branchId= document.getElementById('f-branch').value;
+    const semId   = document.getElementById('f-sem').value;
+    // Reset regulation display when subjects reload
+    document.getElementById('f-regulation-display').style.display = 'none';
+    document.getElementById('f-regulation-name').textContent = '';
+    const sel     = document.getElementById('f-subject');
+    sel.innerHTML = '<option value="">— Select Subject —</option>';
+    if (!progId||!branchId||!semId) return;
+    try {
+        const res  = await fetch(`/api/qp-setting/theory-subjects?programme_id=${progId}&branch_id=${branchId}&semester_id=${semId}`);
+        const data = await res.json();
+        (data.data||[]).forEach(s=>{
+            const o=document.createElement('option'); o.value=s.subject_id;
+            o.textContent=`${s.syllabus_code} — ${s.subject_name}`;
+            o.dataset.regulation = s.regulation_name || '';
+            sel.appendChild(o);
+        });
+        if (!data.data?.length) sel.innerHTML='<option value="">No theory subjects found for this selection</option>';
+    } catch(e){ console.warn(e); }
+}
+
+// ─── Faculty Search ───────────────────────────────────────────────────────────
+function searchFaculty() {
+    clearTimeout(searchTimer);
+    const q = document.getElementById('faculty-search').value.trim();
+    if (q.length < 2) { document.getElementById('faculty-dropdown').style.display='none'; return; }
+    searchTimer = setTimeout(async () => {
+        try {
+            const res  = await fetch(`/api/qp-setting/search-faculty?q=${encodeURIComponent(q)}`);
+            const data = await res.json();
+            const dd   = document.getElementById('faculty-dropdown');
+            if (!data.data?.length) {
+                dd.innerHTML = '<div style="padding:12px;color:#aaa;font-size:12px;font-style:italic;">No faculty found — try different name or ID</div>';
+            } else {
+                dd.innerHTML = data.data.map(s => `
+                    <div class="search-item" onclick="selectFaculty(${JSON.stringify(s).replace(/"/g,'&quot;')})">
+                        <div class="s-name">${s.title_prefix||''} ${s.full_name} <span style="font-size:11px;color:#999;font-weight:400">[${s.employee_id}]</span></div>
+                        <div class="s-meta">${s.designation||''} — ${s.branch_name||''} — 📧 ${s.email||'No email'}</div>
+                    </div>`).join('');
+            }
+            dd.style.display = 'block';
+        } catch(e){ console.warn(e); }
+    }, 300);
+}
+
+function selectFaculty(s) {
+    selectedFaculty = s;
+    document.getElementById('selected-staff-id').value = s.staff_id;
+    document.getElementById('faculty-search').value    = `${s.title_prefix||''} ${s.full_name} [${s.employee_id}]`;
+    document.getElementById('faculty-dropdown').style.display = 'none';
+
+    const box = document.getElementById('faculty-box');
+    document.getElementById('fs-name').textContent    = `${s.title_prefix||''} ${s.full_name}`;
+    document.getElementById('fs-meta').textContent    = `${s.designation||''} — Dept. of ${s.branch_name||''}`;
+    document.getElementById('fs-contact').innerHTML   = `📧 ${s.email||'<b style="color:#c62828">No email on record!</b>'} &nbsp;|&nbsp; 📱 ${s.mobile_number||'—'} &nbsp;|&nbsp; PAN: ${s.pan_card||'—'} &nbsp;|&nbsp; IFSC: ${s.ifsc_code||'—'}`;
+    box.style.display = 'block';
+    if (!s.email) showToast('Warning: This faculty has no email address. Update staff master before sending.','warning');
+}
+
+document.addEventListener('click', e => {
+    if (!e.target.closest('.search-wrap')) document.getElementById('faculty-dropdown').style.display='none';
+});
+
+// ─── Save Panel ───────────────────────────────────────────────────────────────
+async function savePanel() {
+    const ayId     = document.getElementById('f-ay').value;
+    const progId   = document.getElementById('f-prog').value;
+    const branchId = document.getElementById('f-branch').value;
+    const semId    = document.getElementById('f-sem').value;
+    const batchId  = document.getElementById('f-batch').value;
+    const subId    = document.getElementById('f-subject').value;
+    const staffId  = document.getElementById('selected-staff-id').value;
+    const examType = document.getElementById('f-examtype').value;
+    const tpl      = document.getElementById('f-templates').value;
+    const dueDate  = document.getElementById('f-duedate').value;
+
+    if (!ayId||!branchId||!semId||!subId)   { showToast('Please select Academic Year, Branch, Semester and Subject','warning'); return; }
+    if (!staffId)                            { showToast('Please select a faculty member','warning'); return; }
+    if (!dueDate)                            { showToast('Please set a QP submission due date','warning'); return; }
+
+    try {
+        const res  = await fetch('/api/qp-setting/save', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ academic_year_id:ayId, programme_id:progId,
+                branch_id:branchId, semester_id:semId, batch_id:batchId,
+                subject_id:subId, staff_id:staffId, exam_type:examType,
+                no_of_templates:Number(tpl), due_date:dueDate, created_by:SESSION.userId })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message);
+        showToast(`✅ Panel saved! Ref No: ${data.ref_no}`,'success');
+        document.getElementById('saved-ref-display').textContent = `Saved — Ref: ${data.ref_no}`;
+        loadStats();
+        // Switch to list tab after short delay
+        setTimeout(()=>{ switchTab('list'); loadList(); },1200);
+    } catch(err) { showToast('Error: '+err.message,'error'); }
+}
+
+// ─── Stats ────────────────────────────────────────────────────────────────────
+async function loadStats() {
+    const ayId    = document.getElementById('d-ay').value;
+    const semId   = document.getElementById('d-sem').value;
+    const examType= document.getElementById('d-examtype').value;
+    if (!ayId) {
+        ['s-total','s-notsent','s-sent','s-received','s-pending'].forEach(id=>{ document.getElementById(id).textContent='—'; });
+        return;
+    }
+    try {
+        let url = `/api/qp-setting/stats?academic_year_id=${ayId}`;
+        if (semId)   url += `&semester_id=${semId}`;
+        if (examType) url += `&exam_type=${examType}`;
+        const res  = await fetch(url);
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('s-total').textContent    = data.data.total    || 0;
+            document.getElementById('s-notsent').textContent  = data.data.not_sent  || 0;
+            document.getElementById('s-sent').textContent     = data.data.sent     || 0;
+            document.getElementById('s-received').textContent  = data.data.received || 0;
+            document.getElementById('s-remun').textContent    = data.data.remuneration || 0;
+            document.getElementById('s-pending').textContent  = data.data.pending  || 0;
+        }
+    } catch(e){ console.warn(e); }
+}
+
+// ─── List ─────────────────────────────────────────────────────────────────────
+async function loadList() {
+    const ayId    = document.getElementById('l-ay').value;
+    const semId   = document.getElementById('l-sem').value;
+    const examType= document.getElementById('l-examtype').value;
+    const status  = document.getElementById('l-status').value;
+    const container = document.getElementById('list-container');
+    if (!ayId) { container.innerHTML='<p style="color:#aaa;text-align:center;padding:30px;">Please select an Academic Year to view panels.</p>'; return; }
+    container.innerHTML = '<p style="color:#aaa;text-align:center;padding:20px;">Loading...</p>';
+    try {
+        let url = `/api/qp-setting/list?academic_year_id=${ayId}`;
+        if (semId)    url += `&semester_id=${semId}`;
+        if (examType) url += `&exam_type=${examType}`;
+        if (status)   url += `&status=${status}`;
+        const res  = await fetch(url);
+        const data = await res.json();
+        if (!data.data?.length) { container.innerHTML='<p style="color:#aaa;text-align:center;padding:30px;">No panels found for selected filters.</p>'; return; }
+        renderList(data.data);
+    } catch(err) { container.innerHTML=`<p style="color:red;padding:20px">${err.message}</p>`; }
+}
+
+function renderList(panels) {
+    window._allPanels = panels; // store for WA modal lookup
+    const statusBadge = s => ({
+        assigned:   '<span class="badge badge-assigned">🟣 Assigned</span>',
+        email_sent: '<span class="badge badge-email_sent">📤 Email Sent</span>',
+        received:   '<span class="badge badge-received">📥 Received</span>',
+        completed:  '<span class="badge badge-completed">✅ Completed</span>'
+    }[s] || s);
+
+    const fmtDate = d => d ? new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+    const fmtDateTime = d => d ? new Date(d).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+
+    let html = `<div style="overflow-x:auto;"><table class="panel-table"><thead><tr>
+        <th>#</th><th>Ref No.</th><th>Branch / Sem</th><th>Subject</th>
+        <th>Faculty</th><th>Type</th><th>Due Date</th><th>Sent At</th>
+        <th>Status</th><th>🔑 Password</th><th>Actions</th>
+    </tr></thead><tbody>`;
+
+    panels.forEach((p,i) => {
+        const canSend     = p.status === 'assigned';
+        const canResend   = p.status === 'email_sent';
+        const canReceive  = p.status === 'email_sent';
+        const canComplete = p.status === 'received';
+
+        html += `<tr>
+            <td style="color:#aaa;font-size:12px">${i+1}</td>
+            <td style="font-size:11px;font-family:monospace;color:#3949ab;white-space:nowrap">${p.ref_no}</td>
+            <td><b>${p.branch_code}</b><br><small style="color:#888">Sem ${p.semester_number} — ${p.exam_type}</small></td>
+            <td><b>${p.syllabus_code}</b><br><small style="color:#777">${p.subject_name}</small></td>
+            <td style="font-size:12px">
+                <b>${p.title_prefix||''} ${p.faculty_name}</b><br>
+                <span style="color:#777;font-size:11px">${p.designation||''} — ${p.faculty_branch||''}</span><br>
+                <span style="color:#1565c0;font-size:11px">📧 ${p.faculty_email||'<b style="color:#c62828">No email!</b>'}</span>
+            </td>
+            <td><span style="font-size:11px;background:#f0f0f0;padding:2px 8px;border-radius:4px">${p.no_of_templates} set${p.no_of_templates>1?'s':''}</span></td>
+            <td style="font-size:12px;white-space:nowrap">${fmtDate(p.due_date)}</td>
+            <td style="font-size:11px;color:#666;white-space:nowrap">${p.sent_at ? fmtDateTime(p.sent_at) : '—'}</td>
+            <td>${statusBadge(p.status)}</td>
+            <td>
+                ${p.qp_password
+                    ? `<span class="pwd-badge">🔑 ${p.qp_password}</span>`
+                    : '<span style="color:#aaa;font-size:11px;">—</span>'}
+            </td>
+            <td>
+                <div class="action-group">
+                    ${canSend   ? `<button class="btn btn-info btn-xs" onclick="previewEmail(${p.panel_id})">👁 Preview &amp; Send</button>` : ''}
+                    ${canResend ? `<button class="btn btn-warning btn-xs" onclick="previewEmail(${p.panel_id})">🔁 Resend</button>` : ''}
+                    ${canReceive  ? `<button class="btn btn-success btn-xs" onclick="markReceived(${p.panel_id})">📥 Mark Received</button>` : ''}
+                    ${canComplete  ? `<button class="btn btn-outline btn-xs" onclick="markCompleted(${p.panel_id})">✅ Complete</button>` : ''}
+                    ${p.status==='completed' ? `<span style="font-size:11px;color:#2e7d32;font-weight:600">✅ Done</span>` : ''}
+                    ${p.qp_password ? `<button class="btn btn-xs" style="background:#25d366;color:#fff;" onclick="showWAMsg(${p.panel_id})">📱 WA Msg</button>` : ''}
+                    ${p.status !== 'assigned' ? `<button class="btn btn-xs" style="background:#1a237e;color:#fff;" onclick="downloadZip(${p.panel_id}, '${((p.ref_code||p.syllabus_code||'').replace(/'/g,''))}')">📥 ZIP</button>` : ''}
+                </div>
+            </td>
+        </tr>`;
+    });
+
+    html += '</tbody></table></div>';
+    document.getElementById('list-container').innerHTML = html;
+}
+
+// ─── Email Preview ────────────────────────────────────────────────────────────
+async function previewEmail(panelId) {
+    try {
+        const res  = await fetch(`/api/qp-setting/${panelId}`);
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message);
+        const p = data.data;
+        previewPanelId = panelId;
+
+        document.getElementById('preview-title').textContent   = `📧 Email Preview — ${p.syllabus_code} / ${p.branch_code} / Sem ${p.semester_number}`;
+        document.getElementById('preview-to').textContent      = p.faculty_email || 'NO EMAIL ON RECORD';
+        document.getElementById('preview-subject').textContent = `[CONFIDENTIAL] Request for QP Setting — ${p.syllabus_code} ${p.branch_code} Sem-${p.semester_number} ${p.exam_type}`;
+        document.getElementById('preview-templates').textContent = `📄 ESE_Template (${p.no_of_templates} set${p.no_of_templates>1?'s':''})`;
+
+        // Build preview content inline
+        const iframe = document.getElementById('preview-iframe');
+        iframe.srcdoc = buildPreviewHtml(p);
+
+        document.getElementById('approve-modal') && null;
+        document.getElementById('preview-modal').classList.add('open');
+        document.getElementById('modal-overlay').classList.add('open');
+    } catch(err) { showToast('Error loading preview: '+err.message,'error'); }
+}
+
+function buildPreviewHtml(p) {
+    const fmtD = d => { if(!d)return'—'; const dt=new Date(d); return `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`; };
+    const romans = {1:'I',2:'II',3:'III',4:'IV',5:'V',6:'VI',7:'VII',8:'VIII'};
+    const semRoman = romans[p.semester_number]||p.semester_number;
+    const examLabel = p.exam_type==='Supply'?'Supplementary':'Regular';
+    const today = fmtD(new Date());
+    const due   = fmtD(p.due_date);
+    const tplCount = p.no_of_templates;
+
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>body{font-family:'Times New Roman',serif;font-size:12px;color:#000;line-height:1.6;padding:20px;}
+.kh{text-align:center;border-bottom:2px solid #1a237e;padding-bottom:10px;margin-bottom:14px;}
+.kh h2{color:#1a237e;font-size:14px;margin:3px 0;}.kh p{font-size:10px;color:#555;margin:1px 0;}
+.conf{text-align:center;font-weight:bold;font-size:13px;text-decoration:underline;margin-bottom:8px;}
+.ref{display:flex;justify-content:space-between;margin-bottom:14px;}
+table.addr{width:100%;margin-bottom:14px;} table.addr td{vertical-align:top;width:50%;font-size:12px;}
+.subject-line{font-weight:bold;margin:12px 0 8px;}
+table.det{width:100%;border-collapse:collapse;margin:12px 0;}
+table.det td{border:1px solid #555;padding:6px 10px;font-size:12px;}
+table.det .lbl{font-weight:bold;width:36%;background:#f5f5f5;}
+.notice{border:1px solid #555;padding:8px 12px;margin:12px 0;font-style:italic;font-size:11px;background:#fffde7;}
+.sign{text-align:right;margin-top:24px;}</style></head><body>
+<div class="kh"><h2>KAKATIYA INSTITUTE OF TECHNOLOGY &amp; SCIENCE</h2>
+<p>(An Autonomous Institute under Kakatiya University, Warangal)</p>
+<p>Opp: Yerragattugutta, Bheemaram (V), Hasanparthy (Mandal), WARANGAL – 506 015</p></div>
+<div class="conf">// CONFIDENTIAL //</div>
+<div class="ref"><span><b>No.:</b> ${p.ref_no}</span><span><b>Date:</b> ${today}</span></div>
+<table class="addr"><tr>
+<td><b>From:</b><br>The Addl. Controller of Examinations <i>(Confidential)</i><br>KITSW, Warangal.</td>
+<td><b>To</b><br>${p.title_prefix||'Dr'}. ${p.faculty_name},<br>${p.designation||''},<br>Dept. of ${p.faculty_branch_name||p.branch_name},<br>KITSW, Warangal.</td>
+</tr></table>
+<p>Dear Esteemed Faculty,</p>
+<p class="subject-line">Sub: Request for question paper setting — Regarding.</p>
+<p>Greetings from the examination branch, KITSW.<br><b>Congratulations Sir/Madam.</b></p>
+<p>You have been selected to set quality question papers for the ESE of the following course:</p>
+<table class="det">
+<tr><td class="lbl">Name of the Examination</td><td><b>B.Tech ${semRoman} Semester — ${examLabel}</b></td></tr>
+<tr><td class="lbl">Course Code &amp; Title</td><td><b>${p.syllabus_code} — ${p.subject_name}</b></td></tr>
+<tr><td class="lbl">No. of QP Sets</td><td><b>${tplCount}</b></td></tr>
+<tr><td class="lbl">Submission Due Date</td><td><b>${due}</b></td></tr>
+</table>
+<p>You are requested to send soft copies of the <b><i>Question Papers, signed Remuneration Bill &amp; signed Non-Disclosure Declaration</i></b> by <b>${due}</b> to <b>acoec@kitsw.ac.in</b></p>
+<div class="notice"><i>The Question paper Templates are <b>password protected</b>. Passwords will be shared via SMS/WhatsApp. Please maintain strict confidentiality.</i></div>
+<div class="sign">Yours sincerely<br><br><br><b>Dr. B. Kiran Kumar</b><br><i>Addl. Controller of Examinations</i><br><i>(Confidential)</i></div>
+</body></html>`;
+}
+
+function closePreview() {
+    document.getElementById('preview-modal').classList.remove('open');
+    document.getElementById('modal-overlay').classList.remove('open');
+    previewPanelId = null;
+}
+
+async function confirmSend() {
+    if (!previewPanelId) return;
+    const btn = document.getElementById('confirm-send-btn');
+    btn.disabled = true; btn.textContent = '⏳ Sending...';
+    try {
+        const res  = await fetch('/api/qp-setting/send-email', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ panel_id: previewPanelId, sent_by: SESSION.userId })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message);
+        showToast('📧 Email sent successfully!','success');
+        closePreview();
+        loadList();
+        loadStats();
+    } catch(err) { showToast('Error: '+err.message,'error'); }
+    finally { btn.disabled=false; btn.textContent='📤 Confirm & Send Email'; }
+}
+
+// ─── Mark Received / Completed ────────────────────────────────────────────────
+async function markReceived(panelId) {
+    if (!confirm('Mark this QP as received from faculty?')) return;
+    try {
+        const res = await fetch(`/api/qp-setting/${panelId}/mark-received`, {method:'POST'});
+        const d   = await res.json();
+        if (!d.success) throw new Error(d.message);
+        showToast('✅ Marked as received','success');
+        loadList(); loadStats();
+    } catch(err){ showToast('Error: '+err.message,'error'); }
+}
+
+async function markCompleted(panelId) {
+    if (!confirm('Mark this QP panel as fully completed?')) return;
+    try {
+        const res = await fetch(`/api/qp-setting/${panelId}/mark-completed`, {method:'POST'});
+        const d   = await res.json();
+        if (!d.success) throw new Error(d.message);
+        showToast('✅ Panel completed','success');
+        loadList(); loadStats();
+    } catch(err){ showToast('Error: '+err.message,'error'); }
+}
+
+// ─── WhatsApp Message Modal ──────────────────────────────────────────────────
+function showWAMsg(panelId) {
+    const p = (window._allPanels||[]).find(x=>x.panel_id===panelId) || {};
+    const romans = {1:'I',2:'II',3:'III',4:'IV',5:'V',6:'VI',7:'VII',8:'VIII'};
+    const semR = romans[p.semester_number] || p.semester_number;
+    const examLbl = p.exam_type === 'Supply' ? 'Supplementary' : 'Regular';
+    const sets = p.no_of_templates;
+    const fmtDue = d => {
+        if (!d) return '—';
+        const dt = new Date(d);
+        return String(dt.getDate()).padStart(2,'0') + '.' +
+               String(dt.getMonth()+1).padStart(2,'0') + '.' +
+               dt.getFullYear();
+    };
+    const msg =
+`Dear Sir/Ma'm,
+Greetings from the Exam Branch 💐
+A mail has been sent to you requesting for *Question Paper setting (${sets} set${sets>1?'s':''}) along with Scheme of Evaluation (${sets} set${sets>1?'s':''}) for the course ${p.syllabus_code} - ${p.subject_name} for B.Tech. ${semR} Semester ${examLbl}*
+~~~~~~
+The Question Paper Templates are password protected. To access the documents enter the KEY *${p.qp_password}*
+~~~~~~
+You are requested to save this password and maintain strict confidentiality.
+You are required to send the QP Templates, Signed Remuneration Bill and Signed Non-disclosure Declaration to acoec@kitsw.ac.in on or before *${fmtDue(p.due_date)}*
+~~~~
+Thanks & Regards 🙏
+Dr. B. Kiran Kumar,
+ACoEC, KITSW`;
+
+    document.getElementById('wa-msg-text').value = msg;
+    document.getElementById('wa-modal').classList.add('open');
+}
+
+function closeWAModal() {
+    document.getElementById('wa-modal').classList.remove('open');
+}
+
+function copyWAMsg() {
+    const txt = document.getElementById('wa-msg-text');
+    txt.select();
+    txt.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(txt.value).then(() => {
+        showToast('✅ Message copied! Paste in WhatsApp.', 'success');
+        closeWAModal();
+    }).catch(() => {
+        document.execCommand('copy');
+        showToast('✅ Message copied! Paste in WhatsApp.', 'success');
+        closeWAModal();
+    });
+}
+
+// ─── Show regulation when subject is selected ───────────────────────────────
+function showSubjectRegulation() {
+    const sel = document.getElementById('f-subject');
+    const opt = sel.options[sel.selectedIndex];
+    const reg = opt && opt.dataset.regulation;
+    const display = document.getElementById('f-regulation-display');
+    const nameEl  = document.getElementById('f-regulation-name');
+    if (reg) {
+        nameEl.textContent = reg;
+        display.style.display = 'block';
+    } else {
+        display.style.display = 'none';
+        nameEl.textContent = '';
+    }
+}
+
+// ─── Excel Export ─────────────────────────────────────────────────────────────
+
+function promptExport() {
+    const panels = window._allPanels || [];
+    const countLabel = document.getElementById('export-count-label');
+    if (panels.length > 0) {
+        countLabel.textContent = `▸ ${panels.length} panel${panels.length !== 1 ? 's' : ''} currently loaded`;
+    } else {
+        countLabel.textContent = '▸ No panels loaded yet — apply a filter first';
+    }
+    document.getElementById('export-modal-overlay').style.display = 'block';
+    document.getElementById('export-modal').style.display = 'block';
+}
+
+function closeExportModal() {
+    document.getElementById('export-modal-overlay').style.display = 'none';
+    document.getElementById('export-modal').style.display = 'none';
+}
+
+async function runExport(mode) {
+    closeExportModal();
+
+    let panels = [];
+
+    if (mode === 'filtered') {
+        panels = window._allPanels || [];
+        if (!panels.length) {
+            showToast('No panels loaded. Please apply a filter first.', 'warning');
+            return;
+        }
+        buildExcel(panels, 'filtered');
+
+    } else {
+        // Fetch ALL panels — no filters
+        showToast('⏳ Fetching all panels...', 'info');
+        const btn = document.getElementById('export-btn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Fetching...';
+        try {
+            const ayId = document.getElementById('l-ay').value;
+            let url = '/api/qp-setting/list?all=1';
+            if (ayId) url += `&academic_year_id=${ayId}`;
+            const res  = await fetch(url);
+            const data = await res.json();
+            panels = data.data || [];
+            if (!panels.length) { showToast('No panels found.', 'warning'); return; }
+            buildExcel(panels, 'all');
+        } catch(err) {
+            showToast('Export failed: ' + err.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '📥 Export Excel';
+        }
+    }
+}
+
+function buildExcel(panels, mode) {
+    if (!window.XLSX) { showToast('SheetJS not loaded. Check internet connection.', 'error'); return; }
+
+    const ROMANS = {1:'I',2:'II',3:'III',4:'IV',5:'V',6:'VI',7:'VII',8:'VIII'};
+    const fmtDate = d => {
+        if (!d) return '—';
+        const dt = new Date(d);
+        return `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;
+    };
+    const fmtDateTime = d => {
+        if (!d) return '—';
+        const dt = new Date(d);
+        return `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+    };
+    const statusLabel = s => ({ assigned:'Assigned', email_sent:'Email Sent', received:'Received', completed:'Completed' }[s] || s || '—');
+
+    // ── Build rows ──
+    const headers = [
+        '#', 'Ref No.', 'Academic Year', 'Semester', 'Exam Type',
+        'Branch Code', 'Branch Name', 'Subject Code', 'Subject Name',
+        'Faculty Name', 'Designation', 'Faculty Dept.',
+        'Faculty Email', 'QP Sets', 'Due Date',
+        'Email Sent At', 'Status', 'QP Password', 'Bill Status'
+    ];
+
+    const rows = panels.map((p, i) => [
+        i + 1,
+        p.ref_no || '—',
+        p.academic_year ? `${p.academic_year} (${p.semester_type || ''})` : '—',
+        p.semester_number ? `Sem ${p.semester_number} — ${ROMANS[p.semester_number] || ''}` : '—',
+        p.exam_type || '—',
+        p.branch_code || '—',
+        p.branch_name || '—',
+        p.syllabus_code || '—',
+        p.subject_name || '—',
+        `${p.title_prefix || ''} ${p.faculty_name || ''}`.trim() || '—',
+        p.designation || '—',
+        p.faculty_branch || p.faculty_branch_name || '—',
+        p.faculty_email || 'No email',
+        p.no_of_templates ? `${p.no_of_templates} Set${p.no_of_templates > 1 ? 's' : ''}` : '—',
+        fmtDate(p.due_date),
+        fmtDateTime(p.sent_at),
+        statusLabel(p.status),
+        p.qp_password || '—',
+        p.bill_status ? p.bill_status.charAt(0).toUpperCase() + p.bill_status.slice(1) : (p.remuneration_submitted ? 'Submitted' : 'Pending')
+    ]);
+
+    // ── Create workbook ──
+    const wb = XLSX.utils.book_new();
+    const wsData = [headers, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // ── Column widths (auto) ──
+    const colWidths = headers.map((h, ci) => {
+        const maxLen = Math.max(
+            h.length,
+            ...rows.map(r => String(r[ci] || '').length)
+        );
+        return { wch: Math.min(maxLen + 2, 40) };
+    });
+    ws['!cols'] = colWidths;
+
+    // ── Freeze top row ──
+    ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft' };
+
+    // ── Header row styling ──
+    const headerStyle = {
+        font:    { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
+        fill:    { fgColor: { rgb: '1A237E' } },
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+        border: {
+            bottom: { style: 'medium', color: { rgb: 'FFFFFF' } },
+            right:  { style: 'thin',   color: { rgb: 'FFFFFF' } }
+        }
+    };
+
+    // Status row colors
+    const statusFill = {
+        assigned:   { fgColor: { rgb: 'F3E5F5' } },  // light purple
+        email_sent: { fgColor: { rgb: 'E3F2FD' } },  // light blue
+        received:   { fgColor: { rgb: 'E8F5E9' } },  // light green
+        completed:  { fgColor: { rgb: 'C8E6C9' } },  // green
+    };
+
+    const range = XLSX.utils.decode_range(ws['!ref']);
+
+    for (let C = range.s.c; C <= range.e.c; C++) {
+        // Header styling (row 0)
+        const hCell = XLSX.utils.encode_cell({ r: 0, c: C });
+        if (!ws[hCell]) ws[hCell] = {};
+        ws[hCell].s = headerStyle;
+    }
+
+    // Data row styling
+    for (let R = 1; R <= rows.length; R++) {
+        const rowData = rows[R - 1];
+        const rawStatus = panels[R - 1]?.status;
+        const fill = statusFill[rawStatus] || { fgColor: { rgb: 'FFFFFF' } };
+
+        for (let C = range.s.c; C <= range.e.c; C++) {
+            const cell = XLSX.utils.encode_cell({ r: R, c: C });
+            if (!ws[cell]) ws[cell] = { v: '', t: 's' };
+            ws[cell].s = {
+                fill,
+                font: { sz: 10 },
+                alignment: { vertical: 'center', wrapText: false },
+                border: {
+                    bottom: { style: 'thin', color: { rgb: 'E0E0E0' } },
+                    right:  { style: 'thin', color: { rgb: 'E0E0E0' } }
+                }
+            };
+        }
+    }
+
+    // ── Sheet row height for header ──
+    ws['!rows'] = [{ hpt: 28 }];
+
+    // ── Summary sheet ──
+    const statusCounts = {};
+    panels.forEach(p => { statusCounts[p.status] = (statusCounts[p.status] || 0) + 1; });
+    const now = new Date();
+    const ayLabel = document.getElementById('l-ay')?.selectedOptions[0]?.text || 'All Years';
+    const semLabel = document.getElementById('l-sem')?.selectedOptions[0]?.text || 'All Semesters';
+    const examLabel = document.getElementById('l-examtype')?.value || 'All';
+    const statusFilter = document.getElementById('l-status')?.value || 'All';
+
+    const summaryData = [
+        ['QP Setting Panel — Export Summary'],
+        [],
+        ['Generated On', fmtDateTime(now)],
+        ['Exported By',  localStorage.getItem('username') || 'Admin'],
+        ['Export Mode',  mode === 'filtered' ? 'Filtered Results' : 'All Panels'],
+        [],
+        ['— Applied Filters —'],
+        ['Academic Year', ayLabel],
+        ['Semester',      semLabel],
+        ['Exam Type',     examLabel],
+        ['Status',        statusFilter],
+        [],
+        ['— Summary —'],
+        ['Total Panels', panels.length],
+        ['Assigned',     statusCounts['assigned']    || 0],
+        ['Email Sent',   statusCounts['email_sent']  || 0],
+        ['Received',     statusCounts['received']    || 0],
+        ['Completed',    statusCounts['completed']   || 0],
+        ['Bill Submitted', panels.filter(p => p.remuneration_submitted || p.bill_status === 'submitted').length],
+    ];
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+    wsSummary['!cols'] = [{ wch: 22 }, { wch: 36 }];
+
+    // Style title
+    if (wsSummary['A1']) {
+        wsSummary['A1'].s = { font: { bold: true, sz: 14, color: { rgb: '1A237E' } } };
+    }
+
+    // ── Add sheets ──
+    XLSX.utils.book_append_sheet(wb, ws, 'QP Panels');
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+    // ── File name ──
+    const dateStr = `${String(now.getDate()).padStart(2,'0')}${String(now.getMonth()+1).padStart(2,'0')}${now.getFullYear()}`;
+    const ayShort = ayLabel.replace(/[^a-zA-Z0-9\-]/g, '_').slice(0, 20);
+    const fileName = `QP_Panels_${ayShort}_${dateStr}.xlsx`;
+
+    // ── Download ──
+    XLSX.writeFile(wb, fileName, { bookType: 'xlsx', type: 'binary', cellStyles: true });
+    showToast(`✅ Exported ${panels.length} panel${panels.length !== 1 ? 's' : ''} → ${fileName}`, 'success');
+}
+
+// ─── Download ZIP ────────────────────────────────────────────────────────────
+function downloadZip(panelId, refCode) {
+    const a = document.createElement('a');
+    a.href = `/api/qp-setting/download-zip/${panelId}`;
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast('📥 ZIP download started...', 'info');
+}
+
+// ─── Tab switching ────────────────────────────────────────────────────────────
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+    document.getElementById(`tab-${tab}`).classList.add('active');
+    if (tab==='list') {
+        const dashAY = document.getElementById('d-ay').value;
+        if (dashAY) document.getElementById('l-ay').value = dashAY;
+        loadList();
+    }
+}
+</script>
+</body>
+</html>

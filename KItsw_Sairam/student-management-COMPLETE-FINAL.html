@@ -142,6 +142,28 @@
             color: white;
         }
 
+        .btn-outline-success {
+            background: white;
+            color: #28a745;
+            border: 2px solid #28a745;
+        }
+
+        .btn-outline-success:hover {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-outline-primary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-outline-primary:hover {
+            background: #667eea;
+            color: white;
+        }
+
         .btn-group {
             display: flex;
             gap: 10px;
@@ -794,7 +816,7 @@
             <div class="form-row">
                 <div class="form-group">
                     <label>Programme *</label>
-                    <select id="elective-programme" onchange="loadBranches('elective')">
+                    <select id="elective-programme" onchange="loadBranches('elective'); loadElectiveDropdowns()">
                         <option value="">Select Programme</option>
                     </select>
                 </div>
@@ -834,6 +856,22 @@
                     </select>
                 </div>
             </div>
+
+<!-- ── Download Template Button ── -->
+<button id="btnDownloadTemplate" onclick="downloadElectiveTemplate()" class="btn btn-outline-success">
+    📥 Download Template
+</button>
+
+<!-- ── Upload Filled Template ── -->
+<button id="btnUploadTemplate" onclick="document.getElementById('electiveUploadInput').click()" class="btn btn-outline-primary">
+    📤 Upload Mapping
+</button>
+<input type="file" id="electiveUploadInput" accept=".xlsx" style="display:none"
+       onchange="uploadElectiveMapping(this)">
+
+<!-- ── Upload result message area ── -->
+<div id="uploadResult" style="margin-top:10px;display:none;"></div>
+
 
             <div class="btn-group">
                 <button class="btn btn-primary" onclick="showElectiveStudents()">🔍 Show Students</button>
@@ -1163,6 +1201,220 @@
         </div>
     </div>
 
+
+<!-- ============================================================
+     ELECTIVE TEMPLATE — DOWNLOAD & UPLOAD FUNCTIONS
+     ============================================================ -->
+<script>
+// ── Load Batches, Semesters, Regulations for Elective Tab ───────────
+async function loadElectiveDropdowns() {
+    const progId = document.getElementById('elective-programme')?.value;
+
+    // ── Load Batches ─────────────────────────────────────────────────
+    try {
+        const url      = progId ? '/api/batches?programme_id=' + progId : '/api/batches';
+        const batchRes = await fetch(url);
+        const batchData = await batchRes.json();
+        const batches   = batchData.data || batchData.batches || [];
+        const batchSel  = document.getElementById('elective-batch');
+        batchSel.innerHTML = '<option value="">Select Batch</option>';
+        batches.forEach(b => {
+            const opt = document.createElement('option');
+            // Handle any field name your DB uses
+            opt.value       = b.batch_id   || b.id;
+            opt.textContent = b.batch_name || b.batch_year || b.name || opt.value;
+            batchSel.appendChild(opt);
+        });
+        console.log('Elective batches loaded:', batches.length);
+    } catch(e) { console.error('Batch load error:', e); }
+
+    // ── Load Semesters ───────────────────────────────────────────────
+    try {
+        const semRes  = await fetch('/api/semesters');
+        const semData = await semRes.json();
+        const sems    = semData.data || semData.semesters || [];
+        const semSel  = document.getElementById('elective-semester');
+        semSel.innerHTML = '<option value="">Select Semester</option>';
+        sems.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value       = s.semester_id || s.id;
+            opt.textContent = s.semester_name || s.name || ('Semester ' + opt.value);
+            semSel.appendChild(opt);
+        });
+        console.log('Elective semesters loaded:', sems.length);
+    } catch(e) { console.error('Semester load error:', e); }
+
+    // ── Load Regulations ─────────────────────────────────────────────
+    try {
+        const regRes  = await fetch('/api/regulations');
+        const regData = await regRes.json();
+        const regs    = regData.data || regData.regulations || [];
+        const regSel  = document.getElementById('elective-regulation');
+        regSel.innerHTML = '<option value="">Select Regulation</option>';
+        regs.forEach(r => {
+            const opt = document.createElement('option');
+            opt.value       = r.regulation_id || r.id;
+            opt.textContent = r.regulation_name || r.name || opt.value;
+            regSel.appendChild(opt);
+        });
+        console.log('Elective regulations loaded:', regs.length);
+    } catch(e) { console.error('Regulation load error:', e); }
+}
+
+// Reads all filter values from the elective tab — including batch and academic year
+function getSelectedFilters() {
+    return {
+        programme_id:  document.getElementById('elective-programme')?.value      || '',
+        batch_id:      document.getElementById('elective-batch')?.value           || '',
+        branch_id:     document.getElementById('elective-branch')?.value          || '',
+        semester_id:   document.getElementById('elective-semester')?.value        || '',
+        subject_id:    document.getElementById('elective-subject')?.value         || '',
+        regulation_id: document.getElementById('elective-regulation')?.value      || '',
+        academic_year: document.getElementById('elective-academic-year')?.value   || '',
+    };
+}
+
+// ── Download Template (fetch-based — page NEVER navigates away) ──────
+async function downloadElectiveTemplate() {
+    const f = getSelectedFilters();
+    const resultDiv = document.getElementById('uploadResult');
+    resultDiv.style.display = 'block';
+
+    const missing = [];
+    if (!f.programme_id)  missing.push('Programme');
+    if (!f.batch_id)      missing.push('Batch');
+    if (!f.branch_id)     missing.push('Branch');
+    if (!f.semester_id)   missing.push('Semester');
+    if (!f.subject_id)    missing.push('Elective Subject');
+
+    if (missing.length > 0) {
+        resultDiv.innerHTML = `<div class="alert alert-error">❌ Please select before downloading:<br>&bull; ${missing.join('<br>&bull; ')}</div>`;
+        return;
+    }
+
+    resultDiv.innerHTML = '<span style="color:#666;">⏳ Generating template...</span>';
+
+    try {
+        const params   = new URLSearchParams(f);
+        const response = await fetch(`/elective-mapping/download-template?${params.toString()}`);
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({ message: `Server error ${response.status}` }));
+            resultDiv.innerHTML = `<div class="alert alert-error">❌ ${err.message}</div>`;
+            return;
+        }
+
+        // Blob download — page stays open, no navigation
+        const blob    = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a       = document.createElement('a');
+        const cd      = response.headers.get('Content-Disposition') || '';
+        const match   = cd.match(/filename="?([^";\n]+)"?/);
+        a.download    = match ? match[1] : 'Elective_Template.xlsx';
+        a.href        = blobUrl;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(blobUrl);
+
+        resultDiv.innerHTML = `<div class="alert alert-success">✅ Template downloaded! Fill in the Htnos and upload it back.</div>`;
+
+    } catch (err) {
+        resultDiv.innerHTML = `<div class="alert alert-error">❌ Download failed: ${err.message}</div>`;
+    }
+}
+
+// ── Upload Filled Template ───────────────────────────────────────────
+async function uploadElectiveMapping(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const f = getSelectedFilters();
+    const resultDiv = document.getElementById('uploadResult');
+    resultDiv.style.display = 'block';
+
+    const missing = [];
+    if (!f.programme_id)  missing.push('Programme');
+    if (!f.batch_id)      missing.push('Batch');
+    if (!f.branch_id)     missing.push('Branch');
+    if (!f.semester_id)   missing.push('Semester');
+    if (!f.subject_id)    missing.push('Elective Subject');
+
+    if (missing.length > 0) {
+        resultDiv.innerHTML = `<div class="alert alert-error">❌ Please select before uploading:<br>&bull; ${missing.join('<br>&bull; ')}</div>`;
+        input.value = '';
+        return;
+    }
+
+    resultDiv.innerHTML = '<span style="color:#666;">⏳ Uploading and validating...</span>';
+
+    const formData = new FormData();
+    formData.append('file',          file);
+    formData.append('programme_id',  f.programme_id);
+    formData.append('batch_id',      f.batch_id);
+    formData.append('branch_id',     f.branch_id);
+    formData.append('semester_id',   f.semester_id);
+    formData.append('subject_id',    f.subject_id);
+    formData.append('regulation_id', f.regulation_id);
+    formData.append('academic_year', f.academic_year);
+
+    try {
+        const response = await fetch('/elective-mapping/upload-mapping', {
+            method: 'POST',
+            body:   formData
+        });
+
+        const result = await response.json();
+
+        if (result.filter_mismatch) {
+            resultDiv.innerHTML = `
+            <div class="alert alert-error">
+                ⚠️ <strong>Template Mismatch!</strong> This file was generated for different filters.<br>
+                <b>File was for:</b> ${result.file_filters}<br>
+                <b>Current selection:</b> ${result.current_filters}<br>
+                No students were mapped. Download a fresh template with the current filters.
+            </div>`;
+            input.value = '';
+            return;
+        }
+
+        if (result.status === 'success') {
+            const d = result.data;
+            let html = `
+                <div class="alert alert-success">
+                    <strong>✅ ${result.message}</strong><br>
+                    Total Htnos in file: <b>${d.total_in_file}</b> &nbsp;|&nbsp;
+                    Valid students: <b>${d.valid}</b> &nbsp;|&nbsp;
+                    Newly mapped: <b>${d.added}</b> &nbsp;|&nbsp;
+                    Already mapped (skipped): <b>${d.skipped}</b>
+                    ${d.duplicates_in_file > 0 ? `<br>⚠️ Duplicate Htnos ignored: <b>${d.duplicates_in_file}</b>` : ''}
+                </div>`;
+
+            if (d.invalid_htnos && d.invalid_htnos.length > 0) {
+                html += `
+                <div class="alert alert-error">
+                    <strong>⚠️ Not Found / Invalid Htnos (${d.invalid_htnos.length}):</strong><br>
+                    ${d.invalid_htnos.join(', ')}
+                </div>`;
+            }
+            resultDiv.innerHTML = html;
+            if (typeof showElectiveStudents === 'function') showElectiveStudents();
+
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-error">
+                    <strong>❌ ${result.message}</strong>
+                    ${result.invalid_htnos?.length ? '<br>Invalid Htnos: ' + result.invalid_htnos.join(', ') : ''}
+                </div>`;
+        }
+
+    } catch (err) {
+        resultDiv.innerHTML = `<div class="alert alert-error">❌ Upload failed: ${err.message}</div>`;
+    }
+
+    input.value = '';
+}
+</script>
 
     
     <!-- Load JavaScript -->

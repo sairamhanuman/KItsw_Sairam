@@ -5,13 +5,195 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Engineering College Application</title>
     <link rel="stylesheet" href="css/styles.css">
+    <script src="js/auth.js"></script>
 </head>
 <body>
     <!-- Header Section -->
     <header class="header">
         <h1>ENGINEERING COLLEGE - Welcome</h1>
+        <div class="header-actions">
+            <div class="user-info">
+                <span id="user-display">Admin</span>
+                <span class="session-duration" id="session-duration">0m</span>
+            </div>
+            <button class="logout-btn" id="logout-btn" onclick="handleLogout()">
+                🚪 Logout
+            </button>
+        </div>
     </header>
+<style>
+   /* Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
 
+/* Body */
+body {
+    background-color: #f4f6f9;
+}
+
+/* Header */
+.header {
+    background: #004d40;
+    color: white;
+    padding: 20px;
+    font-size: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Header Right */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-info {
+    font-size: 18px;
+}
+
+/* Logout Button */
+.logout-btn {
+    background: #ff5252;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    cursor: pointer;
+    border-radius: 6px;
+    font-size: 16px;
+}
+
+.logout-btn:hover {
+    background: #e53935;
+}
+
+/* Layout */
+.container {
+    display: flex;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 280px;
+    background: #263238;
+    color: white;
+    height: 100vh;
+    padding: 15px;
+}
+
+/* Menu Section Box */
+.menu-section {
+    background: #37474f;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 2px solid #546e7a;
+}
+
+/* Menu Header */
+.menu-header {
+    font-size: 18px;
+    font-weight: bold;
+    padding: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Submenu Section */
+.submenu-section {
+    margin-top: 10px;
+    background: #455a64;
+    border-radius: 8px;
+    padding: 8px;
+}
+
+/* Submenu Header */
+.submenu-header {
+    font-size: 16px;
+    padding: 10px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* Submenu Items */
+.submenu-items {
+    margin-top: 8px;
+}
+
+/* Menu Items */
+.menu-item {
+    display: block;
+    background: #607d8b;
+    margin: 6px 0;
+    padding: 10px;
+    border-radius: 6px;
+    text-decoration: none;
+    color: white;
+    font-size: 15px;
+    transition: 0.3s;
+}
+
+/* Hover Effect */
+.menu-item:hover {
+    background: #00acc1;
+}
+
+/* Content Area */
+.content-area {
+    flex: 1;
+    padding: 25px;
+}
+
+/* Welcome Box */
+.welcome-message {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    border: 2px solid #ccc;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+/* Welcome Title */
+.welcome-message h2 {
+    font-size: 28px;
+    margin-bottom: 15px;
+}
+
+/* Info Box */
+.info-box {
+    margin-top: 20px;
+    padding: 20px;
+    border-radius: 10px;
+    background: #e0f7fa;
+    border: 2px solid #00acc1;
+}
+
+/* Info Text */
+.info-box h3 {
+    font-size: 20px;
+    margin-bottom: 10px;
+}
+
+.info-box ul {
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+/* Toggle Icons */
+.toggle-icon {
+    font-size: 14px;
+}
+</style>
+
+
+    
     <div class="container">
         <!-- Left Side Navigation (Sidebar) -->
         <aside class="sidebar">
@@ -30,6 +212,12 @@
                                 <span>Masters</span>
                             </div>
                             <div class="submenu-items active" id="masters">
+                                <a href="backup-button-snippet.html" class="menu-item">Backup Data</a>
+                          <a href="result-analysis.html" class="menu-item">Result Analysis</a>
+
+                                <a href="academic-year.html" class="menu-item">Academic Year</a>
+                                <a href="page-access-manager.html" class="menu-item">Role Permissions</a>
+                                
                                 <a href="programme.html" class="menu-item">Programme</a>
                                 <a href="branch.html" class="menu-item">Branch</a>
                                 <a href="batch.html" class="menu-item">Batch</a>
@@ -43,49 +231,30 @@
                                 <a href="masters/exam-types-master.html" class="menu-item">Exam Types Master</a>
                                 <a href="masters/holidays-master.html" class="menu-item">Holidays Master</a>
                                 <a href="create-exam-notification.html" class="menu-item" >Create Internal Exam Notification</a>
-                                <!--<a href="view-notifications.html" class="menu-item">📋 View Exam Notifications</a>-->
-                               <!--- <a href="student-management.html" class="menu-item">Student Management</a>-->
                                 <a href="student-management-COMPLETE-FINAL.html" class="menu-item">Student Management </a>
-
-                                
                               <a href="staff-management.html" class="menu-item">Staff Master</a>
+                              <a href="staff.html" class="menu-item">College Master</a>
                               <a href="seating-plan.html" class="menu-item">Seating Plan Master</a>
-                              <a href="room-weekly-schedule.html" class="menu-item">📅 Room Weekly Schedule</a>
-                                <a href="seating-plan-generator.html" class="menu-item"> Generate Seating Plan</a>
-                            </div>
-                        </div>
-
-                        <!-- Course Master Submenu -->
-                        <div class="submenu-section">
-                            <div class="submenu-header" data-submenu="course-master">
-                                <span class="toggle-icon">▶</span>
-                                <span>Course Master</span>
-                            </div>
-                            <div class="submenu-items" id="course-master">
-                                <a href="course-management.html" class="menu-item">Course Import/Entry Verification</a>
-
+                              <a href="room-weekly-schedule.html" class="menu-item"> Room Weekly Schedule</a>
+                               <a href="seating-plan-generator.html" class="menu-item"> Generate Seating Plan</a>
+                             <a href="exam-absentees.html" class="menu-item"> Exam Absentees</a>
+                              <a href="invigilation.html" class="menu-item"> invigilation absentee</a>
+                             <a href="invigilation-admin.html" class="menu-item"> Admin Exam Absentees</a>
+                             <a href="classwork-timetable.html" class="menu-item"> classwork-timetable</a>
+                            <a href="course-management.html" class="menu-item">Course Import/Entry Verification</a>
                                 <a href="subject-allotment.html" class="menu-item">Course Mapping vs Faculty</a>
+                            
+                                <a href="lab-panel-entry.html" class="menu-item">LAB PANEL ENTRY</a>
+                            
+                                <a href="lab-panel-coe.html" class="menu-item">LAB PANEL ENTRY (COE)</a>
+                                <a href="qp-setting-panel.html" class="menu-item">QP PANNEL</a>
+                                <a href="qp-remuneration.html" class="menu-item">QP Remuneration BILL</a>
+                            
+                                <a href="user-management.html" class="menu-item">Manage Users</a>
+                                <a href="register.html" class="menu-item">User Registration</a>
+                                <a href="exam-account-ledger.html" class="menu-item">Account Ledger</a>
+                      
 
-
-                                
-                            </div>
-                        </div>
-
-                        <!-- Exam Setup -->
-                        <div class="submenu-section">
-                            <a href="#" class="menu-item single-item" data-content="exam-setup">Exam Setup</a>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- POST-EXAMINATIONS Section -->
-                <div class="menu-section">
-                    <div class="menu-header" data-section="post-exam">
-                        <span class="toggle-icon">▶</span>
-                        <span>POST-EXAMINATIONS</span>
-                    </div>
-                    <div class="submenu" id="post-exam">
-                        <p class="empty-message">No items available</p>
                     </div>
                 </div>
             </nav>
@@ -97,15 +266,6 @@
                 <div class="welcome-message">
                     <h2>Welcome to Engineering College Application</h2>
                     <p>Please select an option from the navigation menu to get started.</p>
-                    
-                    <!-- Quick Access Button for Internal Exam Notifications -->
-                    <div class="quick-access-section">
-                        <h3>🚀 Quick Access</h3>
-                        <a href="create-exam-notification.html" class="quick-access-btn">
-                            <i class="icon">📋</i>
-                            <span>Create Internal Exam Notification</span>
-                        </a>
-                    </div>
                     
                     <div class="info-box">
                         <h3>Available Modules:</h3>
@@ -120,5 +280,101 @@
     </div>
 
     <script src="js/script.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        // ── Show access-denied toast ──────────────────────────────────────
+        var deniedMsg = localStorage.getItem('accessDeniedMsg');
+        if (deniedMsg) {
+            localStorage.removeItem('accessDeniedMsg');
+            var toast = document.createElement('div');
+            toast.textContent = '⛔ ' + deniedMsg;
+            toast.style.cssText = [
+                'position:fixed', 'top:18px', 'right:22px', 'z-index:9999',
+                'background:#c0392b', 'color:#fff', 'padding:12px 20px',
+                'border-radius:8px', 'font-size:14px', 'box-shadow:0 4px 14px rgba(0,0,0,.25)',
+                'transition:opacity .4s'
+            ].join(';');
+            document.body.appendChild(toast);
+            setTimeout(function () { toast.style.opacity = '0'; }, 3500);
+            setTimeout(function () { toast.remove(); }, 3900);
+        }
+
+        // ── Auth check ────────────────────────────────────────────────────
+        if (!auth.requireAuth()) {
+            return;
+        }
+
+        // Update user display
+        const currentUser = auth.getCurrentUser();
+        if (currentUser) {
+            document.getElementById('user-display').textContent = currentUser.username;
+        }
+
+        // Update session duration every minute
+        function updateSessionDuration() {
+            const duration = auth.getSessionDuration();
+            document.getElementById('session-duration').textContent = duration;
+        }
+        updateSessionDuration();
+        setInterval(updateSessionDuration, 60000);
+
+        // Update welcome message
+        const welcomeMessage = document.querySelector('.welcome-message h2');
+        if (welcomeMessage && currentUser) {
+            welcomeMessage.textContent = `Welcome back, ${currentUser.username}!`;
+        }
+
+        // ── Filter sidebar menu based on user page access ─────────────────
+        // ✅ THIS MUST BE INSIDE DOMContentLoaded — you had it outside before
+        const userId = localStorage.getItem('userId');
+        const userRole = localStorage.getItem('userRole');
+
+        if (userRole !== 'Admin' && userId) {
+            fetch(`/api/page-access/user/${userId}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) return;
+
+                    const allowedPages = new Set(data.data.map(p => p.page_url));
+
+                    document.querySelectorAll('.menu-item').forEach(link => {
+                        const href = link.getAttribute('href');
+                        const pageName = href ? href.split('/').pop() : '';
+                        if (pageName && !allowedPages.has(pageName)) {
+                            link.style.display = 'none';
+                        }
+                    });
+
+                    // Hide empty submenu sections
+                    document.querySelectorAll('.submenu-items').forEach(section => {
+                        const visibleItems = section.querySelectorAll('.menu-item:not([style*="display: none"])');
+                        if (visibleItems.length === 0) {
+                            section.closest('.submenu-section').style.display = 'none';
+                        }
+                    });
+                })
+                .catch(err => console.error('Menu filter error:', err));
+        }
+
+    }); // ← DOMContentLoaded ends here
+
+    // Logout handler
+    async function handleLogout() {
+        if (confirm('Are you sure you want to logout?')) {
+            try {
+                await auth.logout();
+                window.location.href = '/login.html';
+            } catch (error) {
+                console.error('Logout error:', error);
+                localStorage.removeItem('adminSession');
+                localStorage.removeItem('userId');
+                localStorage.removeItem('username');
+                localStorage.removeItem('userRole');
+                window.location.href = '/login.html';
+            }
+        }
+    }
+</script>
 </body>
 </html>

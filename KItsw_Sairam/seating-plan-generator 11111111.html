@@ -1,0 +1,2183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Seating Plan Generator</title>
+<link rel="stylesheet" href="css/styles.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',sans-serif;background:#f0f4ff;font-size:14px;color:#1e293b;}
+
+/* ── Layout ── */
+.page-wrap{max-width:1600px;margin:0 auto;padding:20px;}
+
+/* ── Header ── */
+.page-hdr{
+    background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+    color:#fff;padding:22px 30px;border-radius:14px;
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:22px;box-shadow:0 6px 24px rgba(102,126,234,.4);
+}
+.page-hdr h1{font-size:22px;font-weight:800;margin:0;}
+.page-hdr p{font-size:12px;opacity:.8;margin-top:3px;}
+
+/* ── Stepper ── */
+.stepper{display:flex;gap:0;margin-bottom:22px;background:#fff;border-radius:12px;
+    overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.07);}
+.step{flex:1;padding:14px 10px;text-align:center;border-right:1px solid #f1f5f9;
+    cursor:pointer;transition:all .25s;position:relative;}
+.step:last-child{border-right:none;}
+.step .snum{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;
+    justify-content:center;font-weight:800;font-size:13px;margin-bottom:4px;
+    background:#e2e8f0;color:#64748b;transition:all .25s;}
+.step .slbl{font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;}
+.step.active .snum{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;
+    box-shadow:0 3px 10px rgba(102,126,234,.4);}
+.step.active .slbl{color:#667eea;}
+.step.done .snum{background:#22c55e;color:#fff;}
+.step.done .slbl{color:#16a34a;}
+.step::after{content:'›';position:absolute;right:-8px;top:50%;transform:translateY(-50%);
+    font-size:18px;color:#cbd5e1;z-index:2;}
+.step:last-child::after{display:none;}
+
+/* ── Step panels ── */
+.step-panel{display:none;}
+.step-panel.active{display:block;}
+
+/* ── Card ── */
+.card{background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.07);
+    margin-bottom:18px;overflow:hidden;}
+.card-hdr{padding:14px 20px;border-bottom:1px solid #f1f5f9;
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.card-hdr h3{margin:0;font-size:15px;font-weight:700;color:#1e293b;}
+.card-body{padding:20px;}
+
+/* ── Buttons ── */
+.btn{padding:10px 22px;border:none;border-radius:8px;cursor:pointer;
+    font-size:13px;font-weight:700;transition:all .2s;display:inline-flex;
+    align-items:center;gap:7px;white-space:nowrap;}
+.btn-primary{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;
+    box-shadow:0 3px 10px rgba(102,126,234,.35);}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 5px 15px rgba(102,126,234,.45);}
+.btn-primary:disabled{opacity:.5;transform:none;cursor:not-allowed;}
+.btn-success{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;
+    box-shadow:0 3px 10px rgba(34,197,94,.3);}
+.btn-success:hover:not(:disabled){transform:translateY(-1px);}
+.btn-success:disabled{opacity:.5;cursor:not-allowed;}
+.btn-danger{background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;}
+.btn-outline{background:#fff;border:1.5px solid #e2e8f0;color:#475569;}
+.btn-outline:hover{border-color:#667eea;color:#667eea;background:#f8faff;}
+.btn-sm{padding:6px 14px;font-size:12px;}
+.btn-xs{padding:4px 10px;font-size:11px;border-radius:6px;}
+
+/* ── Form controls ── */
+.fg label{font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;
+    letter-spacing:.5px;margin-bottom:5px;display:block;}
+.fg select,.fg input{width:100%;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:8px;
+    font-size:13px;outline:none;transition:all .2s;background:#fff;}
+.fg select:focus,.fg input:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.12);}
+
+/* ── Grid ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+@media(max-width:900px){.g4{grid-template-columns:1fr 1fr;}.g3{grid-template-columns:1fr 1fr;}}
+@media(max-width:600px){.g2,.g3,.g4{grid-template-columns:1fr;}}
+
+/* ── Notification card ── */
+.notif-card{border:2px solid #e2e8f0;border-radius:10px;padding:14px 16px;cursor:pointer;
+    transition:all .2s;position:relative;user-select:none;}
+.notif-card:hover{border-color:#667eea;transform:translateY(-1px);
+    box-shadow:0 4px 14px rgba(102,126,234,.15);}
+.notif-card.selected{border-color:#667eea;background:#f0f4ff;
+    box-shadow:0 4px 14px rgba(102,126,234,.2);}
+.notif-card .nc-check{position:absolute;top:10px;right:10px;width:20px;height:20px;
+    border-radius:50%;background:#667eea;color:#fff;display:none;align-items:center;
+    justify-content:center;font-size:11px;font-weight:800;}
+.notif-card.selected .nc-check{display:flex;}
+.notif-card .nc-title{font-weight:700;font-size:14px;color:#1e293b;margin-bottom:5px;}
+.notif-card .nc-meta{font-size:11px;color:#64748b;display:flex;flex-wrap:wrap;gap:6px;}
+.nc-badge{padding:3px 8px;border-radius:12px;font-size:10px;font-weight:700;}
+.nc-ese{background:#fee2e2;color:#991b1b;}
+.nc-cie{background:#dbeafe;color:#1e40af;}
+.nc-other{background:#f1f5f9;color:#475569;}
+
+/* ── Room grid ── */
+.room-block-hdr{
+    background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;
+    padding:10px 16px;border-radius:10px 10px 0 0;font-weight:700;font-size:13px;
+    display:flex;align-items:center;gap:8px;
+}
+.rooms-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;
+    padding:10px;}
+.room-card{border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 10px;cursor:pointer;
+    transition:all .15s;position:relative;user-select:none;}
+.room-card:hover:not(.blocked):not(.occupied):not(.inactive){
+    border-color:#667eea;transform:translateY(-1px);}
+.room-card.selected{border-color:#667eea;background:#f0f4ff;}
+.room-card.blocked{border-color:#fde68a;background:#fffbeb;cursor:not-allowed;opacity:.7;}
+.room-card.occupied{border-color:#fca5a5;background:#fff5f5;cursor:not-allowed;opacity:.7;}
+.room-card.inactive{border-color:#e2e8f0;background:#f8fafc;cursor:not-allowed;opacity:.5;}
+.room-card .rc-check{position:absolute;top:5px;right:5px;width:14px;height:14px;
+    border-radius:50%;background:#667eea;color:#fff;display:none;
+    align-items:center;justify-content:center;font-size:8px;}
+.room-card.selected .rc-check{display:flex;}
+.rc-num{font-weight:800;font-size:12px;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rc-name{font-size:9px;color:#64748b;margin:1px 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rc-info{font-size:10px;display:flex;align-items:center;justify-content:space-between;}
+.rc-cap{font-weight:700;color:#16a34a;}
+.status-pill{font-size:9px;font-weight:800;padding:2px 7px;border-radius:10px;
+    text-transform:uppercase;letter-spacing:.3px;}
+.sp-free{background:#d1fae5;color:#065f46;}
+.sp-blocked{background:#fef3c7;color:#92400e;}
+.sp-occupied{background:#fee2e2;color:#991b1b;}
+.sp-inactive{background:#f1f5f9;color:#64748b;}
+
+/* ── Selection summary bar ── */
+.sel-bar{background:linear-gradient(135deg,#1e293b,#334155);color:#fff;
+    border-radius:10px;padding:12px 20px;display:flex;align-items:center;
+    gap:20px;flex-wrap:wrap;margin-bottom:14px;font-size:13px;}
+.sel-stat{display:flex;align-items:center;gap:6px;}
+.sel-val{font-size:18px;font-weight:800;}
+.sel-lbl{font-size:11px;opacity:.7;text-transform:uppercase;}
+.cap-ok{color:#4ade80;}
+.cap-warn{color:#fb923c;}
+.cap-over{color:#f87171;}
+
+/* ── Validation report ── */
+.vr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;
+    margin-bottom:18px;}
+.vr-card{border-radius:10px;padding:16px;text-align:center;}
+.vr-card.blue{background:#dbeafe;}
+.vr-card.green{background:#d1fae5;}
+.vr-card.yellow{background:#fef9c3;}
+.vr-card.red{background:#fee2e2;}
+.vr-card.purple{background:#ede9fe;}
+.vr-val{font-size:26px;font-weight:900;margin-bottom:3px;}
+.vr-lbl{font-size:10px;font-weight:700;text-transform:uppercase;opacity:.7;}
+
+/* ── Anti-copy score ── */
+.score-ring-wrap{display:flex;align-items:center;gap:20px;
+    background:#f8fafc;border-radius:12px;padding:20px 24px;margin-bottom:18px;}
+.score-ring{width:90px;height:90px;flex-shrink:0;}
+.score-ring svg{width:90px;height:90px;transform:rotate(-90deg);}
+.score-ring circle{fill:none;stroke-width:8;stroke-linecap:round;}
+.score-ring .bg{stroke:#e2e8f0;}
+.score-ring .fg{transition:stroke-dashoffset .8s ease;}
+.score-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    font-weight:900;text-align:center;}
+.score-wrap{position:relative;width:90px;height:90px;}
+.score-overlay{position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;}
+.score-num{font-size:20px;font-weight:900;}
+.score-pct{font-size:10px;font-weight:700;opacity:.7;}
+.score-info{flex:1;}
+.score-title{font-size:18px;font-weight:800;margin-bottom:4px;}
+.score-sub{font-size:12px;color:#64748b;margin-bottom:10px;}
+.grade-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 14px;
+    border-radius:20px;font-size:12px;font-weight:800;}
+.grade-excellent{background:#d1fae5;color:#065f46;}
+.grade-good{background:#dbeafe;color:#1e40af;}
+.grade-acceptable{background:#fef3c7;color:#92400e;}
+.grade-poor{background:#fee2e2;color:#991b1b;}
+
+/* ── Score bar ── */
+.sbar-wrap{background:#f1f5f9;border-radius:20px;height:10px;overflow:hidden;margin:5px 0;}
+.sbar-fill{height:100%;border-radius:20px;transition:width .6s;}
+.sb-excellent{background:linear-gradient(90deg,#22c55e,#16a34a);}
+.sb-good{background:linear-gradient(90deg,#3b82f6,#2563eb);}
+.sb-acceptable{background:linear-gradient(90deg,#f59e0b,#d97706);}
+.sb-poor{background:linear-gradient(90deg,#ef4444,#dc2626);}
+
+/* ── Room preview cards ── */
+.rp-card{border:2px solid #e2e8f0;border-radius:12px;overflow:hidden;transition:all .2s;}
+.rp-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.1);}
+.rp-hdr{padding:10px 14px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;
+    display:flex;align-items:center;justify-content:space-between;}
+.rp-hdr .rph-room{font-weight:800;font-size:14px;}
+.rp-hdr .rph-score{font-size:11px;opacity:.9;}
+.rp-body{padding:14px;}
+.rp-row{display:flex;justify-content:space-between;align-items:center;
+    padding:4px 0;border-bottom:1px solid #f8fafc;font-size:12px;}
+.rp-row:last-child{border-bottom:none;}
+.rp-key{color:#64748b;font-weight:600;}
+.rp-val{font-weight:700;color:#1e293b;text-align:right;max-width:60%;word-break:break-word;}
+.rp-ref-pills{display:flex;flex-wrap:wrap;gap:3px;margin-top:8px;}
+.rp-ref-pill{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;
+    background:#f1f5f9;color:#475569;}
+
+/* ── Ref code color cycling ── */
+.rc0{background:#dbeafe;color:#1e40af;} .rc1{background:#d1fae5;color:#065f46;}
+.rc2{background:#ede9fe;color:#5b21b6;} .rc3{background:#fce7f3;color:#9d174d;}
+.rc4{background:#fef9c3;color:#92400e;} .rc5{background:#ccfbf1;color:#065f46;}
+.rc6{background:#fee2e2;color:#991b1b;} .rc7{background:#e0f2fe;color:#0c4a6e;}
+
+/* ── Ref code legend ── */
+.ref-legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.ref-leg-item{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;}
+.ref-dot{width:10px;height:10px;border-radius:50%;}
+
+/* ── Plan history ── */
+.plan-row{display:flex;align-items:center;gap:12px;padding:12px 16px;
+    border-bottom:1px solid #f1f5f9;transition:background .15s;}
+.plan-row:hover{background:#f8fafc;}
+.plan-row:last-child{border-bottom:none;}
+.pr-date{font-weight:700;color:#1e293b;min-width:100px;}
+.pr-ses{padding:3px 8px;border-radius:8px;font-size:11px;font-weight:700;}
+.pr-fn{background:#dbeafe;color:#1e40af;}
+.pr-an{background:#ede9fe;color:#5b21b6;}
+.pr-name{flex:1;font-size:13px;color:#475569;}
+.pr-status{padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;}
+.prs-draft{background:#f1f5f9;color:#475569;}
+.prs-confirmed{background:#dbeafe;color:#1e40af;}
+.prs-published{background:#d1fae5;color:#065f46;}
+
+/* ── Alert / Toast ── */
+.toast{position:fixed;bottom:24px;right:24px;z-index:9999;
+    padding:14px 20px;border-radius:10px;font-size:13px;font-weight:600;
+    display:none;align-items:center;gap:10px;max-width:400px;
+    box-shadow:0 8px 24px rgba(0,0,0,.15);}
+.toast.show{display:flex;}
+.toast-success{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;}
+.toast-error{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;}
+.toast-warning{background:#fef3c7;color:#92400e;border:1px solid #fde68a;}
+.toast-info{background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;}
+
+/* ── Spinner ── */
+.spinner{display:inline-block;width:20px;height:20px;border:3px solid rgba(255,255,255,.3);
+    border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── Batch mode badge ── */
+.batch-badge{display:inline-flex;align-items:center;gap:5px;
+    padding:5px 14px;border-radius:20px;font-size:12px;font-weight:800;
+    background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;}
+
+/* ── Shimmer ── */
+.shimmer{background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);
+    background-size:200%;animation:sh 1.2s infinite;border-radius:8px;}
+@keyframes sh{0%{background-position:200%}100%{background-position:-200%}}
+
+/* ── Violation list ── */
+.viol-item{display:flex;align-items:flex-start;gap:10px;padding:8px 12px;
+    background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;margin-bottom:6px;
+    font-size:12px;}
+.viol-icon{font-size:16px;margin-top:1px;}
+.viol-type{font-weight:800;color:#92400e;}
+.viol-detail{color:#78350f;}
+
+/* ── Step nav ── */
+.step-nav{display:flex;justify-content:space-between;align-items:center;
+    margin-top:20px;padding-top:16px;border-top:1px solid #f1f5f9;}
+
+/* ── Tab bar for history ── */
+.tab-row{display:flex;gap:4px;background:#fff;border-radius:10px;padding:5px;
+    box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:16px;}
+.trbtn{padding:8px 18px;border-radius:8px;border:none;cursor:pointer;
+    font-size:13px;font-weight:700;color:#64748b;background:transparent;transition:all .2s;}
+.trbtn.active{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;}
+.trbtn:hover:not(.active){background:#f1f5f9;}
+
+/* loading overlay */
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.8);
+    z-index:9000;display:none;align-items:center;justify-content:center;
+    flex-direction:column;gap:16px;}
+.loading-overlay.show{display:flex;}
+.lo-spinner{width:48px;height:48px;border:5px solid #e2e8f0;border-top-color:#667eea;
+    border-radius:50%;animation:spin .8s linear infinite;}
+.lo-text{font-size:14px;font-weight:700;color:#667eea;}
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="lo-spinner"></div>
+    <div class="lo-text" id="loadingText">Generating seating plan…</div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<div class="page-wrap">
+
+    <!-- Back -->
+    <a href="index.html" style="color:#667eea;font-weight:700;font-size:13px;
+        text-decoration:none;display:inline-flex;align-items:center;gap:5px;margin-bottom:14px;">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+
+    <!-- Header -->
+    <div class="page-hdr">
+        <div>
+            <h1><i class="bi bi-grid-3x3 me-2"></i>Seating Plan Generator</h1>
+            <p>4-Batch Anti-Copy Engine · ref_code grouping · Smart room distribution</p>
+        </div>
+        <div style="display:flex;gap:10px;">
+            <button class="btn" onclick="showTab('history')"
+                style="background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.5);">
+                <i class="bi bi-clock-history me-1"></i>View Plans
+            </button>
+            <button class="btn" onclick="resetWizard()"
+                style="background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.5);">
+                <i class="bi bi-plus-lg me-1"></i>New Plan
+            </button>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tab-row">
+        <button class="trbtn active" id="tab-wizard" onclick="showTab('wizard')">
+            <i class="bi bi-magic me-1"></i>Generate New
+        </button>
+ <a href="seating-downloads.html" class="menu-item"> Downloads</a>
+ <a href="exam-blocked-students.html" class="menu-item"> Block Students</a>
+ <a href="exam-student-transfer.html" class="menu-item"> Transfer Students (Change Room)</a>
+ <a href="student-history.html" class="menu-item"> Find students history</a>
+ 
+
+        <button class="trbtn" id="tab-history" onclick="showTab('history')">
+            <i class="bi bi-clock-history me-1"></i>Plan History
+        </button>
+    </div>
+
+    <!-- ══════ WIZARD TAB ══════ -->
+    <div id="tabWizard">
+
+        <!-- Stepper -->
+        <div class="stepper">
+            <div class="step active" id="step1Btn" onclick="goStep(1)">
+                <div class="snum">1</div>
+                <div class="slbl">Date & Session</div>
+            </div>
+            <div class="step" id="step2Btn" onclick="goStep(2)">
+                <div class="snum">2</div>
+                <div class="slbl">Select Exams</div>
+            </div>
+            <div class="step" id="step3Btn" onclick="goStep(3)">
+                <div class="snum">3</div>
+                <div class="slbl">Select Rooms</div>
+            </div>
+            <div class="step" id="step4Btn" onclick="goStep(4)">
+                <div class="snum">4</div>
+                <div class="slbl">Review & Save</div>
+            </div>
+        </div>
+
+        <!-- ── STEP 1: Date & Session ── -->
+        <div class="step-panel active" id="panel1">
+            <div class="card">
+                <div class="card-hdr">
+                    <i class="bi bi-calendar3" style="color:#667eea;font-size:18px;"></i>
+                    <h3>Select Exam Date & Session</h3>
+                </div>
+                <div class="card-body">
+                    <div class="g2">
+                        <div class="fg">
+                            <label>Exam Date</label>
+                            <input type="date" id="examDate" onchange="onDateSessionChange()"/>
+                        </div>
+                        <div class="fg">
+                            <label>Session</label>
+                            <!-- REPLACE WITH: -->
+<select id="session" onchange="onDateSessionChange()">
+    <option value="">-- Select Session --</option>
+</select>
+                        </div>
+                    </div>
+                    <div id="step1Summary" style="display:none;margin-top:16px;
+                        background:#f0f4ff;border-radius:10px;padding:14px 18px;">
+                        <div style="font-weight:700;color:#667eea;font-size:13px;margin-bottom:6px;">
+                            <i class="bi bi-check-circle me-1"></i>Selected:
+                        </div>
+                        <div id="step1SummaryText" style="color:#334155;font-size:14px;font-weight:700;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="step-nav">
+                <div></div>
+                <button class="btn btn-primary" onclick="goStep2()" id="step1Next" disabled>
+                    Next: Select Exams <i class="bi bi-arrow-right ms-1"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- ── STEP 2: Select Notifications ── -->
+        <div class="step-panel" id="panel2">
+            <div class="card">
+                <div class="card-hdr">
+                    <i class="bi bi-bell" style="color:#667eea;font-size:18px;"></i>
+                    <h3>Select Exam Notifications</h3>
+                    <span style="font-size:12px;color:#64748b;margin-left:4px;">
+                        — scheduled for selected date & session
+                    </span>
+                    <div style="margin-left:auto;font-size:12px;color:#64748b;" id="notifCount"></div>
+                </div>
+                <div class="card-body">
+                    <!-- Existing plan warning banner -->
+                    <div id="existingPlanBanner" style="display:none;margin-bottom:12px;"></div>
+                    <div id="notifContainer">
+                        <div style="text-align:center;padding:30px;color:#94a3b8;">
+                            <div class="shimmer" style="height:80px;margin-bottom:10px;"></div>
+                            <div class="shimmer" style="height:80px;opacity:.7;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="step-nav">
+                <button class="btn btn-outline" onclick="goStep(1)">
+                    <i class="bi bi-arrow-left me-1"></i>Back
+                </button>
+                <button class="btn btn-primary" onclick="goStep3()" id="step2Next" disabled>
+                    Next: Select Rooms <i class="bi bi-arrow-right ms-1"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- ── STEP 3: Select Rooms ── -->
+        <div class="step-panel" id="panel3">
+
+            <!-- Selection summary bar -->
+            <div class="sel-bar" id="selBar" style="display:none;">
+                <div class="sel-stat">
+                    <span class="sel-val" id="sbStudents">0</span>
+                    <span class="sel-lbl">Students</span>
+                </div>
+                <div class="sel-stat">
+                    <span class="sel-val" id="sbRooms">0</span>
+                    <span class="sel-lbl">Rooms Selected</span>
+                </div>
+                <div class="sel-stat">
+                    <span class="sel-val cap-ok" id="sbCapacity">0</span>
+                    <span class="sel-lbl">Seats Available</span>
+                </div>
+                <div class="sel-stat">
+                    <span class="sel-val" id="sbBuffer" style="color:#94a3b8;">—</span>
+                    <span class="sel-lbl">Buffer Seats</span>
+                </div>
+                <div style="margin-left:auto;display:flex;gap:8px;">
+                    <button class="btn btn-sm" onclick="autoSelectRooms()"
+                        style="background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.5);backdrop-filter:blur(4px);">
+                        <i class="bi bi-lightning me-1"></i>Auto-Select
+                    </button>
+                    <button class="btn btn-sm" onclick="clearRooms()"
+                        style="background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.4);">
+                        <i class="bi bi-x me-1"></i>Clear
+                    </button>
+                </div>
+            </div>
+
+            <div id="roomsContainer">
+                <div style="text-align:center;padding:40px;color:#94a3b8;">
+                    <i class="bi bi-building" style="font-size:40px;display:block;margin-bottom:10px;"></i>
+                    Complete Step 2 first
+                </div>
+            </div>
+
+            <!-- Pre-validate panel: shown after Auto-Select or manual room toggle -->
+            <div id="preValidatePanel" style="display:none;margin-top:16px;"></div>
+
+            <div class="step-nav">
+                <button class="btn btn-outline" onclick="goStep(2)">
+                    <i class="bi bi-arrow-left me-1"></i>Back
+                </button>
+                <button class="btn btn-primary" onclick="runGenerate()" id="step3Next" disabled>
+                    <i class="bi bi-cpu me-1"></i>Generate Seating Plan
+                </button>
+            </div>
+        </div>
+
+        <!-- ── STEP 4: Review & Save ── -->
+        <div class="step-panel" id="panel4">
+            <div id="reviewContainer">
+                <div style="text-align:center;padding:40px;color:#94a3b8;">
+                    Complete previous steps first
+                </div>
+            </div>
+            <div class="step-nav">
+                <button class="btn btn-outline" onclick="goStep(3)">
+                    <i class="bi bi-arrow-left me-1"></i>Back
+                </button>
+                <div style="display:flex;gap:10px;">
+                    <button class="btn btn-outline" onclick="runGenerate()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Re-Generate
+                    </button>
+                    <button class="btn btn-success" id="saveBtn" onclick="savePlan()" disabled>
+                        <i class="bi bi-save me-1"></i>Save Seating Plan
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- end tabWizard -->
+
+    <!-- ══════ PERSISTENT DOWNLOAD PANEL (outside wizard) ══════ -->
+    <div id="savedPlanPanel" style="display:none;margin-top:16px;">
+        <div style="background:#fff;border:1.5px solid #d1fae5;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(16,185,129,.1);">
+            <div style="background:linear-gradient(135deg,#16a34a,#15803d);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;">
+                <div style="color:#fff;">
+                    <div style="font-weight:800;font-size:15px;">✅ <span id="sppTitle">Seating Plan Saved</span></div>
+                    <div id="sppMeta" style="font-size:12px;opacity:.85;margin-top:2px;"></div>
+                </div>
+                <button onclick="document.getElementById('savedPlanPanel').style.display='none'"
+                    style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;">
+                    ✕ Close
+                </button>
+            </div>
+            <div style="padding:16px 20px;">
+                <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">
+                    <i class="bi bi-download me-1"></i>Download Documents
+                </div>
+                <div id="sppCards" style="display:flex;gap:10px;flex-wrap:wrap;"></div>
+                <div style="margin-top:14px;padding-top:12px;border-top:1px solid #f1f5f9;display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-outline" onclick="resetWizard()">
+                        <i class="bi bi-plus me-1"></i>New Plan
+                    </button>
+                    <button class="btn btn-outline" onclick="showTab('history')">
+                        <i class="bi bi-clock-history me-1"></i>View All Plans
+                    </button>
+                    <button id="sppFullPreview" class="btn btn-primary">
+                        <i class="bi bi-eye me-1"></i>Full Preview
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════ HISTORY TAB ══════ -->
+    <div id="tabHistory" style="display:none;">
+        <div class="card">
+            <div class="card-hdr">
+                <i class="bi bi-clock-history" style="color:#667eea;font-size:18px;"></i>
+                <h3>Seating Plan History</h3>
+                <div style="margin-left:auto;">
+                    <button class="btn btn-sm btn-outline" onclick="loadPlans()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    </button>
+                </div>
+            </div>
+            <div id="plansContainer">
+                <div style="padding:30px;text-align:center;color:#94a3b8;">
+                    Loading plans…
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div><!-- end page-wrap -->
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════════
+
+// Timezone-safe date extractor.
+// Handles:  "2026-04-20"  (plain string — pass through)
+//           "2026-04-19T18:30:00.000Z"  (UTC midnight IST → convert to IST date)
+//           JS Date objects
+function toLocalDate(val) {
+    if (!val) return '';
+    const s = String(val);
+    // Already a plain YYYY-MM-DD — use as-is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    // ISO timestamp — parse and convert to IST (UTC+5:30)
+    const ms  = Date.parse(s);
+    if (isNaN(ms)) return s.substring(0,10); // fallback
+    const ist = new Date(ms + 5.5 * 60 * 60 * 1000);
+    return ist.toISOString().split('T')[0];
+}
+
+let STATE = {
+    date:         '',
+    session:      '',
+    notifications:[],   // all available
+    selNotifs:    [],   // selected notification_ids
+    rooms:        [],   // all available
+    selRooms:     [],   // selected room_ids
+    totalStudents:0,
+    lastGenResult:null
+};
+
+const RC_COLORS = ['rc0','rc1','rc2','rc3','rc4','rc5','rc6','rc7'];
+let rcColorMap  = {};
+let rcColorIdx  = 0;
+
+function getRcColor(rc) {
+    if (!rcColorMap[rc]) rcColorMap[rc] = RC_COLORS[rcColorIdx++ % RC_COLORS.length];
+    return rcColorMap[rc];
+}
+
+// ════════════════════════════════════════════════════════════
+//  TAB
+// ════════════════════════════════════════════════════════════
+function showTab(t) {
+    document.getElementById('tabWizard').style.display  = t==='wizard'  ? 'block' : 'none';
+    document.getElementById('tabHistory').style.display = t==='history' ? 'block' : 'none';
+    document.getElementById('tab-wizard').classList.toggle('active',  t==='wizard');
+    document.getElementById('tab-history').classList.toggle('active', t==='history');
+    if (t==='history') loadPlans();
+}
+
+// ════════════════════════════════════════════════════════════
+//  STEPPER
+// ════════════════════════════════════════════════════════════
+let currentStep = 1;
+
+function goStep(n) {
+    if (n > currentStep) return; // can only go back freely
+    setStep(n);
+}
+
+function setStep(n) {
+    currentStep = n;
+    for (let i=1; i<=4; i++) {
+        document.getElementById(`panel${i}`).classList.toggle('active', i===n);
+        const btn = document.getElementById(`step${i}Btn`);
+        btn.classList.remove('active','done');
+        if (i===n)    btn.classList.add('active');
+        if (i<n)      btn.classList.add('done');
+    }
+}
+
+// ════════════════════════════════════════════════════════════
+//  STEP 1 — DATE & SESSION
+// ════════════════════════════════════════════════════════════
+// REPLACE WITH:
+document.addEventListener('DOMContentLoaded', () => {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('examDate').value = today;
+    loadSessions().then(() => onDateSessionChange());
+    loadPlans();
+});
+
+async function loadSessions() {
+    try {
+        const res  = await fetch('/api/sessions-master');
+        const data = await res.json();
+        const sessions = (data.data || []).filter(s => s.is_active);
+        const sel = document.getElementById('session');
+        sessions.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value            = s.session_id;
+            opt.dataset.group    = s.session_group || s.session_name;
+            opt.dataset.name     = s.session_name;
+            opt.textContent      = `${s.session_name} (${s.start_time} – ${s.end_time})`;
+            sel.appendChild(opt);
+        });
+    } catch(e) {
+        console.error('Failed to load sessions:', e);
+    }
+}
+
+// REPLACE WITH:
+function onDateSessionChange() {
+    const date   = document.getElementById('examDate').value;
+    const sel    = document.getElementById('session');
+    const session = sel.value;
+    const selOpt = sel.options[sel.selectedIndex];
+    STATE.date    = date;
+    STATE.session = session;   // now a real session_id from sessions_master
+    const ok = date && session;
+    document.getElementById('step1Next').disabled = !ok;
+    if (ok) {
+        const d   = new Date(date + 'T00:00:00');
+        const lbl = d.toLocaleDateString('en-IN', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+        const ses = selOpt?.dataset?.name || session;
+        document.getElementById('step1SummaryText').textContent = `${lbl}  ·  ${ses}`;
+        document.getElementById('step1Summary').style.display = 'block';
+    } else {
+        document.getElementById('step1Summary').style.display = 'none';
+    }
+}
+
+// ════════════════════════════════════════════════════════════
+//  STEP 2 — NOTIFICATIONS
+// ════════════════════════════════════════════════════════════
+async function goStep2() {
+    setStep(2);
+    await loadNotifications();
+}
+
+async function loadNotifications() {
+    document.getElementById('notifContainer').innerHTML = loadingHtml(2, 80);
+    try {
+        const res  = await fetch(`/api/seating/notifications?date=${STATE.date}&session=${STATE.session}`);
+        const data = await res.json();
+        const list = data.notifications || [];
+        STATE.notifications = list;
+        document.getElementById('notifCount').textContent = `${list.length} exam(s) found`;
+
+        if (!list.length) {
+            document.getElementById('notifContainer').innerHTML =
+                `<div style="text-align:center;padding:40px;color:#94a3b8;">
+                    <i class="bi bi-inbox" style="font-size:48px;display:block;margin-bottom:10px;"></i>
+                    No exams scheduled for this date & session
+                 </div>`;
+            return;
+        }
+
+        document.getElementById('notifContainer').innerHTML = list.map(n => {
+            const typeClass = n.exam_type?.toUpperCase().includes('ESE') ? 'nc-ese'
+                : n.exam_type?.toUpperCase().includes('CIE') ? 'nc-cie' : 'nc-other';
+            const rcs = (n.ref_codes || '').split(', ').filter(Boolean);
+            return `
+            <div class="notif-card" id="nc_${n.notification_id}"
+                onclick="toggleNotif('${n.notification_id}')">
+                <div class="nc-check"><i class="bi bi-check"></i></div>
+                <div class="nc-title">${n.exam_name || n.notification_ref || n.notification_id}</div>
+                <div class="nc-meta">
+                    <span class="nc-badge ${typeClass}">${n.exam_type || 'Exam'}</span>
+                    <span>👥 ${n.student_count} students</span>
+                    <span>📚 ${n.subject_count} subject(s)</span>
+                    <span>🏫 ${n.branches || '—'}</span>
+                </div>
+                ${rcs.length ? `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">
+                    ${rcs.map(r=>`<span class="nc-badge" style="background:#f1f5f9;color:#334155;">${r}</span>`).join('')}
+                </div>` : ''}
+            </div>`;
+        }).join('');
+
+        // Auto-select if only 1 notification
+        if (list.length === 1) toggleNotif(list[0].notification_id);
+
+        // Check if a saved plan already exists for this date+session
+        checkExistingPlanForDate();
+
+    } catch(e) {
+        document.getElementById('notifContainer').innerHTML =
+            `<div style="padding:20px;color:#dc2626;">Error: ${e.message}</div>`;
+    }
+}
+
+function toggleNotif(id) {
+    const idx = STATE.selNotifs.indexOf(id);
+    if (idx > -1) STATE.selNotifs.splice(idx, 1);
+    else          STATE.selNotifs.push(id);
+
+    document.querySelectorAll('.notif-card').forEach(c => c.classList.remove('selected'));
+    STATE.selNotifs.forEach(id => document.getElementById(`nc_${id}`)?.classList.add('selected'));
+
+    // Recalculate total students
+    STATE.totalStudents = STATE.selNotifs
+        .reduce((s,id) => s + (STATE.notifications.find(n=>n.notification_id===id)?.student_count||0), 0);
+
+    // Re-run duplicate check every time a notification is toggled
+    // so the caution banner reflects the current selection
+    if (STATE.selNotifs.length) checkExistingPlanForDate();
+
+    const isLocked = STATE.existingPlan && !STATE.existingPlanConfirmed;
+    document.getElementById('step2Next').disabled = !STATE.selNotifs.length || isLocked;
+}
+
+// ════════════════════════════════════════════════════════════
+//  EXISTING PLAN CHECK — runs at Step 2
+// ════════════════════════════════════════════════════════════
+async function checkExistingPlanForDate() {
+    try {
+        const res  = await fetch('/api/seating/plans');
+        const data = await res.json();
+
+        // Derive session_order (1=FN, 2=AN) from the selected session option's group tag
+        const sel      = document.getElementById('session');
+        const selOpt   = sel.options[sel.selectedIndex];
+        const grp      = (selOpt?.dataset?.group || selOpt?.dataset?.name || '').toUpperCase();
+        const sessionOrder = grp === 'FN' ? 1 : 2;
+
+        const existing = (data.plans || []).find(p =>
+            toLocalDate(p.exam_date) === STATE.date &&
+            parseInt(p.session_order) === sessionOrder
+        );
+
+        if (existing) {
+            // Show persistent download panel with existing plan info
+            showSavedPlanPanel(existing.plan_id,
+                existing.total_students || 0,
+                existing.room_count     || 0,
+                existing.exam_date_display || STATE.date,
+                existing.session_order === 1 ? 'FN' : 'AN',
+                null
+            );
+
+            // LOCK Next — user must confirm override
+            document.getElementById('step2Next').disabled = true;
+            STATE.existingPlan = existing;
+            STATE.existingPlanConfirmed = false;
+            const banner = document.getElementById('existingPlanBanner');
+            if (banner) {
+                banner.style.display = 'block';
+                banner.innerHTML = `
+                    <div id="existingPlanAlertBox" style="background:#fff3cd;border:2px solid #e6a817;border-radius:12px;padding:16px 20px;">
+                        <div style="display:flex;align-items:flex-start;gap:14px;">
+                            <span style="font-size:32px;line-height:1;flex-shrink:0;">⚠️</span>
+                            <div style="flex:1;">
+                                <div style="font-weight:800;color:#7d5a00;font-size:15px;margin-bottom:6px;">
+                                    Seating Plan Already Exists for This Date &amp; Session!
+                                </div>
+                                <div style="color:#5a3e00;font-size:13px;line-height:1.6;margin-bottom:14px;">
+                                    Plan <strong>#${existing.plan_id}</strong> &nbsp;·&nbsp;
+                                    <strong>${existing.total_students||0}</strong> students &nbsp;·&nbsp;
+                                    Status: <strong>${existing.status}</strong><br>
+                                    <span style="color:#b91c1c;font-weight:700;">
+                                        ⛔ Saving a new plan will permanently DELETE and REPLACE this existing plan.
+                                    </span>
+                                </div>
+                                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                                    <button onclick="confirmOverride()"
+                                        style="background:#dc2626;color:#fff;border:none;border-radius:8px;padding:10px 22px;font-size:13px;font-weight:800;cursor:pointer;">
+                                        ⚡ Yes, Go Ahead &amp; Override
+                                    </button>
+                                    <button onclick="window.open('seating-pdf-export.html?plan_id=${existing.plan_id}','_blank')"
+                                        style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;">
+                                        👁 View Existing Plan
+                                    </button>
+                                    <button onclick="goStep(1)"
+                                        style="background:#6b7280;color:#fff;border:none;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;">
+                                        ✕ Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top:12px;padding:9px 14px;background:#fee2e2;border-radius:8px;font-size:12px;font-weight:700;color:#991b1b;">
+                            🔒 "Next: Select Rooms" is LOCKED — click "Yes, Go Ahead &amp; Override" above to unlock.
+                        </div>
+                    </div>`;
+            }
+        } else {
+            STATE.existingPlan = null;
+            STATE.existingPlanConfirmed = false;
+            const banner = document.getElementById('existingPlanBanner');
+            if (banner) banner.style.display = 'none';
+            if (STATE.selNotifs.length) document.getElementById('step2Next').disabled = false;
+        }
+    } catch(e) { console.warn('checkExistingPlan:', e); }
+}
+
+function confirmOverride() {
+    STATE.existingPlanConfirmed = true;
+    const box = document.getElementById('existingPlanAlertBox');
+    if (box) {
+        const pid = STATE.existingPlan?.plan_id || '';
+        box.style.background = '#f0fdf4'; box.style.borderColor = '#22c55e';
+        box.innerHTML = `
+            <div style="display:flex;align-items:center;gap:14px;">
+                <span style="font-size:32px;">✅</span>
+                <div style="flex:1;">
+                    <div style="font-weight:800;color:#15803d;font-size:14px;">Override Confirmed — You may now proceed</div>
+                    <div style="font-size:12px;color:#166534;margin-top:3px;">Plan #${pid} will be replaced only when you click "Save Seating Plan".</div>
+                </div>
+                ${pid?`<button onclick="window.open('seating-pdf-export.html?plan_id=${pid}','_blank')" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">👁 View Old</button>`:''}
+            </div>`;
+    }
+    if (STATE.selNotifs.length) document.getElementById('step2Next').disabled = false;
+}
+
+function showSavedPlanPanel(planId, students, rooms, dateDisplay, session, genData) {
+    const panel = document.getElementById('savedPlanPanel');
+    if (!panel) return;
+
+    document.getElementById('sppTitle').textContent = `Seating Plan — ${dateDisplay} ${session}`;
+    document.getElementById('sppMeta').textContent  =
+        `Plan #${planId} · ${students} students · ${rooms} rooms`;
+    document.getElementById('sppFullPreview').onclick =
+        () => window.open(`seating-pdf-export.html?plan_id=${planId}`, '_blank');
+
+    const scoreText = genData?.validation?.is_single_group
+        ? 'N/A'
+        : genData ? `${genData.validation?.score||100}%` : '—';
+
+    const downloads = [
+        { icon:'bi-grid-3x3-gap', color:'#6366f1', bg:'#eef2ff', label:'Seating Plan',     desc:'Room-wise bench layout',  action:`window.open('seating-pdf-export.html?plan_id=${planId}','_blank')` },
+        { icon:'bi-check2-square', color:'#10b981', bg:'#f0fdf4', label:'Attendance Sheet', desc:'Student sign-off sheet',  action:`downloadAttendance(${planId})` },
+        { icon:'bi-pin-map',       color:'#f59e0b', bg:'#fffbeb', label:'Notice Board',     desc:'Room allocation list',    action:`downloadNoticeBoard(${planId})` },
+        { icon:'bi-file-earmark-text', color:'#ec4899', bg:'#fdf4ff', label:'D-Form',       desc:'Invigilator duty form',   action:`downloadDForm(${planId})` }
+    ];
+
+    document.getElementById('sppCards').innerHTML = downloads.map(d => `
+        <div style="background:${d.bg};border:1.5px solid ${d.color}30;border-radius:10px;
+                    padding:14px 16px;text-align:center;cursor:pointer;transition:all .2s;
+                    flex:1;min-width:120px;"
+             onmouseenter="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 16px ${d.color}20'"
+             onmouseleave="this.style.transform='';this.style.boxShadow=''"
+             onclick="${d.action}">
+            <div style="font-size:24px;color:${d.color};margin-bottom:6px;"><i class="bi ${d.icon}"></i></div>
+            <div style="font-weight:700;font-size:12px;color:#1e293b;margin-bottom:2px;">${d.label}</div>
+            <div style="font-size:10px;color:#64748b;margin-bottom:8px;">${d.desc}</div>
+            <span style="background:${d.color};color:#fff;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;">
+                <i class="bi bi-download me-1"></i>PDF
+            </span>
+        </div>`).join('');
+
+    panel.style.display = 'block';
+}
+
+// ════════════════════════════════════════════════════════════
+//  STEP 3 — ROOMS
+// ════════════════════════════════════════════════════════════
+async function goStep3() {
+    if (!STATE.selNotifs.length) { toast('Select at least one exam notification','warning'); return; }
+    setStep(3);
+    STATE.selRooms = [];
+    await loadRooms();
+}
+
+async function loadRooms() {
+    document.getElementById('roomsContainer').innerHTML = loadingHtml(4, 60);
+    document.getElementById('selBar').style.display = 'none';
+    try {
+        const res  = await fetch(`/api/seating/room-availability?date=${STATE.date}&session=${STATE.session}`);
+        const data = await res.json();
+        STATE.rooms = data.rooms || [];
+
+        document.getElementById('selBar').style.display = 'flex';
+        updateSelBar();
+        renderRoomGrid(data.grouped || []);
+    } catch(e) {
+        document.getElementById('roomsContainer').innerHTML =
+            `<div style="padding:20px;color:#dc2626;">Error: ${e.message}</div>`;
+    }
+}
+
+function renderRoomGrid(grouped) {
+    if (!grouped.length) {
+        document.getElementById('roomsContainer').innerHTML =
+            '<div style="padding:30px;text-align:center;color:#94a3b8;">No rooms found</div>';
+        return;
+    }
+
+    let html = '';
+    for (const blk of grouped) {
+        const freeInBlock = blk.rooms.filter(r=>r.status==='FREE').length;
+        html += `
+        <div class="card" style="margin-bottom:14px;">
+            <div class="room-block-hdr">
+                <i class="bi bi-building me-1"></i>${blk.block_name || blk.block_code}
+                <span style="opacity:.7;font-size:11px;font-weight:400;margin-left:6px;">
+                    ${freeInBlock} free / ${blk.rooms.length} total
+                </span>
+                <div style="margin-left:auto;display:flex;gap:6px;">
+                    <button class="btn btn-xs"
+                        style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.5);"
+                        onclick="selectBlock('${blk.block_code}', true)">Select All Free</button>
+                    <button class="btn btn-xs"
+                        style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.3);"
+                        onclick="selectBlock('${blk.block_code}', false)">Deselect</button>
+                </div>
+            </div>
+            <div class="rooms-grid">`;
+
+        for (const r of blk.rooms) {
+            const isFree = r.status === 'FREE';
+            const cls    = isFree ? (STATE.selRooms.includes(r.room_id)?'selected':'')
+                         : r.status.toLowerCase();
+            const spill = r.status === 'BLOCKED'  ? `<i class="bi bi-slash-circle me-1"></i>Blocked`
+                        : r.status === 'OCCUPIED'  ? `<i class="bi bi-person-fill me-1"></i>Occupied`
+                        : r.status === 'INACTIVE'  ? `<i class="bi bi-dash-circle me-1"></i>Inactive`
+                        : `<i class="bi bi-check-circle me-1"></i>Free`;
+            const pillClass = `sp-${r.status.toLowerCase()}`;
+            html += `
+            <div class="room-card ${cls}" id="rc_${r.room_id}"
+                title="${r.room_name}${r.status_note ? ' — '+r.status_note : ''}"
+                ${isFree ? `onclick="toggleRoom(${r.room_id})"` : ''}>
+                <div class="rc-check"><i class="bi bi-check"></i></div>
+                <div class="rc-num">${r.room_number}</div>
+                <div class="rc-info">
+                    <span class="rc-cap"><i class="bi bi-people me-1"></i>${r.usable_capacity}</span>
+                    <span class="status-pill ${pillClass}" style="font-size:9px;padding:1px 5px;">${spill}</span>
+                </div>
+            </div>`;
+        }
+        html += '</div></div>';
+    }
+
+    document.getElementById('roomsContainer').innerHTML = html;
+}
+
+function toggleRoom(roomId) {
+    const idx = STATE.selRooms.indexOf(roomId);
+    if (idx > -1) STATE.selRooms.splice(idx, 1);
+    else          STATE.selRooms.push(roomId);
+    document.getElementById(`rc_${roomId}`)?.classList.toggle('selected', STATE.selRooms.includes(roomId));
+    updateSelBar();
+    runPreValidate();
+}
+
+function selectBlock(blockCode, select) {
+    const blockRooms = STATE.rooms.filter(r => r.block_code === blockCode && r.status === 'FREE');
+    blockRooms.forEach(r => {
+        const in_ = STATE.selRooms.includes(r.room_id);
+        if (select && !in_)  { STATE.selRooms.push(r.room_id); }
+        if (!select && in_)  { STATE.selRooms.splice(STATE.selRooms.indexOf(r.room_id), 1); }
+        document.getElementById(`rc_${r.room_id}`)?.classList.toggle('selected', STATE.selRooms.includes(r.room_id));
+    });
+    updateSelBar();
+    runPreValidate();
+}
+
+function clearRooms() {
+    STATE.selRooms = [];
+    document.querySelectorAll('.room-card.selected').forEach(c => c.classList.remove('selected'));
+    updateSelBar();
+    document.getElementById('preValidatePanel').style.display = 'none';
+}
+
+
+// ════════════════════════════════════════════════════════════
+//  AUTO-SELECT ROOMS  —  Full local slot simulation
+//  1. Build group pools from selected notifications
+//  2. List free rooms largest-first
+//  3. Simulate greedy slot fill room by room
+//  4. Stop when all students seated  +  1 buffer room
+//  5. Render full layout panel showing every room's bench map
+// ════════════════════════════════════════════════════════════
+
+function autoSelectRooms() {
+    // ── Get subject groups from notifications ──
+    // Priority: use server-validated pvGroups if available (most accurate)
+    // Fallback: build from notification ref_codes
+    let simGroups = {};
+
+    if (STATE.pvGroups && Object.keys(STATE.pvGroups).length) {
+        // Best: already have exact per-group counts from pre-validate
+        simGroups = { ...STATE.pvGroups };
+    } else {
+        // Build from notifications — only include groups with actual student counts
+        for (const nid of STATE.selNotifs) {
+            const n = STATE.notifications.find(x => x.notification_id === nid);
+            if (!n) continue;
+            const refs  = (n.ref_codes || '').split(',').map(r => r.trim()).filter(Boolean);
+            const count = n.student_count || 0;
+            if (refs.length === 0) {
+                simGroups['GRP'] = (simGroups['GRP'] || 0) + count;
+            } else if (refs.length === 1) {
+                simGroups[refs[0]] = (simGroups[refs[0]] || 0) + count;
+            } else {
+                // Multiple ref_codes but unknown split — assign total to first ref_code
+                // This ensures detectEffectiveSpb correctly sees N groups
+                // Server will correct exact counts during generate
+                const perGroup = Math.floor(count / refs.length);
+                refs.forEach((r, i) => {
+                    simGroups[r] = (simGroups[r] || 0) + (i === refs.length-1 ? count - perGroup*(refs.length-1) : perGroup);
+                });
+            }
+        }
+    }
+
+    // Remove groups with 0 students (prevents false multi-group detection)
+    Object.keys(simGroups).forEach(k => { if (!simGroups[k]) delete simGroups[k]; });
+
+    const totalStudents = Object.values(simGroups).reduce((s, v) => s + v, 0) || STATE.totalStudents;
+    if (!totalStudents) { toast('No students found — select a notification first', 'warning'); return; }
+
+    const roomSpb      = STATE.rooms.find(r => r.status === 'FREE')?.students_per_bench || 2;
+    const detect       = detectEffectiveSpb(simGroups, roomSpb);
+    const effectiveSpb = detect.effective_spb;
+
+    // Sort free rooms by EFFECTIVE capacity (respects 1-per-bench rule)
+    const free = STATE.rooms
+        .filter(r => r.status === 'FREE')
+        .map(r => ({
+            ...r,
+            effective_capacity: Math.floor(r.usable_capacity / (r.students_per_bench || 2)) * effectiveSpb
+        }))
+        .sort((a, b) => b.effective_capacity - a.effective_capacity);
+
+    if (!free.length) { toast('No free rooms available', 'warning'); return; }
+
+    // ── Simulate greedy slot fill ──
+    const sim = simulateSlotFill(simGroups, free);
+
+    STATE.selRooms = sim.selectedRoomIds;
+
+    // Refresh room card visuals
+    document.querySelectorAll('.room-card').forEach(c => c.classList.remove('selected'));
+    STATE.selRooms.forEach(id => document.getElementById(`rc_${id}`)?.classList.add('selected'));
+
+    STATE.totalStudents = totalStudents;
+    updateSelBar();
+    renderSimPanel(sim, simGroups);
+
+    toast(`Auto-selected ${sim.selectedRoomIds.length} rooms for ${totalStudents} students`, 'success');
+}
+
+// ── Core simulation — runs entirely in browser ──────────────
+// Returns: { selectedRoomIds, roomLayouts[], remaining, totalSeated }
+
+// ── AUTO-DETECT effective_spb (mirrors server logic) ─────────
+// 1 unique ref_code → 1 per bench
+// 2+ ref_codes      → room.students_per_bench
+function detectEffectiveSpb(groups, roomSpb) {
+    const uniqueCount = Object.keys(groups).length;
+    return {
+        unique_ref_codes: uniqueCount,
+        is_single_group:  uniqueCount === 1,
+        effective_spb:    uniqueCount === 1 ? 1 : (roomSpb || 2)
+    };
+}
+
+function simulateSlotFill(groups, freeRooms) {
+    // Auto-detect effective_spb from group count
+    const roomSpb      = freeRooms[0]?.students_per_bench || 2;
+    const detect       = detectEffectiveSpb(groups, roomSpb);
+    const effectiveSpb = detect.effective_spb;
+
+    // Deep copy pools
+    const pools = {};
+    for (const [k, v] of Object.entries(groups)) pools[k] = v;
+
+    const roomLayouts   = [];  // one entry per room actually used
+    const selectedIds   = [];
+    let   bufferAdded   = false;
+
+    for (const room of freeRooms) {
+        const remaining = Object.values(pools).reduce((s, v) => s + v, 0);
+        if (remaining <= 0 && bufferAdded) break;
+
+        // Build slot map with auto-detected effectiveSpb
+        const slots = buildClientSlotMap(room, effectiveSpb);
+        if (!slots.length) continue;
+
+        let roomSeated  = 0;
+        let prevKey     = null;
+        const slotPlan  = [];
+
+        for (const slot of slots) {
+            if (slot.capacity === 0) {
+                slotPlan.push({ col: slot.col, pos: slot.pos, subject: null, count: 0, capacity: 0, blocked: true });
+                continue;
+            }
+            // Get keys with students remaining, sorted desc
+            const avail = Object.keys(pools)
+                .filter(k => pools[k] > 0)
+                .sort((a, b) => pools[b] - pools[a]);
+
+            if (!avail.length) {
+                slotPlan.push({ col: slot.col, pos: slot.pos, subject: null, count: 0, capacity: slot.capacity, empty: true });
+                continue;
+            }
+
+            const pick = avail.find(k => k !== prevKey) || avail[0];
+            const take = Math.min(slot.capacity, pools[pick]);
+            pools[pick] -= take;
+            roomSeated  += take;
+            prevKey      = pick;
+            slotPlan.push({ col: slot.col, pos: slot.pos, subject: pick, count: take, capacity: slot.capacity });
+        }
+
+        const isBuffer = (Object.values(pools).reduce((s,v)=>s+v,0) <= 0) && !bufferAdded && roomSeated === 0;
+
+        // Include room if it seated anyone, or if it's the +1 buffer
+        const remainingAfter = Object.values(pools).reduce((s,v)=>s+v,0);
+        if (roomSeated > 0 || (remainingAfter <= 0 && !bufferAdded)) {
+            selectedIds.push(room.room_id);
+            roomLayouts.push({
+                room_id:      room.room_id,
+                room_number:  room.room_number,
+                room_name:    room.room_name,
+                total_cols:   room.total_columns || 4,
+                total_rows:   room.total_rows    || 7,
+                spb:          effectiveSpb,
+                capacity:     slots.reduce((s, sl) => s + sl.capacity, 0),
+                seated:       roomSeated,
+                slots:        slotPlan,
+                is_buffer:    remainingAfter <= 0 && roomSeated === 0
+            });
+            if (remainingAfter <= 0 && !bufferAdded) {
+                bufferAdded = true;
+                // Add one more buffer room after this
+            }
+        }
+    }
+
+    // Add 1 extra buffer room (next free room not yet selected)
+    if (!bufferAdded) {
+        const bufRoom = freeRooms.find(r => !selectedIds.includes(r.room_id));
+        if (bufRoom) {
+            selectedIds.push(bufRoom.room_id);
+            const bSlots = buildClientSlotMap(bufRoom, effectiveSpb);
+            roomLayouts.push({
+                room_id:     bufRoom.room_id,
+                room_number: bufRoom.room_number,
+                room_name:   bufRoom.room_name,
+                total_cols:  bufRoom.total_columns || 4,
+                total_rows:  bufRoom.total_rows    || 7,
+                spb:         effectiveSpb,
+                capacity:    bSlots.reduce((s,sl)=>s+sl.capacity,0),
+                seated:      0,
+                slots:       bSlots.map(s => ({ ...s, subject: null, count: 0, empty: true })),
+                is_buffer:   true
+            });
+        }
+    }
+
+    return {
+        selectedRoomIds: selectedIds,
+        roomLayouts,
+        detection:       detect,
+        effective_spb:   effectiveSpb,
+        totalSeated:     Object.values(groups).reduce((s,v)=>s+v,0)
+                         - Object.values(pools).reduce((s,v)=>s+v,0),
+        overflow:        Object.entries(pools).filter(([,v])=>v>0)
+                               .map(([k,v])=>({ subject: k, count: v }))
+    };
+}
+
+// ── Build slot map from room object (client-side, no DB) ─────
+function buildClientSlotMap(room, effectiveSpb) {
+    const total_cols = room.total_columns      || 4;
+    const total_rows = room.total_rows         || 7;
+    const spb        = effectiveSpb            || room.students_per_bench || 2;
+
+    // Try to parse layout_data for blocked benches
+    let blockedSet = new Set();
+    if (room.layout_data) {
+        try {
+            const ld = typeof room.layout_data === 'string'
+                ? JSON.parse(room.layout_data) : room.layout_data;
+            if (ld.benches) {
+                for (const b of ld.benches) {
+                    if (b.available === false) blockedSet.add(`${b.col}`);
+                }
+                // Count available benches per column
+                const colCounts = {};
+                for (const b of ld.benches) {
+                    if (b.available !== false) colCounts[b.col] = (colCounts[b.col] || 0) + 1;
+                }
+                const slots = [];
+                for (let col = 1; col <= total_cols; col++) {
+                    const cap = colCounts[col] || 0;
+                    for (let pos = 1; pos <= spb; pos++) {
+                        slots.push({ col, pos, capacity: cap });
+                    }
+                }
+                return slots;
+            }
+        } catch (_) {}
+    }
+
+    // Default: all benches available
+    const slots = [];
+    for (let col = 1; col <= total_cols; col++) {
+        for (let pos = 1; pos <= spb; pos++) {
+            slots.push({ col, pos, capacity: total_rows });
+        }
+    }
+    return slots;
+}
+
+// ── Fetch accurate group counts then re-run simulation ───────
+// Called once when Step 3 loads (we have notification data)
+async function fetchGroupsAndSimulate() {
+    if (!STATE.selNotifs.length) return;
+    try {
+        const res = await fetch(
+            `/api/seating/notifications?date=${STATE.date}&session=${STATE.session}`
+        );
+        const data = await res.json();
+        const gmap = {};
+        for (const n of (data.notifications || [])) {
+            if (!STATE.selNotifs.includes(String(n.notification_id)) &&
+                !STATE.selNotifs.includes(n.notification_id)) continue;
+            // ref_codes is comma list; we want per-group counts
+            // Store raw for simulation; server pre-validate will give exact
+        }
+        // We'll rely on pre-validate API for exact per-group counts
+        // Store in STATE.pvGroups after first pre-validate call
+    } catch (_) {}
+}
+
+// ── runPreValidate — calls server, gets exact group counts ───
+let _pvTimer = null;
+function runPreValidate() {
+    clearTimeout(_pvTimer);
+    const panel = document.getElementById('preValidatePanel');
+    if (!STATE.selRooms.length || !STATE.selNotifs.length) {
+        panel.style.display = 'none';
+        return;
+    }
+    _pvTimer = setTimeout(async () => {
+        try {
+            const res = await fetch('/api/seating/pre-validate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    exam_date:        STATE.date,
+                    session_order:    parseInt(STATE.session),
+                    notification_ids: STATE.selNotifs,
+                    room_ids:         STATE.selRooms
+                })
+            });
+            const data = await res.json();
+            // Save exact group counts for future simulations
+            if (data.subject_summary) {
+                STATE.pvGroups = {};
+                for (const s of data.subject_summary) STATE.pvGroups[s.ref_code] = s.count;
+            }
+            renderPreValidatePanel(data);
+        } catch (_) {}
+    }, 600);
+}
+
+
+
+
+
+// ════════════════════════════════════════════════════════════
+//  renderSimPanel — shows all room layouts from local simulation
+// ════════════════════════════════════════════════════════════
+const PALETTE = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ef4444',
+                 '#8b5cf6','#ec4899','#14b8a6','#f97316','#84cc16'];
+
+function getSubjectColors(groups) {
+    const keys = Object.keys(groups).sort((a,b) => groups[b] - groups[a]);
+    const map  = {};
+    keys.forEach((k, i) => { map[k] = PALETTE[i % PALETTE.length]; });
+    return map;
+}
+
+function renderSimPanel(sim, groups) {
+    const panel    = document.getElementById('preValidatePanel');
+    const colors   = getSubjectColors(groups);
+    const total    = Object.values(groups).reduce((s,v)=>s+v,0);
+    const seated   = sim.totalSeated;
+    const overflow = sim.overflow || [];
+    const roomLayouts = sim.roomLayouts || [];
+    const totalSeats  = roomLayouts.reduce((s,r)=>s+r.capacity,0);
+    const buffer      = totalSeats - total;
+    const hasError    = overflow.length > 0;
+
+    // ── Legend pills ──
+    const legend = Object.entries(groups)
+        .sort((a,b)=>b[1]-a[1])
+        .map(([k,v]) => {
+            const c   = colors[k] || '#94a3b8';
+            const pct = Math.round(v/total*100);
+            return `<span style="display:inline-flex;align-items:center;gap:5px;
+                         padding:4px 10px;border-radius:16px;
+                         background:${c}15;border:1.5px solid ${c}50;margin:3px;">
+                <span style="width:9px;height:9px;border-radius:50%;background:${c};display:inline-block;"></span>
+                <strong style="color:${c};">${k}</strong>
+                <span style="color:#64748b;font-size:11px;">${v} · ${pct}%</span>
+            </span>`;
+        }).join('');
+
+    // ── Overflow errors ──
+    const errHTML = overflow.map(o =>
+        `<div style="padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;
+              border-radius:8px;color:#991b1b;font-size:13px;margin-bottom:6px;">
+            ✖ ${o.count} students from <strong>${o.subject}</strong> could not be seated.
+            Add more rooms or unblock benches.
+         </div>`).join('');
+
+    // ── Room cards ──
+    const roomCards = roomLayouts.map((r, ri) => {
+        const fill      = r.capacity > 0 ? Math.round(r.seated / r.capacity * 100) : 0;
+        const fillColor = fill === 0 ? '#94a3b8' : fill >= 90 ? '#ef4444' : fill >= 60 ? '#f59e0b' : '#10b981';
+
+        // Build bench grid using actual layout_data from STATE.rooms (accurate blocked positions)
+        const slotMap = {};
+        for (const sl of r.slots) slotMap[`${sl.col}_${sl.pos}`] = sl;
+
+        const cols = r.total_cols;
+        const spb  = r.spb;
+
+        // Try to get actual bench map from STATE.rooms layout_data
+        const stateRoom    = STATE.rooms.find(rm => rm.room_id === r.room_id);
+        let   benchAvail   = null; // benchAvail[col][row] = true/false
+        let   maxRows      = r.total_rows || 7;
+
+        if (stateRoom?.layout_data) {
+            try {
+                const ld = typeof stateRoom.layout_data === 'string'
+                    ? JSON.parse(stateRoom.layout_data) : stateRoom.layout_data;
+                if (ld.benches && ld.benches.length) {
+                    benchAvail = {};
+                    let maxR = 0;
+                    for (const b of ld.benches) {
+                        if (!benchAvail[b.col]) benchAvail[b.col] = {};
+                        benchAvail[b.col][b.row] = b.available !== false;
+                        if (b.row > maxR) maxR = b.row;
+                    }
+                    maxRows = maxR;
+                }
+            } catch(_) {}
+        }
+
+        // Track filled seats per slot (to show correct student in each row)
+        // Since slot fills top-to-bottom by available benches, we need to
+        // distribute slot students across available rows in order
+        const slotRowAssign = {}; // slotKey → [row1, row2, ...]
+        if (benchAvail) {
+            for (let col = 1; col <= cols; col++) {
+                for (let pos = 1; pos <= spb; pos++) {
+                    const key = `${col}_${pos}`;
+                    const sl  = slotMap[key];
+                    if (!sl || !sl.count) continue;
+                    const availRows = [];
+                    for (let row = 1; row <= maxRows; row++) {
+                        if (benchAvail[col]?.[row] !== false) availRows.push(row);
+                    }
+                    slotRowAssign[key] = availRows.slice(0, sl.count);
+                }
+            }
+        }
+
+        let grid = '';
+        for (let row = 1; row <= maxRows; row++) {
+            let cells = '';
+            for (let col = 1; col <= cols; col++) {
+                // Check if bench physically exists and is available
+                const isPhysicallyBlocked = benchAvail
+                    ? benchAvail[col]?.[row] === false
+                    : false;
+                const benchMissing = benchAvail
+                    ? benchAvail[col]?.[row] === undefined
+                    : false;
+
+                let subCells = '';
+                for (let pos = 1; pos <= spb; pos++) {
+                    const key = `${col}_${pos}`;
+                    const sl  = slotMap[key];
+                    // Check if this row is assigned to this slot
+                    const hasStudent = slotRowAssign[key]
+                        ? slotRowAssign[key].includes(row)
+                        : (!isPhysicallyBlocked && !benchMissing && sl?.subject && sl.subject !== '(blocked)' && sl.subject !== '(empty)');
+                    const sub = hasStudent ? sl.subject : null;
+                    const c   = sub ? (colors[sub] || '#94a3b8') : '#e2e8f0';
+                    const txt = sub ? sub.substring(0,4) : '';
+                    const bg  = isPhysicallyBlocked ? '#fee2e2' : benchMissing ? 'transparent' : sub ? `${c}25` : '#f8fafc';
+                    const bdr = isPhysicallyBlocked ? '#fca5a5' : benchMissing ? 'transparent' : sub ? `${c}80` : '#e2e8f0';
+                    const lbl = isPhysicallyBlocked ? '✕' : benchMissing ? '' : txt;
+                    subCells += `<div style="flex:1;padding:2px 1px;text-align:center;
+                        background:${bg};border:1px solid ${bdr};
+                        font-size:8px;font-weight:700;color:${isPhysicallyBlocked?'#ef4444':c};
+                        min-width:24px;line-height:1.4;border-radius:2px;">${lbl}</div>`;
+                }
+                cells += `<td style="padding:1px;">
+                    <div style="display:flex;gap:1px;">${subCells}</div>
+                </td>`;
+            }
+            grid += `<tr>${cells}</tr>`;
+        }
+
+        // Slot summary line
+        const slotSummary = r.slots
+            .filter(sl => sl.subject && !sl.blocked && !sl.empty)
+            .map(sl => {
+                const c = colors[sl.subject] || '#94a3b8';
+                return `<span style="color:${c};font-weight:700;font-size:10px;">C${sl.col}${sl.pos===1?'L':'R'}=${sl.subject}(${sl.count})</span>`;
+            }).join(`<span style="color:#cbd5e1;margin:0 2px;">│</span>`);
+
+        const bufferBadge = r.is_buffer
+            ? `<span style="background:#fef3c7;color:#92400e;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;margin-left:6px;">BUFFER</span>`
+            : '';
+
+        // Subject count badges for header
+        const subjectBadges = [...new Set(r.slots.filter(s=>s.subject&&!s.blocked&&!s.empty).map(s=>s.subject))].map(sub => {
+            const c   = colors[sub] || '#94a3b8';
+            const cnt = r.slots.filter(s=>s.subject===sub).reduce((a,b)=>a+b.count,0);
+            return `<span style="padding:2px 8px;border-radius:10px;background:${c}18;border:1px solid ${c}50;color:${c};font-size:11px;font-weight:700;margin-left:4px;">${sub}: ${cnt}</span>`;
+        }).join('');
+
+        return `<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:10px;">
+            <!-- Room header -->
+            <div style="background:#f8fafc;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f1f5f9;">
+                <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+                    <span style="font-weight:800;font-size:14px;color:#1e293b;">${r.room_number}</span>
+                    <span style="color:#64748b;font-size:12px;">${r.room_name || ''}</span>
+                    ${bufferBadge}
+                    ${subjectBadges}
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:11px;color:#64748b;">${r.seated}/${r.capacity} seats</span>
+                    <div style="width:60px;height:6px;background:#e2e8f0;border-radius:3px;">
+                        <div style="width:${fill}%;height:100%;background:${fillColor};border-radius:3px;"></div>
+                    </div>
+                    <span style="font-size:11px;color:${fillColor};font-weight:700;">${fill}%</span>
+                </div>
+            </div>
+            <!-- Slot summary -->
+            <div style="padding:5px 14px;background:#fffbf0;border-bottom:1px solid #fef3c7;font-size:10px;overflow-x:auto;white-space:nowrap;">
+                ${slotSummary || '<span style="color:#94a3b8;">Buffer room — no students assigned</span>'}
+            </div>
+            <!-- Bench grid -->
+            <div style="padding:8px 14px;">
+                <div style="font-size:9px;color:#94a3b8;margin-bottom:4px;">
+                    Each cell = one bench. L=Left seat, R=Right seat. Colors = exam paper group.
+                </div>
+                <div style="overflow-x:auto;">
+                    <table style="border-collapse:collapse;">${grid}</table>
+                </div>
+                <!-- subject badges moved to header -->
+            </div>
+        </div>`;
+    }).join('');
+
+    panel.style.display = 'block';
+    panel.innerHTML = `
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.06);">
+
+        <!-- Header -->
+        <div style="background:linear-gradient(135deg,#1e293b,#334155);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;">
+            <div style="color:#fff;font-weight:700;font-size:15px;">
+                <i class="bi bi-grid-3x3-gap me-2"></i>Room Layout Preview — ${roomLayouts.length} rooms
+            </div>
+            <span style="background:${hasError?'#fecaca':'#d1fae5'};color:${hasError?'#991b1b':'#065f46'};
+                padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;">
+                ${hasError ? '✖ OVERFLOW — ADD MORE ROOMS' : '✓ ALL ' + total + ' STUDENTS SEATED'}            </span>
+        </div>
+
+        <!-- KPI row -->
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid #f1f5f9;">
+            ${[
+                ['Students', total,                    '#6366f1'],
+                ['Rooms',    roomLayouts.length,        '#0ea5e9'],
+                ['Seated',   seated,                    '#10b981'],
+                ['Seats',    totalSeats,                '#8b5cf6'],
+                ['Buffer',   (buffer>=0?'+':'')+buffer, buffer>=0?'#10b981':'#ef4444']
+            ].map(([l,v,c])=>`<div style="padding:12px;text-align:center;border-right:1px solid #f1f5f9;">
+                <div style="font-size:20px;font-weight:800;color:${c};">${v}</div>
+                <div style="font-size:11px;color:#94a3b8;">${l}</div>
+            </div>`).join('')}
+        </div>
+
+        <div style="padding:16px 20px;">
+            <!-- Legend -->
+            <div style="margin-bottom:12px;">${legend}</div>
+            <!-- Errors -->
+            ${errHTML}
+            <!-- Room cards -->
+            ${roomCards}
+            <!-- Anti-copy note -->
+            <div style="padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:12px;color:#166534;">
+                <strong>✓ Anti-copy guarantee:</strong>
+                Every bench: Left seat ≠ Right seat (100% different paper groups).
+                Same-column neighbours face forward — physically cannot copy sideways.
+            </div>
+        </div>
+    </div>`;
+}
+
+// ── renderPreValidatePanel — called from server pre-validate response ──
+function renderPreValidatePanel(d) {
+    // If we have simulation data already showing, merge server data (exact counts)
+    if (d.subject_summary && STATE.pvGroups) {
+        // Re-run simulation with exact server counts and re-render
+        const exactGroups = {};
+        for (const s of d.subject_summary) exactGroups[s.ref_code] = s.count;
+        const free = STATE.rooms.filter(r => r.status==='FREE').sort((a,b)=>b.usable_capacity-a.usable_capacity);
+        const sel  = STATE.rooms.filter(r => STATE.selRooms.includes(r.room_id));
+        const sim  = simulateSlotFill(exactGroups, sel);
+        renderSimPanel(sim, exactGroups);
+    }
+}
+
+function updateSelBar() {
+    // Get effective spb from current groups (auto-detect)
+    const roomSpb      = STATE.rooms.find(r => r.status === 'FREE')?.students_per_bench || 2;
+    const simGroups    = STATE.pvGroups && Object.keys(STATE.pvGroups).length ? STATE.pvGroups : {};
+    const detect       = Object.keys(simGroups).length
+        ? detectEffectiveSpb(simGroups, roomSpb)
+        : { effective_spb: roomSpb };
+    const effectiveSpb = detect.effective_spb;
+
+    const cap = STATE.selRooms.reduce((s, id) => {
+        const r = STATE.rooms.find(x => x.room_id === id);
+        if (!r) return s;
+        // Effective capacity = benches × effectiveSpb
+        const benches = Math.floor(r.usable_capacity / (r.students_per_bench || 2));
+        return s + benches * effectiveSpb;
+    }, 0);
+
+    const buffer = cap - STATE.totalStudents;
+    const capEl  = document.getElementById('sbCapacity');
+
+    document.getElementById('sbStudents').textContent = STATE.totalStudents;
+    document.getElementById('sbRooms').textContent    = STATE.selRooms.length;
+    capEl.textContent = cap;
+    capEl.className   = `sel-val ${buffer >= 0 ? 'cap-ok' : 'cap-over'}`;
+    document.getElementById('sbBuffer').textContent  = buffer >= 0 ? `+${buffer}` : buffer;
+
+    document.getElementById('step3Next').disabled = STATE.selRooms.length === 0 || cap < STATE.totalStudents;
+}
+
+// ════════════════════════════════════════════════════════════
+//  STEP 4 — GENERATE & REVIEW
+// ════════════════════════════════════════════════════════════
+async function runGenerate() {
+    // ── Check for existing plan (duplicate warning) ───────────────────────
+    try {
+        const checkRes  = await fetch(`/api/seating/plans`);
+        const checkData = await checkRes.json();
+        // Derive session_order from the currently selected session option
+        const _sel        = document.getElementById('session');
+        const _selOpt     = _sel.options[_sel.selectedIndex];
+        const _grp        = (_selOpt?.dataset?.group || _selOpt?.dataset?.name || '').toUpperCase();
+        const _sessionOrd = _grp === 'FN' ? 1 : 2;
+        // Now only 1 plan per date+session exists (replaced on save)
+        const existing  = (checkData.plans || []).find(p =>
+            toLocalDate(p.exam_date) === STATE.date &&
+            parseInt(p.session_order) === _sessionOrd
+        );
+
+        if (existing) {
+            const choice = await Swal.fire({
+                title: '⚠️ Plan Already Exists',
+                html: `
+                    <div style="text-align:left;padding:8px 0;">
+                        <div style="background:#fef3c7;border-radius:8px;padding:12px 16px;margin-bottom:12px;">
+                            <div style="font-weight:700;color:#92400e;margin-bottom:4px;">
+                                ${existing.exam_date_display || STATE.date} — ${existing.session_order===1?'FN':'AN'} Session
+                            </div>
+                            <div style="font-size:13px;color:#78350f;">
+                                Plan <strong>#${existing.plan_id}</strong> ·
+                                ${existing.total_students||0} students ·
+                                ${existing.room_count||0} rooms ·
+                                Status: <strong>${existing.status}</strong>
+                            </div>
+                        </div>
+                        <p style="font-size:13px;color:#64748b;">
+                            Generating a new plan will <strong>replace</strong> the existing one.
+                            Are you sure you want to continue?
+                        </p>
+                    </div>`,
+                icon: 'warning',
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonText: '⚡ Override & Regenerate',
+                denyButtonText: '👁 View Existing',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#dc2626',
+                denyButtonColor: '#6366f1'
+            });
+
+            if (choice.isDenied) {
+                window.open(`seating-pdf-export.html?plan_id=${existing.plan_id}`, '_blank');
+                return;
+            }
+            if (!choice.isConfirmed) return;
+
+            // Old plans are automatically replaced when save is called
+            // No need to manually delete drafts
+        }
+    } catch(_) {} // non-fatal — proceed if check fails
+
+    setStep(4);
+    showLoading('Running slot-based anti-copy algorithm…');
+    document.getElementById('saveBtn').disabled = true;
+
+    try {
+        const res = await fetch('/api/seating/generate', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({
+                exam_date:        STATE.date,
+                session_order:    parseInt(STATE.session),
+                notification_ids: STATE.selNotifs,
+                room_ids:         STATE.selRooms
+            })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Generate failed');
+
+        STATE.lastGenResult = data;
+        rcColorMap  = {};
+        rcColorIdx  = 0;
+
+        renderReview(data);
+        const canSave = data.validation?.can_save !== false;
+        document.getElementById('saveBtn').disabled = !canSave;
+
+    } catch(e) {
+        document.getElementById('reviewContainer').innerHTML =
+            `<div style="padding:30px;text-align:center;color:#dc2626;">
+                <i class="bi bi-exclamation-circle" style="font-size:40px;display:block;margin-bottom:10px;"></i>
+                <strong>Generation Failed</strong><br><br>${e.message}
+             </div>`;
+    } finally {
+        hideLoading();
+    }
+}
+
+function renderReview(d) {
+    const v      = d.validation;
+    const score  = v.score;
+    const grade  = v.grade;
+    const gradeClass = `grade-${grade.toLowerCase()}`;
+    const barClass   = score>=95?'sb-excellent':score>=80?'sb-good':score>=60?'sb-acceptable':'sb-poor';
+    const scoreColor = score>=95?'#16a34a':score>=80?'#2563eb':score>=60?'#d97706':'#dc2626';
+
+    // Ref code legend
+    const refKeys = Object.keys(d.ref_code_groups);
+    refKeys.forEach(k => getRcColor(k));
+    const legendHtml = refKeys.map(k =>
+        `<div class="ref-leg-item">
+            <span class="ref-dot" style="background:var(--dot-${k},#667eea);"></span>
+            <span class="${getRcColor(k)}" style="padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;">
+                ${k}: ${d.ref_code_groups[k]}
+            </span>
+        </div>`
+    ).join('');
+
+    // Circumference for ring
+    const R  = 36;
+    const C  = 2 * Math.PI * R;
+    const offset = C - (score / 100) * C;
+
+    const html = `
+    <!-- Validation summary -->
+    <div class="card">
+        <div class="card-hdr">
+            <i class="bi bi-shield-check" style="color:#22c55e;font-size:18px;"></i>
+            <h3>Validation Report</h3>
+            <span class="batch-badge ms-2">
+                <i class="bi bi-grid-3x2 me-1"></i>${d.batch_mode}
+            </span>
+        </div>
+        <div class="card-body">
+
+            <!-- KPI grid -->
+            <div class="vr-grid">
+                <div class="vr-card blue">
+                    <div class="vr-val" style="color:#1e40af;">${d.total_students_unique}</div>
+                    <div class="vr-lbl">Students Seated</div>
+                </div>
+                <div class="vr-card green">
+                    <div class="vr-val" style="color:#065f46;">${d.total_rooms}</div>
+                    <div class="vr-lbl">Rooms Used</div>
+                </div>
+                <div class="vr-card purple">
+                    <div class="vr-val" style="color:#5b21b6;">${d.unique_ref_codes}</div>
+                    <div class="vr-lbl">Exam Groups</div>
+                </div>
+                <div class="vr-card ${d.buffer_seats >= 0 ? 'green' : 'red'}">
+                    <div class="vr-val" style="color:${d.buffer_seats>=0?'#065f46':'#991b1b'};">
+                        ${d.buffer_seats >= 0 ? '+' : ''}${d.buffer_seats}
+                    </div>
+                    <div class="vr-lbl">Buffer Seats</div>
+                </div>
+                <div class="vr-card ${v.violation_count===0?'green':'yellow'}">
+                    <div class="vr-val" style="color:${v.violation_count===0?'#065f46':'#92400e'};">
+                        ${v.violation_count}
+                    </div>
+                    <div class="vr-lbl">Conflicts</div>
+                </div>
+                <div class="vr-card ${d.total_students_raw === d.total_students_unique ? 'green' : 'yellow'}">
+                    <div class="vr-val" style="color:#1e293b;">${d.total_students_raw - d.total_students_unique}</div>
+                    <div class="vr-lbl">Duplicates Removed</div>
+                </div>
+            </div>
+
+            <!-- Anti-copy score -->
+            <div class="score-ring-wrap">
+                <div class="score-wrap">
+                    <svg viewBox="0 0 90 90">
+                        <circle class="bg" cx="45" cy="45" r="${R}"/>
+                        <circle class="fg" cx="45" cy="45" r="${R}"
+                            stroke="${scoreColor}"
+                            stroke-dasharray="${C}"
+                            stroke-dashoffset="${offset}"/>
+                    </svg>
+                    <div class="score-overlay">
+                        <span class="score-num" style="color:${scoreColor};">${score}</span>
+                        <span class="score-pct">/ 100</span>
+                    </div>
+                </div>
+                <div class="score-info">
+                    <div class="score-title" style="color:${scoreColor};">Anti-Copy Score</div>
+                    <div class="score-sub">
+                        ${v.passed_checks} of ${v.total_checks} adjacency checks passed
+                    </div>
+                    <div>
+                        <span class="grade-pill ${gradeClass}">
+                            ${grade === 'EXCELLENT' ? '🟢' : grade === 'GOOD' ? '🔵' : grade === 'ACCEPTABLE' ? '🟡' : '🔴'}
+                            ${grade}
+                        </span>
+                        ${score < 60 ? `<span style="color:#dc2626;font-size:12px;font-weight:700;margin-left:10px;">
+                            ⛔ Score below 60% — Cannot save</span>` : ''}
+                    </div>
+                    <div class="sbar-wrap" style="margin-top:10px;width:300px;">
+                        <div class="sbar-fill ${barClass}" style="width:${score}%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ref code legend -->
+            <div style="margin-bottom:8px;font-size:11px;font-weight:700;color:#64748b;
+                text-transform:uppercase;letter-spacing:.5px;">Exam Groups (ref_code)</div>
+            <div class="ref-legend">${legendHtml}</div>
+
+            <!-- Violations -->
+            ${v.violations?.length ? `
+            <div style="margin-top:14px;">
+                <div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:8px;">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    ${v.violation_count} Conflict(s) Detected:
+                </div>
+                ${v.violations.slice(0,5).map(viol => `
+                <div class="viol-item">
+                    <span class="viol-icon">${viol.type==='SAME_BENCH'?'🔴':'🟡'}</span>
+                    <div>
+                        <div class="viol-type">${viol.type.replace(/_/g,' ')}</div>
+                        <div class="viol-detail">
+                            Room ${viol.room_id} · Bench ${viol.bench||''} · Group: ${viol.ref_code}
+                            ${viol.students ? ` · ${viol.students.join(' & ')}` : ''}
+                        </div>
+                    </div>
+                </div>`).join('')}
+                ${v.violation_count > 5 ? `<div style="font-size:12px;color:#94a3b8;">
+                    + ${v.violation_count-5} more…</div>` : ''}
+            </div>` : `
+            <div style="margin-top:10px;padding:10px 14px;background:#d1fae5;border-radius:8px;
+                font-size:13px;font-weight:700;color:#065f46;">
+                <i class="bi bi-check-circle me-1"></i>Zero conflicts detected. Perfect anti-copy seating!
+            </div>`}
+
+        </div>
+    </div>
+
+    <!-- Per-room preview -->
+    <div class="card">
+        <div class="card-hdr">
+            <i class="bi bi-layout-three-columns" style="color:#667eea;font-size:18px;"></i>
+            <h3>Room Allocation Preview</h3>
+            <span style="font-size:12px;color:#64748b;margin-left:4px;">
+                — ${d.rooms_preview.length} room(s)
+            </span>
+        </div>
+        <div class="card-body">
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">
+                ${d.rooms_preview.map(r => {
+                    const rScore  = r.anti_copy_score;
+                    const rScoreC = rScore>=95?'#16a34a':rScore>=80?'#2563eb':rScore>=60?'#d97706':'#dc2626';
+                    const refPills = Object.entries(r.ref_code_summary||{}).map(([k,v]) =>
+                        `<span class="rp-ref-pill ${getRcColor(k)}">${k}: ${v}</span>`
+                    ).join('');
+                    return `
+                    <div class="rp-card">
+                        <div class="rp-hdr">
+                            <div>
+                                <div class="rph-room">${r.room_number} — ${r.room_name}</div>
+                                <div class="rph-score">
+                                    ${r.student_count} students · ${r.stud_per_bench}/bench
+                                </div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:20px;font-weight:900;color:${rScoreC==='#16a34a'?'#4ade80':rScoreC==='#2563eb'?'#93c5fd':rScoreC==='#d97706'?'#fde68a':'#fca5a5'};">
+                                    ${rScore}%
+                                </div>
+                                <div style="font-size:9px;opacity:.7;text-transform:uppercase;">score</div>
+                            </div>
+                        </div>
+                        <div class="rp-body">
+                            <div class="rp-row">
+                                <span class="rp-key">Capacity</span>
+                                <span class="rp-val">${r.student_count} / ${r.usable_capacity}</span>
+                            </div>
+                            <div class="rp-row">
+                                <span class="rp-key">Branches</span>
+                                <span class="rp-val">${r.branch_display || '—'}</span>
+                            </div>
+                            <div class="rp-row">
+                                <span class="rp-key">Per bench</span>
+                                <span class="rp-val">${r.stud_per_bench} student(s)</span>
+                            </div>
+                            <div class="rp-ref-pills">${refPills}</div>
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>
+    </div>`;
+
+    document.getElementById('reviewContainer').innerHTML = html;
+}
+
+// ════════════════════════════════════════════════════════════
+//  DOWNLOAD PANEL — shown after save
+// ════════════════════════════════════════════════════════════
+function renderSavedPanel(planId, totalStudents, totalRooms, score, genData) {
+    const dateDisplay = genData?.exam_date || STATE.date;
+    const session     = parseInt(STATE.session) === 1 ? 'FN' : 'AN';
+
+    // Show the persistent outside panel
+    showSavedPlanPanel(planId, totalStudents, totalRooms, dateDisplay, session, genData);
+
+    // Also update the reviewContainer with a compact confirmation
+    document.getElementById('reviewContainer').innerHTML = `
+        <div style="text-align:center;padding:30px;color:#16a34a;">
+            <i class="bi bi-check-circle-fill" style="font-size:48px;display:block;margin-bottom:10px;"></i>
+            <div style="font-size:18px;font-weight:700;margin-bottom:6px;">Plan #${planId} Saved!</div>
+            <div style="font-size:13px;color:#64748b;">
+                ${totalStudents} students · ${totalRooms} rooms · ${dateDisplay} ${session}
+            </div>
+            <div style="font-size:12px;color:#94a3b8;margin-top:8px;">
+                ↓ Download documents from the panel below
+            </div>
+        </div>`;
+}
+
+
+
+// ── Download stubs — replace with actual PDF logic when formats provided ──
+async function downloadAttendance(planId) {
+    Swal.fire({
+        title: 'Attendance Sheet',
+        text:  'Format not configured yet. Please provide the attendance sheet format.',
+        icon:  'info'
+    });
+}
+async function downloadNoticeBoard(planId) {
+    Swal.fire({
+        title: 'Notice Board',
+        text:  'Format not configured yet. Please provide the notice board format.',
+        icon:  'info'
+    });
+}
+async function downloadDForm(planId) {
+    Swal.fire({
+        title: 'D-Form',
+        text:  'Format not configured yet. Please provide the D-Form format.',
+        icon:  'info'
+    });
+}
+
+// ════════════════════════════════════════════════════════════
+//  SAVE
+// ════════════════════════════════════════════════════════════
+async function savePlan() {
+    if (!STATE.lastGenResult) return;
+    const d = STATE.lastGenResult;
+
+    if (!d.validation.can_save) {
+        toast('Cannot save — anti-copy score below 60%. Re-generate or add more rooms.', 'error');
+        return;
+    }
+
+    showLoading('Saving seating plan to database…');
+    document.getElementById('saveBtn').disabled = true;
+
+    try {
+        const res = await fetch('/api/seating/save', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({
+                exam_date:        STATE.date,
+                session_order:    parseInt(STATE.session),
+                notification_ids: STATE.selNotifs,
+                room_ids:         STATE.selRooms,
+                allocations:      d.allocations,
+                anti_copy_score:  d.validation.score,
+                generated_by:     'Admin'
+            })
+        });
+        const result = await res.json();
+        if (!result.success) throw new Error(result.error || 'Save failed');
+
+        toast(result.message, 'success');
+
+        // Redirect to downloads page with plan_id
+        setTimeout(() => {
+            window.location.href = `seating-downloads.html?plan_id=${result.plan_id}`;
+        }, 1200);
+
+        // Show brief success in reviewContainer while redirecting
+        document.getElementById('reviewContainer').innerHTML = `
+            <div style="text-align:center;padding:40px;color:#16a34a;">
+                <i class="bi bi-check-circle-fill" style="font-size:48px;display:block;margin-bottom:12px;"></i>
+                <div style="font-size:18px;font-weight:700;margin-bottom:6px;">Plan #${result.plan_id} Saved!</div>
+                <div style="font-size:13px;color:#64748b;">Redirecting to downloads…</div>
+            </div>`;
+
+    } catch(e) {
+        toast('Save failed: ' + e.message, 'error');
+        document.getElementById('saveBtn').disabled = false;
+    } finally {
+        hideLoading();
+    }
+}
+
+// ════════════════════════════════════════════════════════════
+//  PLAN HISTORY
+// ════════════════════════════════════════════════════════════
+async function loadPlans() {
+    document.getElementById('plansContainer').innerHTML =
+        '<div style="padding:20px;">' + loadingHtml(3, 50) + '</div>';
+    try {
+        const res  = await fetch('/api/seating/plans');
+        const data = await res.json();
+        const plans = data.plans || [];
+
+        if (!plans.length) {
+            document.getElementById('plansContainer').innerHTML =
+                '<div style="padding:30px;text-align:center;color:#94a3b8;">No seating plans generated yet</div>';
+            return;
+        }
+
+        document.getElementById('plansContainer').innerHTML =
+            plans.map(p => `
+            <div class="plan-row">
+                <div class="pr-date">${p.exam_date_display || p.exam_date}</div>
+                <span class="pr-ses ${p.session_order===1?'pr-fn':'pr-an'}">${p.session_label}</span>
+                <div class="pr-name">${p.exam_names || p.notif_refs || '—'}</div>
+                <div style="font-size:12px;color:#94a3b8;">${p.total_students} students · ${p.room_count} rooms</div>
+                <div style="font-size:11px;color:#94a3b8;">${p.rooms_list || ''}</div>
+                <span class="pr-status prs-${(p.status||'draft').toLowerCase()}">${p.status || 'Draft'}</span>
+                <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;">
+                    <button class="btn btn-xs btn-outline"
+                        onclick="window.open('seating-pdf-export.html?plan_id=${p.plan_id}','_blank')">
+                        <i class="bi bi-file-pdf me-1"></i>PDF
+                    </button>
+                    <button class="btn btn-xs btn-outline"
+                        onclick="reGeneratePlan('${p.exam_date}',${p.session_order},'${p.plan_id}')"
+                        title="Re-generate a new seating plan for this date & session">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Re-Generate
+                    </button>
+                    ${p.status==='Draft' ? `
+                    <button class="btn btn-xs btn-success"
+                        onclick="updateStatus(${p.plan_id},'Confirmed')">Confirm</button>
+                    <button class="btn btn-xs btn-danger"
+                        onclick="deletePlan(${p.plan_id})">Delete</button>` : ''}
+                    ${p.status==='Confirmed' ? `
+                    <button class="btn btn-xs btn-primary"
+                        onclick="updateStatus(${p.plan_id},'Published')">Publish</button>` : ''}
+                    ${(p.status==='Confirmed'||p.status==='Published') ? `
+                    <button class="btn btn-xs btn-danger"
+                        onclick="forceDeletePlan(${p.plan_id},'${p.status}')"
+                        title="Delete with admin password">
+                        <i class="bi bi-shield-lock me-1"></i>Delete
+                    </button>` : ''}
+                </div>
+            </div>`).join('');
+    } catch(e) {
+        document.getElementById('plansContainer').innerHTML =
+            `<div style="padding:20px;color:#dc2626;">Error: ${e.message}</div>`;
+    }
+}
+
+async function updateStatus(planId, status) {
+    try {
+        const res = await fetch(`/api/seating/plan/${planId}/status`, {
+            method:'PATCH', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ status })
+        });
+        const d = await res.json();
+        if (!d.success) throw new Error(d.error);
+        toast(`Plan ${status}`, 'success');
+        loadPlans();
+    } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deletePlan(planId) {
+    if (!confirm('Delete this Draft plan? This cannot be undone.')) return;
+    try {
+        const res = await fetch(`/api/seating/plan/${planId}`, { method:'DELETE' });
+        const d   = await res.json();
+        if (!d.success) throw new Error(d.error);
+        toast('Plan deleted', 'success');
+        loadPlans();
+    } catch(e) { toast(e.message, 'error'); }
+}
+
+async function forceDeletePlan(planId, status) {
+    const result = await Swal.fire({
+        title: `🔒 Delete ${status} Plan #${planId}`,
+        html: `
+            <div style="text-align:left;padding:6px 0;">
+                <div style="background:#fee2e2;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;color:#991b1b;font-weight:700;">
+                    ⚠️ This is a <strong>${status}</strong> plan. Deleting it will permanently remove all seating data, allocations, and cannot be undone.
+                </div>
+                <label style="font-size:12px;font-weight:700;color:#64748b;display:block;margin-bottom:6px;">ADMIN PASSWORD</label>
+                <input id="swal-pwd" type="password" placeholder="Enter admin password"
+                    style="width:100%;padding:10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none;">
+            </div>`,
+        showCancelButton: true,
+        confirmButtonText: '🗑️ Permanently Delete',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#dc2626',
+        preConfirm: () => {
+            const pwd = document.getElementById('swal-pwd').value;
+            if (!pwd) { Swal.showValidationMessage('Password is required'); return false; }
+            return pwd;
+        }
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+        const res = await fetch(`/api/seating/plan/${planId}/force`, {
+            method:'DELETE',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ password: result.value })
+        });
+        const d = await res.json();
+        if (!d.success) throw new Error(d.error);
+        toast(d.message || 'Plan permanently deleted', 'success');
+        loadPlans();
+    } catch(e) { toast(e.message, 'error'); }
+}
+
+function reGeneratePlan(examDate, sessionOrder, planId) {
+    Swal.fire({
+        title: '🔄 Re-Generate Seating Plan',
+        html: `
+            <div style="text-align:left;padding:6px 0;font-size:13px;color:#475569;line-height:1.7;">
+                This will start a <strong>new wizard</strong> pre-filled with:<br>
+                📅 Date: <strong>${examDate}</strong><br>
+                ⏰ Session: <strong>${sessionOrder===1?'FN — Forenoon':'AN — Afternoon'}</strong><br><br>
+                The existing Plan <strong>#${planId}</strong> will only be replaced when you click <em>Save</em> in the wizard.
+            </div>`,
+        showCancelButton: true,
+        confirmButtonText: 'Go to Generator →',
+        confirmButtonColor: '#667eea',
+    }).then(r => {
+        if (r.isConfirmed) {
+            // Pre-fill date & session=1/2 in wizard URL
+            window.location.href = `seating-plan-generator.html?date=${examDate}&session=${sessionOrder}`;
+        }
+    });
+}
+
+// ════════════════════════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════════════════════════
+function resetWizard() {
+    STATE = { date:'', session:'', notifications:[], selNotifs:[], rooms:[], selRooms:[], totalStudents:0, lastGenResult:null };
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('examDate').value = today;
+    document.getElementById('session').value  = '';
+    document.getElementById('step1Next').disabled = true;
+    document.getElementById('step1Summary').style.display = 'none';
+    document.getElementById('notifContainer').innerHTML   = '';
+    document.getElementById('roomsContainer').innerHTML   = '';
+    document.getElementById('reviewContainer').innerHTML  = '';
+    document.getElementById('selBar').style.display = 'none';
+    onDateSessionChange();
+    setStep(1);
+    showTab('wizard');
+}
+
+function loadingHtml(count=3, h=70) {
+    return Array(count).fill(`<div class="shimmer" style="height:${h}px;margin-bottom:10px;"></div>`).join('');
+}
+
+function showLoading(text='Loading…') {
+    document.getElementById('loadingText').textContent = text;
+    document.getElementById('loadingOverlay').classList.add('show');
+}
+function hideLoading() {
+    document.getElementById('loadingOverlay').classList.remove('show');
+}
+
+let _toastTimer;
+function toast(msg, type='success') {
+    const el = document.getElementById('toast');
+    const icon = type==='success'?'check-circle':type==='error'?'x-circle':type==='warning'?'exclamation-triangle':'info-circle';
+    el.className = `toast toast-${type} show`;
+    el.innerHTML = `<i class="bi bi-${icon}"></i> ${msg}`;
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), 5000);
+}
+</script>
+</body>
+</html>

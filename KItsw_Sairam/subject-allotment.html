@@ -30,22 +30,78 @@ body {
     padding: 20px;
     border-radius: 8px;
     margin-bottom: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 
 .filter-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 15px;
+    align-items: end;
 }
 
 .filter-group label {
+    display: block;
     font-size: 13px;
     font-weight: 600;
+    margin-bottom: 5px;
+    color: #444;
 }
 
-.filter-group select {
+.filter-group select,
+.filter-group input {
     width: 100%;
-    padding: 8px;
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    background: #fff;
+}
+
+.filter-group select[readonly],
+.filter-group input[readonly] {
+    background: #f0f2ff;
+    color: #5b73e8;
+    font-weight: 600;
+    cursor: not-allowed;
+    border-color: #c5cdf7;
+}
+
+/* Pills */
+.faculty-group {
+    grid-column: span 2;
+}
+
+.pills-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 6px 0;
+    min-height: 36px;
+}
+
+.branch-pill {
+    padding: 5px 14px;
+    border-radius: 20px;
+    background: #e8ecff;
+    color: #5b73e8;
+    border: 1.5px solid #5b73e8;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.branch-pill.active {
+    background: #5b73e8;
+    color: #fff;
+}
+
+.branch-pill:hover {
+    background: #5b73e8;
+    color: #fff;
+    opacity: 0.85;
 }
 
 .action-row {
@@ -58,22 +114,19 @@ body {
     border-radius: 4px;
     border: none;
     cursor: pointer;
+    font-size: 13px;
 }
 
-.btn-primary {
-    background: #5b73e8;
-    color: white;
-}
+.btn-primary { background: #5b73e8; color: white; }
+.btn-danger  { background: #dc3545; color: white; }
+.btn-sm      { padding: 5px 10px; font-size: 12px; }
 
-.btn-danger {
-    background: #dc3545;
-    color: white;
-}
-
+/* Table */
 .table-section {
     background: #fff;
     padding: 20px;
     border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 
 .simple-table {
@@ -84,54 +137,67 @@ body {
 .simple-table th {
     background: #5b73e8;
     color: white;
-    padding: 10px;
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 13px;
 }
 
 .simple-table td {
-    padding: 8px;
-    border-bottom: 1px solid #ddd;
-}  .back-link {
-  display: inline-block;
-  text-decoration: none;
-  color: #007bff; /* Link text color */
-  font-weight: 500;
-  font-size: 16px;
-  padding: 8px 12px 8px 36px; /* extra left padding for the arrow box */
-  border: 1px solid #007bff;
-  border-radius: 4px;
-  position: relative;
-  transition: all 0.3s ease;
+    padding: 9px 12px;
+    border-bottom: 1px solid #eee;
+    font-size: 13px;
 }
 
-.back-link::before {
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  background-color: #007bff; /* Arrow box color */
-  color: #ad0a0a;               /* Arrow color */
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: bold;
+.simple-table tr:hover td {
+    background: #f7f8ff;
 }
 
+/* Type badges */
+.type-badge {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.type-theory     { background: #e3f0ff; color: #1a6fca; }
+.type-practical  { background: #e6faf0; color: #1a9a5c; }
+.type-drawing    { background: #fff4e3; color: #c47a00; }
+.type-project    { background: #f3e8ff; color: #7c3aed; }
+.type-others     { background: #f0f0f0; color: #555; }
+.type-tutorial   { background: #ffe8f0; color: #c4004e; }
+
+/* Back link */
+.back-link {
+    display: inline-block;
+    text-decoration: none;
+    color: #007bff;
+    font-weight: 500;
+    font-size: 14px;
+    padding: 7px 14px;
+    border: 1px solid #007bff;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    transition: all 0.2s ease;
+}
 .back-link:hover {
-  background-color: #007bff;
-  color: #fff;
-  text-decoration: none;
+    background: #007bff;
+    color: #fff;
 }
 </style>
 </head>
 
 <body>
-
 <div class="allotment-container">
 
     <div class="allotment-header">
-        <h2>Subject Allotment to Faculty</h2>
-    </div><a href="index.html" class="back-link">← Back to Dashboard</a>
+        <h2 style="margin:0;">Subject Allotment to Faculty</h2>
+    </div>
 
-    <!-- FILTERS -->
+    <a href="index.html" class="back-link">← Back to Dashboard</a>
+
+    <!-- ROW 1: Programme / Branch / Semester / Regulation / Subject / Subject Type -->
     <div class="filter-card">
         <div class="filter-row">
             <div class="filter-group">
@@ -154,10 +220,22 @@ body {
                 <label>Subject</label>
                 <select id="subjectId"></select>
             </div>
+            <div class="filter-group">
+                <label>Allotment Type</label>
+                <!-- Auto-filled from subject_master, but user can override to Tutorial -->
+                <select id="allotmentType">
+                    <option value="Theory">Theory</option>
+                    <option value="Practical">Practical</option>
+                    <option value="Drawing">Drawing</option>
+                    <option value="Project">Project</option>
+                    <option value="Tutorial">Tutorial</option>
+                    <option value="Others">Others</option>
+                </select>
+            </div>
         </div>
     </div>
 
-    <!-- ALLOTMENT -->
+    <!-- ROW 2: Batch / Section / Branch Pills + Faculty -->
     <div class="filter-card">
         <div class="filter-row">
             <div class="filter-group">
@@ -168,16 +246,16 @@ body {
                 <label>Section</label>
                 <select id="sectionId"></select>
             </div>
-            <div class="filter-group">
-                <label>Faculty</label>
+            <div class="filter-group faculty-group">
+                <label>Filter by Branch</label>
+                <div id="branchPillsContainer" class="pills-container"></div>
+                <label style="margin-top:8px;">Faculty</label>
                 <select id="staffId"></select>
             </div>
         </div>
 
         <div class="action-row">
-            <button class="btn btn-primary" onclick="saveAllotment()">
-                Save Allotment
-            </button>
+            <button class="btn btn-primary" onclick="saveAllotment()">Save Allotment</button>
         </div>
     </div>
 

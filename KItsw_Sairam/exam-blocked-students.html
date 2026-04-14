@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Block Students from Exam</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{background:#f1f5f9;font-family:'Segoe UI',sans-serif;min-height:100vh;}
+
+        .page-header{background:linear-gradient(135deg,#7c2d12,#991b1b);padding:18px 32px;
+            display:flex;align-items:center;justify-content:space-between;}
+        .page-header h1{color:#fff;font-size:18px;font-weight:800;display:flex;align-items:center;gap:10px;}
+        .back-btn{color:#fca5a5;text-decoration:none;font-size:13px;display:flex;align-items:center;gap:6px;}
+        .back-btn:hover{color:#fff;}
+
+        .container{max-width:1300px;margin:24px auto;padding:0 20px;}
+
+        .filter-card{background:#fff;border-radius:14px;padding:20px 24px;
+            box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:20px;}
+        .filter-card h3{font-size:14px;font-weight:700;color:#1e293b;margin-bottom:16px;
+            display:flex;align-items:center;gap:8px;}
+        .filter-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;
+            align-items:end;}
+        .field-label{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;
+            letter-spacing:.5px;margin-bottom:5px;}
+        .field-input{width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;
+            font-size:13px;color:#1e293b;outline:none;transition:border-color .2s;background:#fff;}
+        .field-input:focus{border-color:#dc2626;}
+        .field-input:disabled{background:#f8fafc;color:#94a3b8;}
+
+        .btn-load{background:linear-gradient(135deg,#dc2626,#991b1b);color:#fff;border:none;
+            border-radius:10px;padding:10px 24px;font-size:13px;font-weight:700;cursor:pointer;
+            height:40px;display:flex;align-items:center;gap:8px;transition:all .2s;white-space:nowrap;}
+        .btn-load:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(220,38,38,.4);}
+
+        /* Dual list panel */
+        .dual-panel{display:grid;grid-template-columns:1fr 60px 1fr;gap:0;
+            background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.06);
+            overflow:hidden;margin-bottom:20px;}
+
+        .list-col{display:flex;flex-direction:column;}
+        .list-hdr{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;
+            border-bottom:1px solid #f1f5f9;}
+        .list-hdr.available{background:linear-gradient(135deg,#eff6ff,#dbeafe);}
+        .list-hdr.blocked{background:linear-gradient(135deg,#fff1f2,#fee2e2);}
+        .list-hdr h4{font-size:13px;font-weight:700;margin:0;}
+        .list-hdr.available h4{color:#1d4ed8;}
+        .list-hdr.blocked h4{color:#dc2626;}
+        .count-badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+        .count-badge.available{background:#dbeafe;color:#1d4ed8;}
+        .count-badge.blocked{background:#fee2e2;color:#dc2626;}
+
+        .list-search{padding:8px 12px;border-bottom:1px solid #f1f5f9;}
+        .list-search input{width:100%;padding:7px 10px 7px 32px;border:1.5px solid #e2e8f0;
+            border-radius:8px;font-size:12px;outline:none;background:#f8fafc;}
+        .list-search input:focus{border-color:#667eea;background:#fff;}
+        .list-search{position:relative;}
+        .list-search i{position:absolute;left:20px;top:50%;transform:translateY(-50%);
+            color:#94a3b8;font-size:13px;}
+
+        .list-body{flex:1;overflow-y:auto;max-height:480px;}
+        .list-item{padding:9px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;
+            border-bottom:1px solid #f8fafc;transition:background .1s;user-select:none;}
+        .list-item:hover{background:#f0f4ff;}
+        .list-item.selected{background:#dbeafe;}
+        .list-item.blocked-item:hover{background:#fff1f2;}
+        .list-item.blocked-item.selected{background:#fee2e2;}
+        .item-roll{font-weight:700;font-size:12px;color:#1e293b;min-width:85px;}
+        .item-name{font-size:11px;color:#64748b;flex:1;white-space:nowrap;
+            overflow:hidden;text-overflow:ellipsis;}
+        .item-branch{font-size:10px;color:#94a3b8;white-space:nowrap;}
+        .item-check{width:16px;height:16px;border-radius:4px;border:1.5px solid #cbd5e1;
+            flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+        .list-item.selected .item-check{background:#3b82f6;border-color:#3b82f6;color:#fff;}
+        .list-item.blocked-item.selected .item-check{background:#dc2626;border-color:#dc2626;}
+
+        /* Transfer buttons */
+        .transfer-col{display:flex;flex-direction:column;align-items:center;
+            justify-content:center;gap:12px;padding:16px 8px;background:#f8fafc;
+            border-left:1px solid #f1f5f9;border-right:1px solid #f1f5f9;}
+        .xfer-btn{width:40px;height:40px;border-radius:50%;border:2px solid;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;font-size:16px;
+            transition:all .15s;background:#fff;}
+        .xfer-btn.block-btn{border-color:#dc2626;color:#dc2626;}
+        .xfer-btn.block-btn:hover{background:#dc2626;color:#fff;}
+        .xfer-btn.unblock-btn{border-color:#16a34a;color:#16a34a;}
+        .xfer-btn.unblock-btn:hover{background:#16a34a;color:#fff;}
+        .xfer-btn.block-all{border-color:#f59e0b;color:#f59e0b;font-size:12px;font-weight:700;}
+        .xfer-btn.block-all:hover{background:#f59e0b;color:#fff;}
+        .xfer-btn.unblock-all{border-color:#6366f1;color:#6366f1;font-size:12px;font-weight:700;}
+        .xfer-btn.unblock-all:hover{background:#6366f1;color:#fff;}
+
+        /* List footer */
+        .list-footer{padding:10px 14px;background:#f8fafc;border-top:1px solid #f1f5f9;
+            display:flex;align-items:center;justify-content:space-between;gap:8px;}
+        .sel-count{font-size:11px;color:#64748b;}
+        .footer-btn{padding:5px 12px;border-radius:8px;font-size:11px;font-weight:600;
+            cursor:pointer;border:1.5px solid #e2e8f0;background:#fff;color:#334155;
+            transition:all .15s;}
+        .footer-btn:hover{border-color:#667eea;color:#667eea;}
+
+        /* Reason panel */
+        .reason-card{background:#fff;border-radius:14px;padding:20px 24px;
+            box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:20px;}
+        .reason-grid{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;}
+        .reason-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+        .reason-pill{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;
+            cursor:pointer;border:1.5px solid;transition:all .15s;}
+        .reason-pill.active{color:#fff;}
+
+        /* Save bar */
+        .save-bar{background:#fff;border-radius:14px;padding:16px 24px;
+            box-shadow:0 2px 12px rgba(0,0,0,.06);display:flex;align-items:center;
+            justify-content:space-between;flex-wrap:wrap;gap:12px;}
+        .save-stats{display:flex;gap:20px;flex-wrap:wrap;}
+        .stat-box{text-align:center;}
+        .stat-box .sv{font-size:22px;font-weight:800;}
+        .stat-box .sl{font-size:11px;color:#64748b;}
+        .btn-save{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;
+            border-radius:10px;padding:12px 32px;font-size:14px;font-weight:700;cursor:pointer;
+            display:flex;align-items:center;gap:8px;transition:all .2s;}
+        .btn-save:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(22,163,74,.4);}
+        .btn-save:disabled{opacity:.5;pointer-events:none;}
+
+        .empty-state{text-align:center;padding:40px 20px;color:#94a3b8;}
+        .empty-state i{font-size:36px;display:block;margin-bottom:8px;}
+
+        .toast-c{position:fixed;top:16px;right:16px;z-index:9999;}
+        .toast-m{background:#1e293b;color:#fff;padding:10px 16px;border-radius:10px;
+            font-size:13px;margin-bottom:6px;box-shadow:0 4px 16px rgba(0,0,0,.2);
+            border-left:4px solid #667eea;animation:slideIn .3s ease;}
+        @keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+    </style>
+</head>
+<body>
+
+<div class="page-header">
+    <h1><i class="bi bi-person-slash" style="color:#fca5a5;"></i> Block Students from Exam</h1>
+    <a href="index.html" class="back-btn"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+</div>
+
+<div class="toast-c" id="toastC"></div>
+
+<div class="container">
+
+    <!-- ── FILTER PANEL ── -->
+    <div class="filter-card">
+        <h3><i class="bi bi-funnel" style="color:#dc2626;"></i> Select Exam Context</h3>
+        <div class="filter-grid">
+            <div>
+                <div class="field-label">Notification Type</div>
+                <select id="fType" class="field-input" onchange="onTypeChange()">
+                    <option value="">— Select —</option>
+                    <option value="Internal">MSE (Internal)</option>
+                    <option value="ESE">ESE (External)</option>
+                </select>
+            </div>
+            <div>
+                <div class="field-label">Notification</div>
+                <select id="fNotif" class="field-input" onchange="onNotifChange()" disabled>
+                    <option value="">— Select Notification —</option>
+                </select>
+            </div>
+            <div>
+                <div class="field-label">Programme</div>
+                <select id="fProg" class="field-input" onchange="onFilterChange()" disabled>
+                    <option value="">— All Programmes —</option>
+                </select>
+            </div>
+            <div>
+                <div class="field-label">Semester</div>
+                <select id="fSem" class="field-input" onchange="onFilterChange()" disabled>
+                    <option value="">— All Semesters —</option>
+                </select>
+            </div>
+            <div>
+                <div class="field-label">Branch</div>
+                <select id="fBranch" class="field-input" onchange="onFilterChange()" disabled>
+                    <option value="">— All Branches —</option>
+                </select>
+            </div>
+            <div>
+                <div class="field-label">Exam Date</div>
+                <input type="date" id="fDate" class="field-input" onchange="onFilterChange()" disabled/>
+            </div>
+            <div>
+                <div class="field-label">Session</div>
+                <select id="fSession" class="field-input" onchange="onFilterChange()" disabled>
+                    <option value="">— Session —</option>
+                    <option value="1">FN — Forenoon</option>
+                    <option value="2">AN — Afternoon</option>
+                </select>
+            </div>
+            <div>
+                <button class="btn-load" onclick="loadStudents()" id="loadBtn" disabled>
+                    <i class="bi bi-search"></i> Load Students
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── REASON PANEL ── -->
+    <div class="reason-card" id="reasonCard" style="display:none;">
+        <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:12px;">
+            <i class="bi bi-tag" style="color:#dc2626;"></i>
+            Reason for Blocking
+            <span style="font-size:11px;color:#94a3b8;font-weight:400;margin-left:6px;">
+                (Applied to all students moved to Blocked)
+            </span>
+        </h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;">
+            <div>
+                <div class="field-label">Reason</div>
+                <select id="reasonSel" class="field-input" onchange="onReasonChange()">
+                    <option value="Internship">🏢 Internship</option>
+                    <option value="NCC">🎖️ NCC</option>
+                    <option value="Principal Permission">📋 Principal Permission</option>
+                    <option value="Detained">⛔ Detained</option>
+                    <option value="Fee Default">💰 Fee Default</option>
+                    <option value="Disciplinary">⚠️ Disciplinary Action</option>
+                    <option value="Other">✏️ Other (specify below)</option>
+                </select>
+            </div>
+            <div id="noteWrap" style="display:none;">
+                <div class="field-label">Specify Reason</div>
+                <input type="text" id="reasonNote" class="field-input"
+                       placeholder="Enter reason..." maxlength="200"/>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── DUAL LIST PANEL ── -->
+    <div class="dual-panel" id="dualPanel" style="display:none;">
+
+        <!-- LEFT: Available -->
+        <div class="list-col">
+            <div class="list-hdr available">
+                <h4><i class="bi bi-people me-2"></i>Available Students</h4>
+                <span class="count-badge available" id="availCount">0</span>
+            </div>
+            <div class="list-search">
+                <i class="bi bi-search"></i>
+                <input type="text" id="availSearch" placeholder="Search roll no or name…"
+                       oninput="filterList('avail')"/>
+            </div>
+            <div class="list-body" id="availList"></div>
+            <div class="list-footer">
+                <span class="sel-count" id="availSelCount">0 selected</span>
+                <div style="display:flex;gap:6px;">
+                    <button class="footer-btn" onclick="selectAll('avail')">Select All</button>
+                    <button class="footer-btn" onclick="clearSel('avail')">Clear</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TRANSFER BUTTONS -->
+        <div class="transfer-col">
+            <button class="xfer-btn block-all" onclick="transferAll('block')" title="Block all">
+                <i class="bi bi-chevron-double-right"></i>
+            </button>
+            <button class="xfer-btn block-btn" onclick="transfer('block')" title="Block selected">
+                <i class="bi bi-chevron-right"></i>
+            </button>
+            <button class="xfer-btn unblock-btn" onclick="transfer('unblock')" title="Unblock selected">
+                <i class="bi bi-chevron-left"></i>
+            </button>
+            <button class="xfer-btn unblock-all" onclick="transferAll('unblock')" title="Unblock all">
+                <i class="bi bi-chevron-double-left"></i>
+            </button>
+        </div>
+
+        <!-- RIGHT: Blocked -->
+        <div class="list-col">
+            <div class="list-hdr blocked">
+                <h4><i class="bi bi-person-slash me-2"></i>Blocked Students</h4>
+                <span class="count-badge blocked" id="blockedCount">0</span>
+            </div>
+            <div class="list-search">
+                <i class="bi bi-search"></i>
+                <input type="text" id="blockedSearch" placeholder="Search roll no or name…"
+                       oninput="filterList('blocked')"/>
+            </div>
+            <div class="list-body" id="blockedList"></div>
+            <div class="list-footer">
+                <span class="sel-count" id="blockedSelCount">0 selected</span>
+                <div style="display:flex;gap:6px;">
+                    <button class="footer-btn" onclick="selectAll('blocked')">Select All</button>
+                    <button class="footer-btn" onclick="clearSel('blocked')">Clear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── SAVE BAR ── -->
+    <div class="save-bar" id="saveBar" style="display:none;">
+        <div class="save-stats">
+            <div class="stat-box">
+                <div class="sv" id="stTotal" style="color:#6366f1;">0</div>
+                <div class="sl">Total Students</div>
+            </div>
+            <div class="stat-box">
+                <div class="sv" id="stAvail" style="color:#16a34a;">0</div>
+                <div class="sl">Available</div>
+            </div>
+            <div class="stat-box">
+                <div class="sv" id="stBlocked" style="color:#dc2626;">0</div>
+                <div class="sl">Blocked</div>
+            </div>
+        </div>
+        <button class="btn-save" id="saveBtn" onclick="saveBlocked()">
+            <i class="bi bi-save"></i> Save Blocked List
+        </button>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+
+// ── State ─────────────────────────────────────────────────────
+const S = {
+    available:    [],   // { student_id, roll_no, student_name, branch_code, ... }
+    blocked:      [],   // same structure
+    availSel:     new Set(),
+    blockedSel:   new Set(),
+    notifications:[]
+};
+
+// ── Init ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    loadDropdowns();
+});
+
+async function loadDropdowns() {
+    try {
+        const [pr, sr, br] = await Promise.all([
+            fetch('/api/programmes').then(r=>r.json()),
+            fetch('/api/semesters').then(r=>r.json()),
+            fetch('/api/branches').then(r=>r.json())
+        ]);
+
+        const pSel = document.getElementById('fProg');
+        const sSel = document.getElementById('fSem');
+        const bSel = document.getElementById('fBranch');
+
+        (pr.data||pr.programmes||[]).forEach(p =>
+            pSel.innerHTML += `<option value="${p.programme_id}">${p.programme_name}</option>`);
+        (sr.data||sr.semesters||[]).forEach(s =>
+            sSel.innerHTML += `<option value="${s.semester_id}">${s.semester_name}</option>`);
+        (br.data||br.branches||[]).forEach(b =>
+            bSel.innerHTML += `<option value="${b.branch_id}">${b.branch_code} — ${b.branch_name}</option>`);
+    } catch(_) {}
+}
+
+async function onTypeChange() {
+    const type = document.getElementById('fType').value;
+    if (!type) return;
+
+    const nSel = document.getElementById('fNotif');
+    nSel.innerHTML = '<option value="">Loading…</option>';
+    nSel.disabled = true;
+
+    try {
+        const res  = await fetch('/api/exam-notifications');
+        const data = await res.json();
+        const list = (data.data || data.notifications || [])
+            .filter(n => !type || n.exam_type === type);
+
+        S.notifications = list;
+        nSel.innerHTML  = '<option value="">— Select Notification —</option>' +
+            list.map(n => `<option value="${n.notification_id}">${n.notification_title}</option>`).join('');
+        nSel.disabled = false;
+
+        // Enable other filters
+        ['fProg','fSem','fBranch','fDate','fSession'].forEach(id =>
+            document.getElementById(id).disabled = false);
+        checkLoadBtn();
+    } catch(_) {}
+}
+
+function onNotifChange() { checkLoadBtn(); }
+function onFilterChange()  { checkLoadBtn(); }
+
+function checkLoadBtn() {
+    const type  = document.getElementById('fType').value;
+    const ready = !!type;
+    document.getElementById('loadBtn').disabled = !ready;
+}
+
+// ── Load students ─────────────────────────────────────────────
+async function loadStudents() {
+    const notif   = document.getElementById('fNotif').value;
+    const prog    = document.getElementById('fProg').value;
+    const sem     = document.getElementById('fSem').value;
+    const branch  = document.getElementById('fBranch').value;
+    const date    = document.getElementById('fDate').value;
+    const session = document.getElementById('fSession').value;
+
+    const params = new URLSearchParams();
+    if (notif)   params.append('notification_id', notif);
+    if (prog)    params.append('programme_id', prog);
+    if (sem)     params.append('semester_id', sem);
+    if (branch)  params.append('branch_id', branch);
+    if (date)    params.append('exam_date', date);
+    if (session) params.append('session_order', session);
+
+    document.getElementById('loadBtn').innerHTML = '<i class="bi bi-hourglass-split"></i> Loading…';
+    document.getElementById('loadBtn').disabled = true;
+
+    try {
+        const res  = await fetch(`/api/blocked-students/students?${params}`);
+        const data = await res.json();
+
+        if (!data.success || !data.students?.length) {
+            toast('No students found for selected filters', 'warning');
+            return;
+        }
+
+        // Split into available and blocked
+        // Mark originally blocked students so we can unblock them on save
+        S.available   = data.students.filter(s => !s.is_blocked)
+                            .map(s => ({...s, was_blocked:false}));
+        S.blocked     = data.students.filter(s => s.is_blocked)
+                            .map(s => ({...s, was_blocked:true}));
+        S.availSel    = new Set();
+        S.blockedSel  = new Set();
+
+        document.getElementById('dualPanel').style.display   = 'grid';
+        document.getElementById('saveBar').style.display     = 'flex';
+        document.getElementById('reasonCard').style.display  = 'block';
+
+        renderBoth();
+        toast(`Loaded ${data.students.length} students`, 'success');
+
+    } catch(e) {
+        toast('Error: ' + e.message, 'error');
+    } finally {
+        document.getElementById('loadBtn').innerHTML = '<i class="bi bi-search"></i> Load Students';
+        document.getElementById('loadBtn').disabled = false;
+    }
+}
+
+// ── Reason ────────────────────────────────────────────────────
+function onReasonChange() {
+    const val  = document.getElementById('reasonSel').value;
+    document.getElementById('noteWrap').style.display =
+        val === 'Other' ? 'block' : 'none';
+}
+
+// ── Render ────────────────────────────────────────────────────
+function renderList(side) {
+    const isAvail   = side === 'avail';
+    const list      = isAvail ? S.available : S.blocked;
+    const sel       = isAvail ? S.availSel  : S.blockedSel;
+    const searchVal = document.getElementById(isAvail ? 'availSearch' : 'blockedSearch')
+                             .value.toLowerCase();
+
+    const filtered = list.filter(s =>
+        !searchVal ||
+        s.roll_no.toLowerCase().includes(searchVal) ||
+        s.student_name.toLowerCase().includes(searchVal)
+    );
+
+    const containerId = isAvail ? 'availList' : 'blockedList';
+    const container   = document.getElementById(containerId);
+
+    if (!filtered.length) {
+        container.innerHTML = `<div class="empty-state">
+            <i class="bi bi-${isAvail ? 'people' : 'person-slash'}"></i>
+            ${isAvail ? 'No available students' : 'No blocked students'}
+        </div>`;
+    } else {
+        container.innerHTML = filtered.map(s => {
+            const isSel   = sel.has(s.student_id);
+            const secLbl  = s.section_name ? `-${s.section_name.replace('Sec-','')}` : '';
+            const brLbl   = `${s.branch_code}${secLbl}`;
+            return `<div class="list-item ${isAvail ? '' : 'blocked-item'} ${isSel ? 'selected' : ''}"
+                data-id="${s.student_id}" onclick="toggleSel('${side}', ${s.student_id})">
+                <div class="item-check">${isSel ? '<i class="bi bi-check" style="font-size:10px;"></i>' : ''}</div>
+                <div class="item-roll">${s.roll_no}</div>
+                <div class="item-name">${s.student_name}</div>
+                <div class="item-branch">${brLbl}</div>
+            </div>`;
+        }).join('');
+    }
+
+    document.getElementById(isAvail ? 'availCount' : 'blockedCount').textContent = list.length;
+    document.getElementById(isAvail ? 'availSelCount' : 'blockedSelCount').textContent =
+        `${sel.size} selected`;
+}
+
+function renderBoth() {
+    renderList('avail');
+    renderList('blocked');
+    updateStats();
+}
+
+function filterList(side) { renderList(side); }
+
+function updateStats() {
+    const total = S.available.length + S.blocked.length;
+    document.getElementById('stTotal').textContent   = total;
+    document.getElementById('stAvail').textContent   = S.available.length;
+    document.getElementById('stBlocked').textContent = S.blocked.length;
+}
+
+// ── Selection ─────────────────────────────────────────────────
+function toggleSel(side, id) {
+    const sel = side === 'avail' ? S.availSel : S.blockedSel;
+    if (sel.has(id)) sel.delete(id); else sel.add(id);
+    renderList(side);
+}
+
+function selectAll(side) {
+    const list = side === 'avail' ? S.available : S.blocked;
+    const sel  = side === 'avail' ? S.availSel  : S.blockedSel;
+    list.forEach(s => sel.add(s.student_id));
+    renderList(side);
+}
+
+function clearSel(side) {
+    if (side === 'avail') S.availSel.clear(); else S.blockedSel.clear();
+    renderList(side);
+}
+
+// ── Transfer ──────────────────────────────────────────────────
+function transfer(direction) {
+    const reason     = document.getElementById('reasonSel').value;
+    const reasonNote = document.getElementById('reasonNote').value;
+
+    if (direction === 'block') {
+        const toMove = S.available.filter(s => S.availSel.has(s.student_id));
+        toMove.forEach(s => { s.reason = reason; s.reason_note = reasonNote; });
+        S.blocked   = [...S.blocked, ...toMove];
+        S.available = S.available.filter(s => !S.availSel.has(s.student_id));
+        S.availSel.clear();
+    } else {
+        const toMove = S.blocked.filter(s => S.blockedSel.has(s.student_id))
+                                .map(s => ({...s, was_blocked:true}));
+        S.available  = [...S.available, ...toMove];
+        S.blocked    = S.blocked.filter(s => !S.blockedSel.has(s.student_id));
+        S.blockedSel.clear();
+    }
+    renderBoth();
+}
+
+function transferAll(direction) {
+    const reason     = document.getElementById('reasonSel').value;
+    const reasonNote = document.getElementById('reasonNote').value;
+
+    if (direction === 'block') {
+        S.available.forEach(s => { s.reason = reason; s.reason_note = reasonNote; });
+        S.blocked   = [...S.blocked, ...S.available];
+        S.available = [];
+        S.availSel.clear();
+    } else {
+        S.available  = [...S.available, ...S.blocked];
+        S.blocked    = [];
+        S.blockedSel.clear();
+    }
+    renderBoth();
+}
+
+// ── Save ──────────────────────────────────────────────────────
+async function saveBlocked() {
+    const confirm = await Swal.fire({
+        title:   'Save Blocked List?',
+        html:    `<b>${S.blocked.length}</b> students will be blocked from this exam.<br>
+                  <b>${S.available.length}</b> students will be allowed.`,
+        icon:    'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Save',
+        confirmButtonColor: '#16a34a'
+    });
+    if (!confirm.isConfirmed) return;
+
+    document.getElementById('saveBtn').disabled = true;
+
+    try {
+        const res  = await fetch('/api/blocked-students/save', {
+            method:  'POST',
+            headers: {'Content-Type':'application/json'},
+            body:    JSON.stringify({
+                notification_id: document.getElementById('fNotif').value   || null,
+                programme_id:    document.getElementById('fProg').value     || null,
+                semester_id:     document.getElementById('fSem').value      || null,
+                branch_id:       document.getElementById('fBranch').value   || null,
+                exam_date:       document.getElementById('fDate').value      || null,
+                session_order:   document.getElementById('fSession').value  || null,
+                blocked: S.blocked.map(s => ({
+                    student_id:   s.student_id,
+                    roll_no:      s.roll_no,
+                    subject_id:   s.subject_id   || null,
+                    subject_code: s.subject_code || null,
+                    subject_name: s.subject_name || null,
+                    reason:       s.reason       || document.getElementById('reasonSel').value,
+                    reason_note:  s.reason_note  || document.getElementById('reasonNote').value
+                })),
+                unblocked: S.available.filter(s => s.was_blocked).map(s => ({
+                    student_id: s.student_id,
+                    roll_no:    s.roll_no
+                }))
+            })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            Swal.fire({
+                icon: 'success', title: 'Saved!',
+                html: `<b>${S.blocked.length}</b> students blocked successfully.`,
+                timer: 2000, showConfirmButton: false
+            });
+            toast(`${S.blocked.length} students blocked`, 'success');
+        } else {
+            throw new Error(data.error || 'Save failed');
+        }
+    } catch(e) {
+        Swal.fire({ icon:'error', title:'Error', text:e.message });
+    } finally {
+        document.getElementById('saveBtn').disabled = false;
+    }
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+function toast(msg, type='success') {
+    const colors = { success:'#16a34a', warning:'#f59e0b', error:'#dc2626', info:'#6366f1' };
+    const el = document.createElement('div');
+    el.className = 'toast-m';
+    el.style.borderLeftColor = colors[type]||'#667eea';
+    el.textContent = msg;
+    document.getElementById('toastC').appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+}
+</script>
+</body>
+</html>
